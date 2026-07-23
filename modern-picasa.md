@@ -32,7 +32,7 @@ license of each selected Qt module.
 | Native UI and GPU canvas | [Qt 6](https://www.qt.io/) QML Scene Graph | One native codebase with platform-appropriate rendering and interaction. |
 | Image load, resize, and tiles | [libvips](https://www.libvips.org/) | Fast, low-memory, lazy image pipelines and Deep Zoom-style pyramids. |
 | Library cache and search | [SQLite](https://sqlite.org/) with [FTS5](https://sqlite.org/fts5.html) | ACID local database, simple backup, and embedded full-text search. |
-| EXIF, IPTC, XMP | [Exiv2](https://exiv2.org/) and [ExifTool](https://exiftool.org/) for compatibility testing/import | Standards-based metadata rather than an undocumented app-specific format. Exiv2 is GPL-2.0-or-later; ExifTool is dual-licensed under the Perl Artistic License and GPL. Choose an integration/distribution model compatible with the product's intended license. |
+| EXIF, IPTC, XMP | [Exiv2](https://exiv2.org/) and [ExifTool](https://exiftool.org/) for compatibility testing/import | Standards-based metadata rather than an undocumented app-specific format. |
 | Camera RAW | [LibRaw](https://www.libraw.org/) | Broad camera support and access to embedded previews. |
 | Image codecs | [libjpeg-turbo](https://libjpeg-turbo.org/), [libheif](https://github.com/strukturag/libheif), and [libavif](https://github.com/AOMediaCodec/libavif) | Fast JPEG transforms plus common modern import formats. |
 | Video | [FFmpeg](https://ffmpeg.org/) and [libmpv](https://mpv.io/) | Cross-platform demuxing, thumbnails, playback, and hardware-decoding fallbacks. |
@@ -41,6 +41,12 @@ license of each selected Qt module.
 Keep platform-specific code behind small adapters—for native notifications,
 media hardware acceleration, sandbox permissions, and installers—rather than
 lowering the whole application to the least common denominator.
+
+### Dependency Licensing
+
+Exiv2 is GPL-2.0-or-later; ExifTool is dual-licensed under the Perl Artistic
+License and GPL. Choose an integration and distribution model compatible with
+the product's intended license before embedding or redistributing either tool.
 
 ## Wine Is Not the Portability Strategy
 
@@ -111,7 +117,10 @@ images or deep zoom, using libvips `dzsave`-style output. Use AVIF or WebP for
 new cache artifacts after measuring decode latency; retain JPEG as a broadly
 compatible fallback. HEIC import is useful, but High Efficiency Video Coding
 (HEVC) patent obligations require a patent-license review before distributing
-HEIC cache or output encoding.
+HEIC cache or output encoding. Measure cold and warm-cache decode time on the
+lowest supported hardware, and prefer the format whose 95th-percentile
+visible-thumbnail decode stays below the interactive frame budget (about
+50 milliseconds) at the selected cache dimensions.
 
 #### Incremental Folder Watching
 
@@ -179,7 +188,9 @@ models whose *weights* permit the intended distribution; InsightFace's
 `buffalo_l`, `buffalo_s`, and `antelope` pretrained weights have
 non-commercial terms despite permissive code licenses. Record the license,
 source, version, and redistribution rights for every model artifact—not just
-its runtime or source code—before it enters a release.
+its runtime or source code—before it enters a release. In machine-learning
+projects, the inference or training code and its separately downloaded trained
+weights can have different licenses.
 
 Persist face regions and user-approved names locally and in XMP-compatible
 regions where appropriate. Never require cloud upload to find faces. Run
