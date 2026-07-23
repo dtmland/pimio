@@ -110,8 +110,8 @@ work naturally. Generate additional pyramid tiles only for unusually large
 images or deep zoom, using libvips `dzsave`-style output. Use AVIF or WebP for
 new cache artifacts after measuring decode latency; retain JPEG as a broadly
 compatible fallback. HEIC import is useful, but High Efficiency Video Coding
-(HEVC) patent obligations make
-HEIC cache/output encoding a legal review item.
+(HEVC) patent obligations require a patent-license review before distributing
+HEIC cache or output encoding.
 
 #### Incremental Folder Watching
 
