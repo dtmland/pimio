@@ -115,12 +115,13 @@ atomically replaced, corruption is isolated, and operating-system cache tools
 work naturally. Generate additional pyramid tiles only for unusually large
 images or deep zoom, using libvips `dzsave`-style output. Use AVIF or WebP for
 new cache artifacts after measuring decode latency; retain JPEG as a broadly
-compatible fallback. HEIC import is useful, but High Efficiency Video Coding
-(HEVC) patent obligations require a patent-license review before distributing
-HEIC cache or output encoding. Measure cold and warm-cache decode time on the
-lowest supported hardware, and prefer the format whose 95th-percentile
-visible-thumbnail decode stays below the interactive frame budget (about
-50 milliseconds) at the selected cache dimensions.
+compatible fallback. High Efficiency Image Container (HEIC) import is useful,
+but its High Efficiency Video Coding (HEVC) payload can require a
+patent-license review before distributing HEIC cache or output encoding.
+Measure cold and warm-cache decode time on the lowest supported hardware, and
+prefer the format whose 95th-percentile visible-thumbnail decode stays below
+the interactive frame budget (about 50 milliseconds) at the selected cache
+dimensions.
 
 #### Incremental Folder Watching
 
@@ -255,7 +256,8 @@ the local library is robust and recoverable.
 4. Add opt-in local face detection and clustering, then separately evaluate
    sync providers and advanced editing features.
 
-At each stage, test Windows, current macOS, and a representative X11/Wayland
-Linux environment natively. Test large libraries, disconnected network drives,
-filesystem event loss, unsupported media, low disk space, cancellation, and
-sidecar conflicts as product behavior—not as platform-specific afterthoughts.
+At each stage, test Windows, the minimum macOS release defined by the product's
+release policy, and a representative X11/Wayland Linux environment natively.
+Test large libraries, disconnected network drives, filesystem event loss,
+unsupported media, low disk space, cancellation, and sidecar conflicts as
+product behavior—not as platform-specific afterthoughts.
