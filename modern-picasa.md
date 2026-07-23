@@ -32,7 +32,7 @@ license of each selected Qt module.
 | Native UI and GPU canvas | [Qt 6](https://www.qt.io/) QML Scene Graph | One native codebase with platform-appropriate rendering and interaction. |
 | Image load, resize, and tiles | [libvips](https://www.libvips.org/) | Fast, low-memory, lazy image pipelines and Deep Zoom-style pyramids. |
 | Library cache and search | [SQLite](https://sqlite.org/) with [FTS5](https://sqlite.org/fts5.html) | ACID local database, simple backup, and embedded full-text search. |
-| EXIF, IPTC, XMP | [Exiv2](https://exiv2.org/) and [ExifTool](https://exiftool.org/) for compatibility testing/import | Standards-based metadata rather than an undocumented app-specific format. Review Exiv2/ExifTool licensing before embedding or redistributing. |
+| EXIF, IPTC, XMP | [Exiv2](https://exiv2.org/) and [ExifTool](https://exiftool.org/) for compatibility testing/import | Standards-based metadata rather than an undocumented app-specific format. Exiv2 is GPL-2.0-or-later; ExifTool is dual-licensed under the Perl Artistic License and GPL. Choose an integration/distribution model compatible with the product's intended license. |
 | Camera RAW | [LibRaw](https://www.libraw.org/) | Broad camera support and access to embedded previews. |
 | Image codecs | [libjpeg-turbo](https://libjpeg-turbo.org/), [libheif](https://github.com/strukturag/libheif), and [libavif](https://github.com/AOMediaCodec/libavif) | Fast JPEG transforms plus common modern import formats. |
 | Video | [FFmpeg](https://ffmpeg.org/) and [libmpv](https://mpv.io/) | Cross-platform demuxing, thumbnails, playback, and hardware-decoding fallbacks. |
@@ -109,7 +109,8 @@ atomically replaced, corruption is isolated, and operating-system cache tools
 work naturally. Generate additional pyramid tiles only for unusually large
 images or deep zoom, using libvips `dzsave`-style output. Use AVIF or WebP for
 new cache artifacts after measuring decode latency; retain JPEG as a broadly
-compatible fallback. HEIC import is useful, but HEVC patent obligations make
+compatible fallback. HEIC import is useful, but High Efficiency Video Coding
+(HEVC) patent obligations make
 HEIC cache/output encoding a legal review item.
 
 #### Incremental Folder Watching
@@ -142,8 +143,10 @@ straightening, and lens correction—not a serialized shader command string.
 Render previews through libvips and GPU shaders; replay the same recipe at
 full resolution for export. [GEGL](https://gegl.org/) and
 [Lensfun](https://lensfun.github.io/) are useful optional components for
-more advanced filters and lens correction, but the initial organization-first
-product should expose only a small, dependable edit set.
+more advanced filters and lens correction. Both use LGPL-family licenses
+(GEGL LGPL-3.0-or-later; Lensfun LGPL-3.0-or-later), so retain required notices
+and review distribution obligations before shipping them. The initial
+organization-first product should expose only a small, dependable edit set.
 
 ### 4. Video Pipeline
 
@@ -172,8 +175,11 @@ for a differently licensed application.
 Make face analysis optional, local by default, pausable, and removable. Start
 with [MediaPipe](https://ai.google.dev/edge/mediapipe)'s Apache-licensed face
 detector to find face regions. Add identity clustering only after choosing
-models whose *weights* permit the intended distribution; some popular
-InsightFace weights are non-commercial despite permissive code licenses.
+models whose *weights* permit the intended distribution; InsightFace's
+`buffalo_l`, `buffalo_s`, and `antelope` pretrained weights have
+non-commercial terms despite permissive code licenses. Record the license,
+source, version, and redistribution rights for every model artifact—not just
+its runtime or source code—before it enters a release.
 
 Persist face regions and user-approved names locally and in XMP-compatible
 regions where appropriate. Never require cloud upload to find faces. Run
