@@ -20,9 +20,10 @@ can support the 2.0.0 rendering frontend without being rewritten.
 - Configure one or more local library roots.
 - Scan images and videos incrementally, preserving a stable file identity and
   content fingerprint to recognize moves and renames.
-- Store derived state in a versioned SQLite database with migrations,
-  transactions, write-ahead logging, and a persistent job queue.
-- Treat the SQLite index and generated cache as rebuildable. Preserve portable
+- Store derived state in a SQLite cache with migrations, transactions,
+  write-ahead logging, and a persistent job queue.
+- Treat LORE as the ground-truth storage layer for durable state and history.
+  Treat the SQLite index and generated cache as rebuildable. Preserve portable
   metadata and edit recipes with the original media.
 - Watch configured folders, coalesce filesystem events into durable jobs, and
   run low-priority reconciliation scans for watcher overflows, network volumes,
@@ -98,6 +99,32 @@ The following services are UI-independent and form the stable contract for
 - File watching and reconciliation.
 - Edit recipes, playback ranges, and export rendering.
 - Search and chronological grouping.
+
+### Versioning and Commit Strategy (LORE Ground Truth)
+
+- Use LORE as the authoritative storage layer for library state, metadata
+  changes, tags, timestamps, and edit recipes. Use SQLite as an ephemeral
+  read/query cache rebuilt from LORE.
+- Keep commits user-initiated rather than background-batched. Expose explicit
+  "Save" affordances (including per-group checkpoints) so each LORE commit
+  maps to a meaningful user action.
+- Stage metadata edits, tag changes, timestamp repairs, and recipe updates in
+  SQLite during interaction, then commit them to LORE when the user saves.
+  Handle failed LORE commits visibly and recoverably without destructive data
+  loss.
+- Serve interactive queries from SQLite for responsiveness. Rebuild the SQLite
+  cache from LORE on startup and after detected external repository changes.
+- Allow optional direct LORE access for power users (for example through
+  `lore cli`) to inspect or modify repository state; detect those modifications
+  and rehydrate the SQLite cache accordingly.
+- Treat SQLite loss or corruption as recoverable by rebuilding from LORE.
+  Rely on LORE commit history for auditability and user-visible undo points.
+- This model keeps v1 local-first while establishing LORE as the future sync
+  point for multi-client workflows in 2.0+.
+- This differs from a pure SQLite design by moving durable history and
+  checkpoint semantics out of the local cache. It differs from a pure `.ini`
+  design by retaining fast indexed queries through SQLite while using LORE as
+  the durable versioned source of truth.
 
 Prioritize visible thumbnails and direct interaction above viewer decoding and
 export; prioritize those above scans, scene detection, and other optional
