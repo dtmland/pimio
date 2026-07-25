@@ -89,7 +89,7 @@ jobs:
 
       - name: Test (offscreen)
         run: >-
-          ctest --preset default
+          ctest --preset default --output-on-failure --verbose
           --output-junit "${{ github.workspace }}/build/default/test-results/ctest-offscreen.xml"
 
       - name: Test (X11 via Xvfb)
