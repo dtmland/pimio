@@ -3,7 +3,7 @@
 Status: **stub established in Increment 0.** Values here are the current
 working baseline used by the build and CI. They must be reviewed and confirmed
 before the 1.0.0 release; see
-[pimio-v1-implementation.md](../pimio-v1-implementation.md), planning item 2.
+[pimio-v1-implementation.md](plan/pimio-v1-implementation.md), planning item 2.
 
 CI runner images are test environments. They do not by themselves define the
 supported product matrix.

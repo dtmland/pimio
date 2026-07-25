@@ -61,7 +61,7 @@ bump is therefore contained to `cmake/PimioLore.cmake` and `src/lore/src/`.
 ## Anticipated dependencies (not yet integrated)
 
 These are candidates recorded in
-[pimio-v1-tools-environment.md](../pimio-v1-tools-environment.md). They are
+[pimio-v1-tools-environment.md](plan/pimio-v1-tools-environment.md). They are
 listed here only so their license questions are not discovered late. None of
 them are in the build yet, and each requires its own decision spike before
 integration.

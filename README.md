@@ -21,13 +21,19 @@ and the additional Linux X11 test run.
 
 ## Documents
 
+All documentation lives under [docs/](docs/); planning documents live under
+[docs/plan/](docs/plan/).
+
 Planning:
 
-- [Product vision](pimio.md)
-- [1.0.0 release plan](pimio-v1.md)
-- [1.0.0 implementation plan](pimio-v1-implementation.md)
-- [v1 tools, environment, and CI strategy](pimio-v1-tools-environment.md)
-- [2.0.0 release plan](pimio-v2.md)
+- [Implementation progress](docs/plan/progress.md)
+- [Product vision](docs/plan/pimio.md)
+- [1.0.0 release plan](docs/plan/pimio-v1.md)
+- [1.0.0 implementation plan](docs/plan/pimio-v1-implementation.md)
+- [v1 tools, environment, and CI strategy](docs/plan/pimio-v1-tools-environment.md)
+- [2.0.0 release plan](docs/plan/pimio-v2.md)
+- [Picasa capability reference](docs/plan/picasa.md)
+- [Modern Picasa capability mapping](docs/plan/modern-picasa.md)
 
 Policy and reference:
 

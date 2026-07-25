@@ -1,7 +1,7 @@
 # Repository Conventions
 
 These conventions apply to all implementation increments described in
-[pimio-v1-implementation.md](../pimio-v1-implementation.md).
+[pimio-v1-implementation.md](plan/pimio-v1-implementation.md).
 
 ## Layout
 
@@ -22,8 +22,9 @@ These conventions apply to all implementation increments described in
 | `tests/fixtures/` | Fixture manifest test. The media itself lives in `tests/fixtures/data/` with recorded provenance and hashes. See [tests/fixtures/README.md](../tests/fixtures/README.md). |
 | `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |
 | `cmake/` | Reusable CMake modules, such as the pinned, checksum-verified LORE acquisition. |
-| `docs/` | Policy and reference documents that outlive a single increment. |
+| `docs/` | All project documentation. The repository root holds only files a project normally keeps there, such as `README.md` and build configuration. |
 | `docs/decisions/` | Numbered decision records. Written when a choice is made, not reconstructed afterwards. |
+| `docs/plan/` | Product vision, release plans, and the implementation plan, plus `progress.md`, the record of which increments are complete. |
 | `.cache/` | Verified third-party downloads, keyed by version. Never committed; safe to delete. |
 | `build/` | Generated output. Never committed. |
 
