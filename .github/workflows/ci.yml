@@ -24,6 +24,9 @@ permissions:
 env:
   # Pinned Qt release for the product. See docs/supported-platforms.md.
   PIMIO_QT_VERSION: 6.8.3
+  # Pinned LORE release. Must match PIMIO_LORE_VERSION in cmake/PimioLore.cmake;
+  # it is repeated here only so the download cache can be keyed by it.
+  PIMIO_LORE_VERSION: 0.8.5
 
 jobs:
   build-and-test:
@@ -76,14 +79,27 @@ jobs:
           cache-key-prefix: qt-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
           extra: --base https://download.qt.io
 
+      - name: Cache LORE ${{ env.PIMIO_LORE_VERSION }}
+        uses: actions/cache@v4
+        with:
+          path: .cache/lore
+          key: lore-${{ matrix.runner }}-${{ env.PIMIO_LORE_VERSION }}
+
       - name: Enable MSVC developer environment
         if: matrix.name == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      # LORE is required here even though it is optional locally: a job that
+      # quietly skipped the durable-store tests would report green without
+      # having run the evidence the increment depends on.
       - name: Configure
         run: >-
           cmake --preset default
+          -DPIMIO_REQUIRE_LORE=ON
           -DPIMIO_ENABLE_FAILING_SELFTEST=${{ inputs.failing_selftest && 'ON' || 'OFF' }}
+
+      - name: Report the acquired LORE version
+        run: cmake -E cat build/default/lore-acquired.txt
 
       - name: Build
         run: cmake --build --preset default

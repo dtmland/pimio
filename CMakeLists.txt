@@ -51,6 +51,16 @@ else()
     message(STATUS "LORE unavailable: ${PIMIO_LORE_UNAVAILABLE_REASON}")
 endif()
 
+# A machine-readable record of what was actually acquired, so a CI job can
+# report the version it used without re-deriving it.
+if(PIMIO_LORE_FOUND)
+    file(WRITE "${CMAKE_BINARY_DIR}/lore-acquired.txt"
+        "version=${PIMIO_LORE_VERSION}\nlibrary=${PIMIO_LORE_SHARED_LIBRARY}\ncli=${PIMIO_LORE_CLI}\n")
+else()
+    file(WRITE "${CMAKE_BINARY_DIR}/lore-acquired.txt"
+        "version=none\nreason=${PIMIO_LORE_UNAVAILABLE_REASON}\n")
+endif()
+
 add_subdirectory(src/core)
 if(PIMIO_LORE_FOUND)
     add_subdirectory(src/lore)
