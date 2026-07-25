@@ -44,12 +44,20 @@ core::MediaRecord makeRecord(const QString &fileName,
     r.fingerprint = core::ContentFingerprint(QStringLiteral("sha256"),
                                              r.id.value()); // unique per record
     r.identity.absolutePath = QStringLiteral("/lib/") + fileName;
+    // volumeId and fileId must not be null — the media table declares them NOT NULL.
+    r.identity.volumeId = QStringLiteral("");
+    r.identity.fileId = QStringLiteral("");
     r.metadata.fileName = fileName;
     r.metadata.folderPath = QStringLiteral("/lib");
     r.metadata.kind = kind;
     r.metadata.captureTime = captureTime;
     r.metadata.captureTimeOrigin = core::MetadataOrigin::Embedded;
     r.metadata.rating = rating;
+    // cameraMake, cameraModel, and caption are NOT NULL in the schema; set them
+    // to empty strings so Qt does not bind them as SQL NULL.
+    r.metadata.cameraMake = QStringLiteral("");
+    r.metadata.cameraModel = QStringLiteral("");
+    r.metadata.caption = QStringLiteral("");
     return r;
 }
 
@@ -537,5 +545,5 @@ private slots:
     }
 };
 
-QTEST_APPLESS_MAIN(TestProjectionMetadata)
+QTEST_MAIN(TestProjectionMetadata)
 #include "tst_projection_metadata.moc"
