@@ -1,7 +1,0 @@
-# The fixture corpus is checked byte-for-byte against tests/fixtures/data/manifest.json
-# (see tests/fixtures/tst_fixture_manifest.cpp). Git's line-ending conversion
-# (e.g. core.autocrlf on Windows runners) would rewrite the text-based fixtures
-# (sidecars/*.xmp, malformed/text-with-jpg-extension.jpg) on checkout, changing
-# their size and hash and failing fixtures.manifest. Treat everything here as
-# binary so it is checked out identically on every platform.
-* -text
