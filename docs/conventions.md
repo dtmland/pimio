@@ -10,14 +10,21 @@ These conventions apply to all implementation increments described in
 | `src/core/` | UI-independent core library (`pimio::core`). Must not link Qt Gui, Qt Quick, or any UI module. |
 | `src/core/include/pimio/core/` | Public core headers. Include as `#include "pimio/core/<name>.h"`. |
 | `src/core/src/` | Core implementation files. |
+| `src/lore/` | LORE-backed durable store (`pimio::lore`). Built only when LORE is available. `lore.h` stays private to this directory so the dependency has one boundary. |
+| `src/projection/` | SQLite query cache (`pimio::projection`). The only place Qt Sql is linked. Holds nothing that cannot be rebuilt from the durable store. |
 | `src/app/` | Qt application shell. `pimio::app_lib` holds testable startup logic; `pimio_app` is the thin executable. |
 | `src/app/qml/` | QML files, exposed through the `Pimio` QML module. |
 | `tests/core/` | Core unit and contract tests. No display, no network. |
 | `tests/support/` | Test-only fakes (`pimio::test_support`): clock, filesystem, durable store, metadata reader, media-request service. |
 | `tests/app/` | Application and QML smoke tests. |
+| `tests/lore/` | LORE adapter, fault, and concurrency tests. Skip with a stated reason when LORE is absent. |
+| `tests/projection/` | Schema migration and projection rebuild tests. |
 | `tests/fixtures/` | Fixture manifest test. The media itself lives in `tests/fixtures/data/` with recorded provenance and hashes. See [tests/fixtures/README.md](../tests/fixtures/README.md). |
 | `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |
+| `cmake/` | Reusable CMake modules, such as the pinned, checksum-verified LORE acquisition. |
 | `docs/` | Policy and reference documents that outlive a single increment. |
+| `docs/decisions/` | Numbered decision records. Written when a choice is made, not reconstructed afterwards. |
+| `.cache/` | Verified third-party downloads, keyed by version. Never committed; safe to delete. |
 | `build/` | Generated output. Never committed. |
 
 Large media corpora are managed outside the repository and are used only for

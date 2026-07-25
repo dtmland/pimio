@@ -1,7 +1,12 @@
 add_subdirectory(support)
 add_subdirectory(core)
 add_subdirectory(fixtures)
+add_subdirectory(projection)
 add_subdirectory(app)
+
+if(PIMIO_LORE_FOUND)
+    add_subdirectory(lore)
+endif()
 
 # Opt-in negative control. Enabling this proves that a failing test is actually
 # reported by every platform job instead of being silently skipped.

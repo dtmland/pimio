@@ -3,6 +3,9 @@
 /install/
 CMakeUserPresets.json
 
+# Downloaded, checksum-verified third-party artifacts (see cmake/PimioLore.cmake)
+/.cache/
+
 # Editor and OS noise
 .vscode/
 .idea/
