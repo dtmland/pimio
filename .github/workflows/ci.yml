@@ -74,6 +74,7 @@ jobs:
           version: ${{ env.PIMIO_QT_VERSION }}
           cache: true
           cache-key-prefix: qt-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
+          extra: --base https://download.qt.io
 
       - name: Enable MSVC developer environment
         if: matrix.name == 'Windows'
