@@ -64,6 +64,24 @@ const QList<Migration> &projectionMigrations()
                 QStringLiteral("CREATE INDEX media_tag_tag ON media_tag(tag)"),
             },
         },
+        Migration{
+            2,
+            QStringLiteral("full-text-search"),
+            QStringList{
+                // FTS5 virtual table for caption and file-name text search.
+                // The unicode61 tokenizer handles accented characters and CJK
+                // decomposition. id is UNINDEXED so it is stored but not
+                // tokenised; callers join on it to retrieve the media id.
+                QStringLiteral(R"(
+                    CREATE VIRTUAL TABLE media_fts USING fts5(
+                        id     UNINDEXED,
+                        caption,
+                        file_name,
+                        tokenize = 'unicode61'
+                    )
+                )"),
+            },
+        },
     };
     return migrations;
 }

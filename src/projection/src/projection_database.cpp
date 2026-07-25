@@ -18,6 +18,7 @@ using core::DurableStore;
 using core::Error;
 using core::ErrorCode;
 using core::MediaId;
+using core::MediaKind;
 using core::MediaRecord;
 
 namespace {
@@ -390,6 +391,24 @@ bool ProjectionDatabase::Private::insertRecord(QSqlDatabase &db, const MediaReco
             return false;
         }
     }
+
+    // Populate the full-text index.
+    QSqlQuery ftsQuery(db);
+    if (!prepared(ftsQuery,
+                  QStringLiteral("INSERT INTO media_fts(id, caption, file_name) VALUES (?, ?, ?)"),
+                  error)) {
+        return false;
+    }
+    ftsQuery.addBindValue(record.id.value());
+    ftsQuery.addBindValue(metadata.caption);
+    ftsQuery.addBindValue(metadata.fileName);
+    if (!ftsQuery.exec()) {
+        setError(error, ErrorCode::Internal,
+                 QStringLiteral("Could not index the text of record %1: %2")
+                     .arg(record.id.value(), ftsQuery.lastError().text()));
+        return false;
+    }
+
     return true;
 }
 
@@ -445,7 +464,8 @@ bool ProjectionDatabase::rebuildFrom(const DurableStore &store, Error *error)
 
     QSqlQuery clear(db);
     if (!clear.exec(QStringLiteral("DELETE FROM media_tag"))
-        || !clear.exec(QStringLiteral("DELETE FROM media"))) {
+        || !clear.exec(QStringLiteral("DELETE FROM media"))
+        || !clear.exec(QStringLiteral("DELETE FROM media_fts"))) {
         return fail(error, ErrorCode::Internal,
                     QStringLiteral("Could not clear the projection: %1")
                         .arg(clear.lastError().text()));
@@ -567,6 +587,39 @@ QList<MediaId> ProjectionDatabase::idsByCaptureTime(Error *error) const
 {
     return d->idsFrom(
         QStringLiteral("SELECT id FROM media ORDER BY capture_sort_key, id"), {}, error);
+}
+
+QList<MediaId> ProjectionDatabase::idsByCaptureTime(int offset, int limit, Error *error) const
+{
+    const int sqlLimit = limit < 0 ? -1 : limit;
+    return d->idsFrom(
+        QStringLiteral("SELECT id FROM media ORDER BY capture_sort_key, id LIMIT ? OFFSET ?"),
+        {sqlLimit, offset}, error);
+}
+
+QList<MediaId> ProjectionDatabase::idsWithKind(MediaKind kind, Error *error) const
+{
+    return d->idsFrom(
+        QStringLiteral("SELECT id FROM media WHERE kind = ? ORDER BY capture_sort_key, id"),
+        {toString(kind)}, error);
+}
+
+QList<MediaId> ProjectionDatabase::idsWithMinimumRating(int minRating, Error *error) const
+{
+    return d->idsFrom(
+        QStringLiteral(
+            "SELECT id FROM media WHERE rating >= ? ORDER BY capture_sort_key, id"),
+        {minRating}, error);
+}
+
+QList<MediaId> ProjectionDatabase::searchText(const QString &query, Error *error) const
+{
+    if (query.trimmed().isEmpty()) {
+        return {};
+    }
+    return d->idsFrom(QStringLiteral("SELECT id FROM media_fts WHERE media_fts MATCH ? "
+                                     "ORDER BY rank"),
+                      {query}, error);
 }
 
 std::optional<MediaRecord> ProjectionDatabase::load(const MediaId &id, Error *error) const
