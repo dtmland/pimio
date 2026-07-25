@@ -121,9 +121,7 @@ void TestFixtureManifest::everyFileOnDiskIsListedInTheManifest()
     const QDir root(fixturesDir());
     QDirIterator iterator(root.absolutePath(), QDir::Files, QDirIterator::Subdirectories);
     while (iterator.hasNext()) {
-        // Normalize to forward slashes so Windows paths match the manifest.
-        const QString relativePath =
-                root.relativeFilePath(iterator.next()).replace(QLatin1Char('\\'), QLatin1Char('/'));
+        const QString relativePath = root.relativeFilePath(iterator.next());
         if (relativePath == QLatin1String("manifest.json")) {
             continue;
         }
