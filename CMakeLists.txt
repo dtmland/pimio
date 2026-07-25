@@ -32,6 +32,11 @@ add_subdirectory(src/core)
 add_subdirectory(src/app)
 
 if(PIMIO_BUILD_TESTS)
+    # The fixture generator is a maintenance tool, not a shipped component.
+    add_subdirectory(tools/fixture_generator)
+endif()
+
+if(PIMIO_BUILD_TESTS)
     find_package(Qt6 ${PIMIO_QT_MINIMUM_VERSION} REQUIRED COMPONENTS Test)
     enable_testing()
     add_subdirectory(tests)

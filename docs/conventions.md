@@ -13,8 +13,10 @@ These conventions apply to all implementation increments described in
 | `src/app/` | Qt application shell. `pimio::app_lib` holds testable startup logic; `pimio_app` is the thin executable. |
 | `src/app/qml/` | QML files, exposed through the `Pimio` QML module. |
 | `tests/core/` | Core unit and contract tests. No display, no network. |
+| `tests/support/` | Test-only fakes (`pimio::test_support`): clock, filesystem, durable store, metadata reader, media-request service. |
 | `tests/app/` | Application and QML smoke tests. |
-| `tests/fixtures/` | Small owned or explicitly licensed test media, with recorded provenance and hashes. |
+| `tests/fixtures/` | Fixture manifest test. The media itself lives in `tests/fixtures/data/` with recorded provenance and hashes. See [tests/fixtures/README.md](../tests/fixtures/README.md). |
+| `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |
 | `docs/` | Policy and reference documents that outlive a single increment. |
 | `build/` | Generated output. Never committed. |
 
@@ -26,8 +28,9 @@ performance and soak tests.
 - Namespaces: `pimio::core`, `pimio::app`.
 - CMake targets: `pimio_<component>` with a `pimio::<component>` alias.
 - Test executables: `tst_<area>_<subject>`.
-- CTest names: `<area>.<subject>`, for example `core.version` and `app.smoke`.
-  The same CTest names are used locally and in CI.
+- CTest names: `<area>.<subject>`, for example `core.version`, `core.contracts`,
+  `fixtures.manifest`, and `app.smoke`. The same CTest names are used locally
+  and in CI.
 
 ## Code style
 
@@ -36,7 +39,12 @@ performance and soak tests.
 - One class per header where practical.
 - Prefer `QStringLiteral` for compile-time Qt strings.
 - Keep core types free of UI and framework assumptions so the 2.0.0 rendering
-  frontend can reuse them.
+  frontend can reuse them. `pimio::core` links only `Qt6::Core`.
+- Serialized records carry `schemaVersion` and preserve unrecognized fields, so
+  a record written by a newer release survives a read/modify/write cycle by an
+  older one. New record types must follow the same pattern.
+- Nothing in the core reads the clock or the filesystem directly. Use the
+  `Clock` and `FileSystem` boundaries so behavior stays testable.
 
 ## Build and test commands
 

@@ -1,4 +1,6 @@
+add_subdirectory(support)
 add_subdirectory(core)
+add_subdirectory(fixtures)
 add_subdirectory(app)
 
 # Opt-in negative control. Enabling this proves that a failing test is actually
