@@ -70,6 +70,10 @@ public:
     /// True when there are staged changes that are not yet committed.
     virtual bool hasStagedChanges() const = 0;
 
+    /// Stages the removal of the record identified by \a id. If no record with
+    /// that id exists, returns true without error (idempotent).
+    virtual bool remove(const MediaId &id, Error *error) = 0;
+
     virtual std::optional<MediaRecord> load(const MediaId &id, Error *error) const = 0;
     virtual QList<MediaId> listIds(Error *error) const = 0;
 

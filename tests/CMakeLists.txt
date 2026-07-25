@@ -2,6 +2,7 @@ add_subdirectory(support)
 add_subdirectory(core)
 add_subdirectory(fixtures)
 add_subdirectory(projection)
+add_subdirectory(scan)
 add_subdirectory(app)
 
 if(PIMIO_LORE_FOUND)

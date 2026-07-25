@@ -312,6 +312,17 @@ public:
         return stagingPath() + QLatin1Char('/') + shardFor(fileName) + QLatin1Char('/') + fileName;
     }
 
+    /// A tombstone in the staging area marks a committed record for deletion
+    /// on the next commit. It uses a ".tombstone" extension so it is ignored
+    /// by the record reader and clearly distinct from staged additions.
+    QString stagedTombstonePath(const core::MediaId &id) const
+    {
+        const QString baseName = recordFileName(id);
+        // Strip ".json" and append ".tombstone".
+        const QString fileName = baseName.left(baseName.size() - 5) + QStringLiteral(".tombstone");
+        return stagingPath() + QLatin1Char('/') + shardFor(baseName) + QLatin1Char('/') + fileName;
+    }
+
     lore_global_args_t globals() const
     {
         lore_global_args_t args;
@@ -628,8 +639,10 @@ bool LoreDurableStore::hasStagedChanges() const
     if (!d->available()) {
         return false;
     }
-    QDirIterator iterator(d->stagingPath(), QStringList{QStringLiteral("*.json")},
-                          QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+    QDirIterator iterator(
+        d->stagingPath(),
+        QStringList{QStringLiteral("*.json"), QStringLiteral("*.tombstone")},
+        QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
     return iterator.hasNext();
 }
 
@@ -642,22 +655,42 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     }
 
     QStringList stagedFiles;
+    QStringList tombstoneFiles;
     {
-        QDirIterator iterator(d->stagingPath(), QStringList{QStringLiteral("*.json")},
-                              QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+        QDirIterator iterator(
+            d->stagingPath(),
+            QStringList{QStringLiteral("*.json"), QStringLiteral("*.tombstone")},
+            QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
         while (iterator.hasNext()) {
-            stagedFiles.append(iterator.next());
+            const QString path = iterator.next();
+            if (path.endsWith(QLatin1String(".tombstone"))) {
+                tombstoneFiles.append(path);
+            } else {
+                stagedFiles.append(path);
+            }
         }
     }
-    if (stagedFiles.isEmpty()) {
+    if (stagedFiles.isEmpty() && tombstoneFiles.isEmpty()) {
         setError(error, ErrorCode::Conflict,
                  QStringLiteral("There are no staged changes to commit."));
         return std::nullopt;
     }
     std::sort(stagedFiles.begin(), stagedFiles.end());
+    std::sort(tombstoneFiles.begin(), tombstoneFiles.end());
 
+    // Apply tombstone deletions to the checkout first so that fileStage(scan=1)
+    // picks them up as removals.
     const QDir staging(d->stagingPath());
     const QString records = d->recordsPath();
+    for (const QString &tombstone : std::as_const(tombstoneFiles)) {
+        const QString relative = staging.relativeFilePath(tombstone);
+        // Replace the ".tombstone" suffix with ".json" to get the record path.
+        const QString recordRelative =
+            relative.left(relative.size() - qsizetype(sizeof(".tombstone") - 1))
+            + QStringLiteral(".json");
+        QFile::remove(records + QLatin1Char('/') + recordRelative);
+    }
+
     for (const QString &stagedFile : std::as_const(stagedFiles)) {
         const QString relative = staging.relativeFilePath(stagedFile);
         const QString target = records + QLatin1Char('/') + relative;
@@ -738,6 +771,37 @@ bool LoreDurableStore::discardStaged(Error *error)
     if (!removeDirectoryContents(d->stagingPath())) {
         setError(error, ErrorCode::PermissionDenied,
                  QStringLiteral("Could not clear the staging area at %1.").arg(d->stagingPath()));
+        return false;
+    }
+    // discardStaged also rolls back any checkout deletions made for tombstoned
+    // records. Restoring the checkout brings deleted committed files back.
+    return d->restoreCheckoutToCommittedState(error);
+}
+
+bool LoreDurableStore::remove(const core::MediaId &id, Error *error)
+{
+    if (!d->available()) {
+        setError(error, ErrorCode::StorageUnavailable,
+                 QStringLiteral("The durable store is unavailable."));
+        return false;
+    }
+    // Cancel any pending staged update for this record.
+    QFile::remove(d->stagedRecordPath(id));
+
+    // Write a tombstone so that commit() knows to remove this record from the
+    // checkout. This is needed even if the record is not yet committed, because
+    // a later re-stage before commit must not silently resurrect it.
+    const QString tombstone = d->stagedTombstonePath(id);
+    const QFileInfo tombstoneInfo(tombstone);
+    if (!QDir().mkpath(tombstoneInfo.absolutePath())) {
+        setError(error, ErrorCode::PermissionDenied,
+                 QStringLiteral("Could not create staging directory for removal marker."));
+        return false;
+    }
+    QFile marker(tombstone);
+    if (!marker.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        setError(error, ErrorCode::PermissionDenied,
+                 QStringLiteral("Could not write removal marker for %1.").arg(id.value()));
         return false;
     }
     return true;

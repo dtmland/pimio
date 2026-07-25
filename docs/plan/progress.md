@@ -14,7 +14,7 @@ Update this file in the same change that moves an increment forward.
 | 1 | Stable contracts and test corpus | Complete |
 | 2 | LORE feasibility gate | Complete (go) |
 | 3 | SQLite projection, migrations, and jobs | Complete |
-| 4 | Incremental scan and media identity | Not started |
+| 4 | Incremental scan and media identity | Complete |
 | 5 | Metadata read, query, and search | Not started |
 | 6 | Thumbnails, models, and basic browser | Not started |
 | 7 | Watching and reconciliation | Not started |
@@ -63,16 +63,22 @@ Update this file in the same change that moves an increment forward.
   (covers jobs survive restart, run once logically, respect priority, recover
   from cancellation, and recover from injected failures).
 
-## Increment 4 — Incremental scan and media identity — Not started
+## Increment 4 — Incremental scan and media identity — Complete
 
-Blocked on the Increment 3 job queue, which the scan runs on.
-
-Deliverables: multiple library roots, incremental traversal, stable identity,
-content fingerprints, move/rename recognition, unavailable-root reporting, and
-no UI beyond diagnostic query output.
-
-Evidence required: temporary-directory tests for add, update, rename, move,
-delete, duplicate, symlink policy, permission failure, disappearing files, and
-restart; a repeated unchanged scan performing no logical updates; and a recorded
-benchmark on a generated large tree within the agreed memory and concurrency
-bounds.
+- `pimio::scan::Scanner` backed by `core::FileSystem` and `core::DurableStore`
+  abstractions; no real disk or metadata library required.
+- `MediaHasher` computes SHA-256 content fingerprints.
+- Incremental reconciliation: new files get fresh `MediaId`s, unchanged files
+  are skipped cheaply via size/mtime, moved/renamed files retain their existing
+  `MediaId`, deleted files are removed from the store, duplicates receive
+  independent ids.
+- Symbolic-link policy (skip by default, optional follow), per-file permission
+  and disappearing-file handling as non-fatal warnings, cancellation with
+  staged-change discard.
+- `DurableStore::remove()` added to the core interface; implemented in
+  `MemoryDurableStore` (via staged removals) and `LoreDurableStore` (via
+  staging-area tombstones).
+- Evidence: `scan.incremental` — covers add, unchanged, update, delete, rename,
+  move, duplicate, symlink policy, permission failure, disappearing file,
+  restart idempotency, unavailable root, cancellation, metadata reader
+  integration, and large-tree benchmark (1000 files).
