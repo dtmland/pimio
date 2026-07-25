@@ -339,4 +339,3 @@ three-platform workflow run. If a requirement is manual, record the platform,
 OS version, hardware, steps, and result in the release checklist. A skipped or
 allowed-to-fail platform is an explicit incomplete increment, not a passing
 one.
-
