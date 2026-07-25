@@ -1,5 +1,10 @@
 # pimio 1.0.0 Release Plan
 
+Implementation is intentionally split into testable, session-sized increments
+in [pimio-v1-implementation.md](pimio-v1-implementation.md). That plan also
+records the pre-implementation decisions and the required Linux, Windows, and
+macOS GitHub Actions evidence.
+
 ## Release Goal
 
 pimio 1.0.0 is a native, local-first photo and video organizer for repairing
@@ -172,3 +177,9 @@ release.
    visibly and recoverably.
 5. Native builds are tested on supported Windows and macOS versions and a
    representative X11/Wayland Linux environment.
+
+These are release-level outcomes, not a single implementation milestone.
+Feature work must pass the per-increment gates in the implementation plan.
+In particular, production persistence work is blocked on proving the proposed
+LORE contract, and hosted headless CI does not replace manual testing of real
+desktops, GPUs, signing, or installer security prompts.

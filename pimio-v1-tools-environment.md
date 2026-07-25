@@ -1,5 +1,10 @@
 # pimio v1 — Tools, Environment & CI Strategy
 
+This is an environment and options inventory, not an implementation sequence.
+See [pimio-v1-implementation.md](pimio-v1-implementation.md) for the staged
+delivery gates, acceptance tests, and required CI evidence. Tool and hosted
+runner availability must be rechecked when the project skeleton is created.
+
 ## 1. My Sandbox Environment
 
 I (GitHub Copilot agent) run in a standard **Ubuntu Linux x86_64** environment. The table below
@@ -183,10 +188,10 @@ For a private repository, macOS runners cost 10× more minutes than Linux.
 
 | Platform | Runner Label | Cost (public repo) | Cost (private repo) | Setup Effort |
 |---|---|---|---|---|
-| Linux x86_64 | `ubuntu-latest` | ✅ Free | 1× minutes | Trivial |
-| Windows x64 | `windows-latest` | ✅ Free | 2× minutes | Low |
-| macOS arm64 (M-series) | `macos-latest` | ✅ Free | 10× minutes | Low |
-| macOS x64 (Intel) | `macos-13` | ✅ Free | 10× minutes | Low |
+| Linux x86_64 | Select a pinned supported image | ✅ Free | Base minute multiplier | Trivial |
+| Windows x64 | Select a pinned supported image | ✅ Free | Higher minute multiplier | Low |
+| macOS arm64 (M-series) | Select a pinned supported image | ✅ Free | Higher minute multiplier | Low |
+| macOS x64 (Intel) | Select a pinned supported image if Intel is supported | ✅ Free | Higher minute multiplier | Low |
 
 ### GUI Testing on GitHub Actions
 
@@ -258,6 +263,12 @@ builds and read results directly within a session.
 | Responsibility | Who / Where |
 |---|---|
 | Core C++ library, CMake setup, data models, headless tests, CI YAML | Me (agent) — built and verified in Linux sandbox |
-| Windows and macOS compile + test | GitHub Actions (`windows-latest`, `macos-latest`) triggered by PRs — I write the YAML, GitHub runs it |
+| Windows and macOS compile + test | GitHub Actions on pinned supported runner images, triggered by PRs |
 | Code signing, notarization, real-hardware tests | Self-hosted runner on your machines (if needed) |
 | Visual QML inspection, GPU/hardware acceleration, installer smoke tests | Manual — you on your own machines |
+
+For implementation, replace `*-latest` with runner labels selected by the
+supported-platform policy, keep the three platform jobs independently visible,
+and require all of them through branch protection. Hosted-runner availability,
+labels, pricing, and preinstalled software can change; the workflow and Qt
+version are the authoritative reproducible configuration once they exist.
