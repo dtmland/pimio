@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      failing_selftest:
+        description: >-
+          Build with the deliberately failing CTest self-test enabled to prove
+          that every platform job reports failures.
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # Pinned Qt release for the product. See docs/supported-platforms.md.
+  PIMIO_QT_VERSION: 6.8.3
+
+jobs:
+  build-and-test:
+    name: Build and test (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: ubuntu-24.04
+          - name: Windows
+            runner: windows-2025
+          - name: macOS
+            runner: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux native dependencies
+        if: matrix.name == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-dev \
+            libegl1 \
+            libxkbcommon-dev \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1 \
+            ninja-build \
+            xvfb
+
+      - name: Install Ninja (Windows and macOS)
+        if: matrix.name != 'Linux'
+        uses: seanmiddleditch/gha-setup-ninja@v6
+
+      - name: Install Qt ${{ env.PIMIO_QT_VERSION }}
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: ${{ env.PIMIO_QT_VERSION }}
+          cache: true
+          cache-key-prefix: qt-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
+
+      - name: Enable MSVC developer environment
+        if: matrix.name == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        run: >-
+          cmake --preset default
+          -DPIMIO_ENABLE_FAILING_SELFTEST=${{ inputs.failing_selftest && 'ON' || 'OFF' }}
+
+      - name: Build
+        run: cmake --build --preset default
+
+      - name: Test (offscreen)
+        run: >-
+          ctest --preset default
+          --output-junit "${{ github.workspace }}/build/default/test-results/ctest-offscreen.xml"
+
+      - name: Test (X11 via Xvfb)
+        if: matrix.name == 'Linux'
+        run: >-
+          xvfb-run -a --server-args="-screen 0 1280x1024x24"
+          ctest --preset default-x11
+          --output-junit "${{ github.workspace }}/build/default/test-results/ctest-xvfb.xml"
+
+      - name: Upload test results and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.name }}
+          path: |
+            build/default/test-results/
+            build/default/Testing/
+          if-no-files-found: warn
+          retention-days: 14

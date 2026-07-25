@@ -1,0 +1,11 @@
+# Build and generated output
+/build/
+/install/
+CMakeUserPresets.json
+
+# Editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.user
