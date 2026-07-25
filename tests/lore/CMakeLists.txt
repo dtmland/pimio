@@ -60,3 +60,24 @@ add_dependencies(tst_lore_faults pimio_lore_fault_helper)
 # it needs more headroom than the default CTest timeout.
 set_tests_properties(lore.faults PROPERTIES TIMEOUT 900)
 set_tests_properties(lore.adapter PROPERTIES TIMEOUT 600)
+
+qt_add_executable(tst_lore_projection
+    tst_lore_projection.cpp
+)
+
+target_link_libraries(tst_lore_projection PRIVATE
+    pimio::lore
+    pimio::projection
+    pimio::test_support
+    Qt6::Sql
+    Qt6::Test
+)
+
+target_include_directories(tst_lore_projection PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_compile_definitions(tst_lore_projection PRIVATE
+    PIMIO_LORE_CLI_PATH="${PIMIO_LORE_CLI}"
+)
+
+add_test(NAME lore.projection COMMAND tst_lore_projection)
+set_tests_properties(lore.projection PROPERTIES TIMEOUT 600)

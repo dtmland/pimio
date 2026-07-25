@@ -14,12 +14,17 @@ Legal review is a release gate. CI cannot certify it.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Qt Core | 6.8.3 | default | Dynamically linked shared library | LGPL-3.0 | https://download.qt.io | No | Yes |
 | Qt Gui | 6.8.3 | default | Dynamically linked shared library | LGPL-3.0 | https://download.qt.io | No | Yes |
+| Qt Sql | 6.8.3 | QSQLITE driver | Dynamically linked shared library, SQLite bundled by Qt | LGPL-3.0 | https://download.qt.io | No | Yes |
 | Qt Qml / Qt Quick | 6.8.3 | default | Dynamically linked shared library | LGPL-3.0 | https://download.qt.io | No | Yes |
 | LORE (`liblore`) | 0.8.5 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.8.5 | No | Yes |
 
 Qt is used under the LGPL dynamic-linking path. The application must keep Qt
 replaceable by the user, ship the required license text and notices, and avoid
 static linking unless a commercial license is obtained.
+
+SQLite reaches pimio through Qt's bundled QSQLITE driver rather than as a
+separate dependency, so it carries no obligation of its own. If pimio ever
+links a system SQLite directly, this table gains a row for it.
 
 LORE is redistributed, so packaging must ship both files that come with the
 artifact: its MIT `LICENSE.txt` and its `THIRD-PARTY-NOTICES.txt`, which covers
@@ -63,7 +68,6 @@ integration.
 
 | Candidate | Purpose | Known licensing concern |
 | --- | --- | --- |
-| SQLite | Local projection and query cache | Public domain. Low risk. |
 | libexiv2 | EXIF/IPTC/XMP read and write | GPL-2.0-or-later. Linking strategy must be resolved before distribution. |
 | libraw | RAW decode | LGPL-2.1 / CDDL dual license. |
 | libjpeg-turbo | Lossless JPEG transforms | Permissive. Low risk. |

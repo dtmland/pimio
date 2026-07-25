@@ -1,0 +1,98 @@
+#pragma once
+
+#include "pimio/core/durable_store.h"
+#include "pimio/core/error.h"
+#include "pimio/core/types.h"
+#include "pimio/projection/migration.h"
+
+#include <QList>
+#include <QString>
+
+#include <memory>
+#include <optional>
+
+namespace pimio::projection {
+
+/// A query-shaped view of the library, cached in SQLite.
+///
+/// The durable store is the ground truth. This database holds nothing that
+/// cannot be recomputed from it, so deleting the file is always safe and never
+/// loses user data. Everything here follows from that: there is no write path
+/// for user edits, only a rebuild from durable state.
+class ProjectionDatabase
+{
+public:
+    ProjectionDatabase();
+    ~ProjectionDatabase();
+
+    ProjectionDatabase(const ProjectionDatabase &) = delete;
+    ProjectionDatabase &operator=(const ProjectionDatabase &) = delete;
+
+    /// Opens (creating if needed) the database at \a path and migrates it to
+    /// the current schema version.
+    ///
+    /// Fails with CorruptData when the file is not a usable database, and with
+    /// Conflict when it was written by a newer schema than this build knows.
+    /// Both are recoverable by deleting the file and rebuilding, which is the
+    /// caller's decision to make, not this class's.
+    bool open(const QString &path, core::Error *error);
+
+    /// Opens a private in-memory database. Used by tests and by callers that
+    /// want a projection without a file.
+    bool openInMemory(core::Error *error);
+
+    /// Deletes the projection at \a path, including its write-ahead log and
+    /// shared-memory files.
+    ///
+    /// This is the supported recovery for a damaged or unreadable cache, and
+    /// it is safe by construction: the durable store holds everything this
+    /// file contained.
+    static bool remove(const QString &path, core::Error *error);
+
+    void close();
+    bool isOpen() const;
+
+    const QString &path() const;
+
+    /// Schema version currently stored in the database.
+    int schemaVersion() const;
+
+    /// Durable state token the projection was last rebuilt from. Empty when
+    /// the projection has never been populated.
+    QString projectedStateToken(core::Error *error) const;
+
+    /// True when the projection does not match the store's current state and
+    /// must be rebuilt before it is trusted.
+    bool isStale(const core::DurableStore &store, core::Error *error) const;
+
+    /// Replaces the projection's contents with the store's committed state.
+    ///
+    /// Runs as one transaction: a failure part-way leaves the previous
+    /// contents in place rather than a half-built index. The store's state
+    /// token is recorded in the same transaction, so a projection can never
+    /// claim to be current for data it does not hold.
+    bool rebuildFrom(const core::DurableStore &store, core::Error *error);
+
+    // Queries. These are what the projection exists for; they must return
+    // exactly what the same question asked of the durable store would.
+
+    qsizetype recordCount(core::Error *error) const;
+    QList<core::MediaId> listIds(core::Error *error) const;
+    std::optional<core::MediaRecord> load(const core::MediaId &id, core::Error *error) const;
+
+    /// Ids sharing a content fingerprint: the duplicate and moved-file query.
+    QList<core::MediaId> idsWithFingerprint(const core::ContentFingerprint &fingerprint,
+                                            core::Error *error) const;
+
+    QList<core::MediaId> idsWithTag(const QString &tag, core::Error *error) const;
+
+    /// Ids ordered by capture time, oldest first, then by id so the order is
+    /// total even when timestamps collide.
+    QList<core::MediaId> idsByCaptureTime(core::Error *error) const;
+
+private:
+    class Private;
+    std::unique_ptr<Private> d;
+};
+
+} // namespace pimio::projection

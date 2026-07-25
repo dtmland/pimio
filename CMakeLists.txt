@@ -34,7 +34,7 @@ option(PIMIO_REQUIRE_LORE
 # The supported Qt baseline is recorded in docs/supported-platforms.md.
 set(PIMIO_QT_MINIMUM_VERSION 6.4)
 
-find_package(Qt6 ${PIMIO_QT_MINIMUM_VERSION} REQUIRED COMPONENTS Core Gui Quick)
+find_package(Qt6 ${PIMIO_QT_MINIMUM_VERSION} REQUIRED COMPONENTS Core Gui Quick Sql)
 
 qt_standard_project_setup(REQUIRES ${PIMIO_QT_MINIMUM_VERSION})
 
@@ -65,6 +65,7 @@ add_subdirectory(src/core)
 if(PIMIO_LORE_FOUND)
     add_subdirectory(src/lore)
 endif()
+add_subdirectory(src/projection)
 add_subdirectory(src/app)
 
 if(PIMIO_BUILD_TESTS)

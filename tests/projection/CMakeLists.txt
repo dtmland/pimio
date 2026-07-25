@@ -1,0 +1,36 @@
+qt_add_executable(pimio_projection_migration_helper
+    migration_helper_main.cpp
+)
+
+target_link_libraries(pimio_projection_migration_helper PRIVATE
+    pimio::projection
+    Qt6::Sql
+)
+
+qt_add_executable(tst_projection_migrations
+    tst_projection_migrations.cpp
+)
+
+target_link_libraries(tst_projection_migrations PRIVATE
+    pimio::projection
+    pimio::test_support
+    Qt6::Sql
+    Qt6::Test
+)
+
+add_dependencies(tst_projection_migrations pimio_projection_migration_helper)
+
+add_test(NAME projection.migrations COMMAND tst_projection_migrations)
+
+qt_add_executable(tst_projection_rebuild
+    tst_projection_rebuild.cpp
+)
+
+target_link_libraries(tst_projection_rebuild PRIVATE
+    pimio::projection
+    pimio::test_support
+    Qt6::Sql
+    Qt6::Test
+)
+
+add_test(NAME projection.rebuild COMMAND tst_projection_rebuild)
