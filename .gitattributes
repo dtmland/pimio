@@ -1,0 +1,13 @@
+# The fixture corpus is checked byte-for-byte against
+# tests/fixtures/data/manifest.json (see tests/fixtures/tst_fixture_manifest.cpp).
+# Git's line-ending conversion (e.g. core.autocrlf on Windows runners) would
+# rewrite the text-based fixtures (sidecars/*.xmp,
+# malformed/text-with-jpg-extension.jpg, manifest.json) to CRLF on checkout,
+# changing their size and SHA-256 and failing fixtures.manifest. Treat the whole
+# corpus as binary so it is checked out byte-identically on every platform.
+#
+# This rule lives at the repository root, not inside tests/fixtures/data/, so the
+# manifest test's on-disk walk never sees a stray .gitattributes file (dot-files
+# are hidden on Unix but not on Windows, which would fail the "every file on disk
+# is listed" check on Windows only).
+tests/fixtures/data/** -text
