@@ -201,7 +201,7 @@ QList<Fixture> buildFixtures()
     dstGap.dateTimeOriginal = QStringLiteral("2019:03:31 01:30:00");
     fixtures.append({QStringLiteral("images/jpeg-exif-dst-gap.jpg"), jpegWith(dstGap),
                      QStringLiteral("A local time that does not exist in Europe/London on that day."),
-                     QStringLiteral("Timezone inference must report this as ambiguous.")});
+                     QStringLiteral("Time zone inference must report this as ambiguous.")});
 
     ExifSpec dstFold = withoutOffset;
     dstFold.dateTimeOriginal = QStringLiteral("2019:10:27 01:30:00");
