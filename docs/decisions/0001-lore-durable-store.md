@@ -15,7 +15,7 @@ disposable projection, as Increment 3 assumes.
 
 ## Context
 
-`pimio-v1-implementation.md` makes the durable store the ground truth for every
+`docs/plan/pimio-v1-implementation.md` makes the durable store the ground truth for every
 media record, and makes the SQLite database a cache that must be deletable
 without loss. That only works if the durable store is genuinely durable, is
 readable by something other than pimio, and survives the failures a desktop

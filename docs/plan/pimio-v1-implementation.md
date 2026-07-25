@@ -50,7 +50,8 @@ Each session should select one increment below and:
 - add or update automated tests with the implementation;
 - run the repository's configure, build, and CTest commands locally;
 - leave all existing required GitHub Actions checks green;
-- attach logs or fixtures needed to diagnose a failure; and
+- attach logs or fixtures needed to diagnose a failure;
+- record the new status in [progress.md](progress.md); and
 - update this document only when an accepted requirement or decision changes.
 
 An increment is complete only when its listed evidence exists. A build that
