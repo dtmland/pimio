@@ -67,4 +67,7 @@ private:
 /// because databases in the field were built with it.
 const QList<Migration> &projectionMigrations();
 
+/// The job queue schema. Append-only for the same reason.
+const QList<Migration> &jobQueueMigrations();
+
 } // namespace pimio::projection

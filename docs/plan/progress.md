@@ -13,7 +13,7 @@ Update this file in the same change that moves an increment forward.
 | 0 | Project skeleton and observable CI | Complete |
 | 1 | Stable contracts and test corpus | Complete |
 | 2 | LORE feasibility gate | Complete (go) |
-| 3 | SQLite projection, migrations, and jobs | In progress |
+| 3 | SQLite projection, migrations, and jobs | Complete |
 | 4 | Incremental scan and media identity | Not started |
 | 5 | Metadata read, query, and search | Not started |
 | 6 | Thumbnails, models, and basic browser | Not started |
@@ -50,22 +50,18 @@ Update this file in the same change that moves an increment forward.
   **go**, with a single-writer lock and an interrupted-write repair.
 - Evidence: `lore.adapter`, `lore.faults`, `lore.projection`.
 
-## Increment 3 — SQLite projection, migrations, and jobs — In progress
-
-Done:
+## Increment 3 — SQLite Projection, Migrations, and Jobs — Complete
 
 - Versioned SQLite schema, migration runner, WAL configuration, transactions,
   and a projection rebuildable from the durable store.
-- Evidence: `projection.migrations` (empty, current, previous-version,
-  interrupted-migration, and corrupt-cache cases) and `projection.rebuild`.
-
-Outstanding:
-
-- Persistent priority job queue with retries, cancellation, progress reporting,
-  and bounded concurrency. `pimio::core::JobRecord` defines the contract only;
-  no queue implementation or worker registry exists yet.
-- Evidence still required: jobs survive restart, run once logically, respect
-  priority, and recover from cancellation and injected failures.
+- Persistent priority job queue (`pimio::projection::JobQueue`) backed by a
+  separate SQLite database, with coalescing, retries, cancellation, and
+  interrupted-run recovery.
+- `JobDispatcher` driving bounded-concurrency execution via a private thread
+  pool, with all SQLite mutations posted back to the owning thread.
+- Evidence: `projection.migrations`, `projection.rebuild`, `projection.jobs`
+  (covers jobs survive restart, run once logically, respect priority, recover
+  from cancellation, and recover from injected failures).
 
 ## Increment 4 — Incremental scan and media identity — Not started
 

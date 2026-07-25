@@ -69,3 +69,40 @@ const QList<Migration> &projectionMigrations()
 }
 
 } // namespace pimio::projection
+
+// ---- Job queue schema -------------------------------------------------------
+
+namespace pimio::projection {
+
+const QList<Migration> &jobQueueMigrations()
+{
+    static const QList<Migration> migrations{
+        Migration{
+            1,
+            QStringLiteral("create-job-table"),
+            QStringList{
+                QStringLiteral(R"(
+                    CREATE TABLE job (
+                        id             TEXT    PRIMARY KEY NOT NULL,
+                        kind           TEXT    NOT NULL DEFAULT 'unknown',
+                        priority       INTEGER NOT NULL DEFAULT 2,
+                        state          TEXT    NOT NULL DEFAULT 'pending',
+                        coalescing_key TEXT    NOT NULL DEFAULT '',
+                        payload        TEXT    NOT NULL DEFAULT '{}',
+                        attempts       INTEGER NOT NULL DEFAULT 0,
+                        max_attempts   INTEGER NOT NULL DEFAULT 3,
+                        created_at_ms  INTEGER,
+                        not_before_ms  INTEGER,
+                        last_error     TEXT    NOT NULL DEFAULT '{}'
+                    )
+                )"),
+                QStringLiteral(
+                    "CREATE INDEX job_claimable ON job(priority ASC, created_at_ms ASC, id ASC)"
+                    " WHERE state = 'pending'"),
+            },
+        },
+    };
+    return migrations;
+}
+
+} // namespace pimio::projection
