@@ -103,6 +103,11 @@ public:
 
     /// Full-text search over caption and file name. Results are returned in
     /// relevance order (best match first). An empty query returns an empty list.
+    ///
+    /// The text is treated as literal terms, never as FTS5 syntax, so any
+    /// character the user can type is searchable rather than an error. Terms
+    /// match on prefix and all of them must match, so "gold gat" finds a
+    /// "Golden Gate" caption and a leading substring finds an unbroken CJK run.
     QList<core::MediaId> searchText(const QString &query, core::Error *error) const;
 
 private:

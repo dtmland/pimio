@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QRegularExpression>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -30,6 +31,39 @@ void setError(Error *error, ErrorCode code, const QString &message)
     if (error != nullptr) {
         *error = Error(code, message);
     }
+}
+
+/// Turns what the user typed into an FTS5 MATCH expression.
+///
+/// The text is never handed to FTS5 as-is. FTS5 reads its own operators in a
+/// bare string, so an ordinary search such as "foo(bar", "AND" or "gate:sun"
+/// is a syntax error rather than a search, and the user sees a failure for
+/// text they were entitled to type. Each whitespace-separated term is instead
+/// wrapped in a quoted phrase, which has no operators inside it, so any
+/// character is searchable.
+///
+/// Each phrase also carries a trailing \c * . The unicode61 tokenizer breaks
+/// on character category, not on meaning, so an unbroken CJK run like
+/// "東京タワー" is a single token: without the prefix operator, searching
+/// "東京" would find nothing. The same operator gives ASCII the search-as-you-
+/// type behaviour a search box is expected to have.
+///
+/// Returns an empty string when there is nothing to search for, which the
+/// caller reports as an empty result rather than as an error.
+QString ftsMatchExpression(const QString &query)
+{
+    const QStringList terms = query.split(QRegularExpression(QStringLiteral("\\s+")),
+                                          Qt::SkipEmptyParts);
+    QStringList phrases;
+    phrases.reserve(terms.size());
+    for (const QString &term : terms) {
+        // A literal double quote is escaped by doubling it, so the phrase
+        // cannot be closed early by anything the user typed.
+        QString escaped = term;
+        escaped.replace(QLatin1Char('"'), QLatin1String("\"\""));
+        phrases.append(QLatin1Char('"') + escaped + QLatin1String("\"*"));
+    }
+    return phrases.join(QLatin1Char(' '));
 }
 
 } // namespace
@@ -614,12 +648,13 @@ QList<MediaId> ProjectionDatabase::idsWithMinimumRating(int minRating, Error *er
 
 QList<MediaId> ProjectionDatabase::searchText(const QString &query, Error *error) const
 {
-    if (query.trimmed().isEmpty()) {
+    const QString expression = ftsMatchExpression(query);
+    if (expression.isEmpty()) {
         return {};
     }
     return d->idsFrom(QStringLiteral("SELECT id FROM media_fts WHERE media_fts MATCH ? "
                                      "ORDER BY rank"),
-                      {query}, error);
+                      {expression}, error);
 }
 
 std::optional<MediaRecord> ProjectionDatabase::load(const MediaId &id, Error *error) const
