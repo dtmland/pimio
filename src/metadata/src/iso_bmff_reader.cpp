@@ -1,8 +1,9 @@
 #include "iso_bmff_reader.h"
 
 #include <QDateTime>
-#include <QTimeZone>
 #include <QtEndian>
+
+#include <limits>
 
 namespace pimio::metadata {
 namespace {
