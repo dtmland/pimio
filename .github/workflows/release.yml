@@ -105,17 +105,18 @@ jobs:
           mapfile -d '' -t runtime_inputs < <(find "${runtime_scan_paths[@]}" -type f \( -executable -o -name '*.so*' \) -print0)
           mapfile -t runtime_libs < <(
             {
+              if [ "${#runtime_inputs[@]}" -eq 0 ]; then
+                exit 0
+              fi
               for input in "${runtime_inputs[@]}"; do
                 if ! ldd "$input"; then
                   echo "ldd failed for $input" >&2
                   exit 1
                 fi
               done
-              if [ "${#runtime_inputs[@]}" -eq 0 ]; then
-                exit 0
-              fi
             } |
-              awk '/=> \/(lib|usr\/lib)\// { print $3 }' |
+              grep -E '=> /(lib|usr/lib)/' |
+              awk '{ print $3 }' |
               while read -r lib; do
                 case "$(basename "$lib")" in
                   libEGL.so.1|libGLX.so.0|libGLdispatch.so.0|libOpenGL.so.0|\
