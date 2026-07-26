@@ -28,9 +28,32 @@ qt_add_executable(pimio_app
     src/main.cpp
 )
 
-set_target_properties(pimio_app PROPERTIES OUTPUT_NAME pimio)
+set_target_properties(pimio_app PROPERTIES
+    OUTPUT_NAME pimio
+    MACOSX_BUNDLE ON
+    MACOSX_BUNDLE_BUNDLE_NAME "pimio"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "io.pimio.pimio"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
+)
 
 target_link_libraries(pimio_app PRIVATE
     pimio::app_lib
     pimio_app_libplugin
 )
+
+# Generate a platform-aware Qt deployment script (windeployqt on Windows,
+# macdeployqt on macOS, library copy on Linux).  The script is consumed by
+# cmake --install in the release workflow; it has no effect during a plain
+# build.
+qt_generate_deploy_app_script(
+    TARGET pimio_app
+    FILENAME_VARIABLE PIMIO_DEPLOY_SCRIPT
+    NO_UNSUPPORTED_PLATFORM_ERROR
+)
+
+install(TARGETS pimio_app
+    BUNDLE  DESTINATION .
+    RUNTIME DESTINATION bin
+)
+install(SCRIPT ${PIMIO_DEPLOY_SCRIPT})
