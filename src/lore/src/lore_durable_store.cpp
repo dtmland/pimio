@@ -22,6 +22,7 @@
 #include <memory>
 
 namespace pimio::lore {
+
 namespace {
 
 using core::Error;
@@ -747,6 +748,7 @@ bool LoreDurableStore::hasStagedChanges() const
     return iterator.hasNext();
 }
 
+
 std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message, Error *error)
 {
     if (!d->available()) {
@@ -854,8 +856,34 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         return std::nullopt;
     }
 
+    // LORE reports a revision as committed before it has written it out, so a
+    // process that dies between here and close() loses a save it already
+    // reported as durable. Flushing here is what makes the checkpoint this
+    // function returns mean what it says.
+    Operation flushOperation;
+    lore_repository_flush_args_t flushArgs;
+    std::memset(&flushArgs, 0, sizeof(flushArgs));
+    api.repositoryFlush(&args, &flushArgs, flushOperation.config());
+    if (flushOperation.status != 0) {
+        // The backup and the in-progress marker are deliberately left in
+        // place: the revision is not durable, so the next open must roll the
+        // repository back rather than trust whatever reached the disk.
+        d->restoreCheckoutToCommittedState(nullptr);
+        setError(error, mapFailure(flushOperation),
+                 QStringLiteral("The commit could not be made durable: %1")
+                     .arg(flushOperation.message),
+                 failureContext(flushOperation, QStringLiteral("repository_flush")));
+        return std::nullopt;
+    }
+
     core::Checkpoint checkpoint = commitOperation.checkpoints.constFirst();
     checkpoint.message = message;
+
+    // The revision is durable, so the rollback path must be retired before the
+    // staging area is touched. A kill between these two steps would otherwise
+    // roll the commit back while its staged inputs were already half deleted,
+    // which is the one outcome the store promises cannot happen.
+    d->clearCommitRecovery();
 
     if (!removeDirectoryContents(d->stagingPath())) {
         // The commit itself succeeded; report the residue rather than claiming
@@ -864,7 +892,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
                  QStringLiteral("The commit succeeded but the staging area could not be cleared."));
     }
 
-    d->clearCommitRecovery();
     return checkpoint;
 }
 

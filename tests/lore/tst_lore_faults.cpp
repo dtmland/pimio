@@ -77,6 +77,7 @@ private slots:
 
     void killedProcessBeforeCommitLeavesNoUncommittedStateVisible();
     void killedProcessDuringCommitLeavesAConsistentRepository();
+    void killedProcessAfterCommitKeepsTheRevisionItReported();
     void unwritableCheckoutFailsVisiblyAndKeepsStagedWork();
     void deletingTheCheckoutLosesNoCommittedState();
     void corruptCheckoutFileIsRecoverable();
@@ -236,6 +237,56 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
           "interrupted-write repair",
           interrupted, static_cast<long long>(delaysMs.size()), repaired);
     QVERIFY2(interrupted > 0, "no attempt actually interrupted a commit");
+}
+
+void TestLoreFaults::killedProcessAfterCommitKeepsTheRevisionItReported()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+    QVERIFY2(QFileInfo::exists(m_helperPath), qPrintable(m_helperPath));
+
+    // A checkpoint is a promise. LORE reports a revision as committed before it
+    // has written it out, so without an explicit flush the promise held only
+    // until the process next closed the store: a kill in between lost a save
+    // the application had already told the user was safe, and left the
+    // repository's revision log and index disagreeing about the same commit.
+    // That disagreement is what made the interrupted-commit test flaky.
+    for (int attempt = 0; attempt < 5; ++attempt) {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString storePath = temporary.filePath(QStringLiteral("store"));
+
+        {
+            LoreDurableStore store(storePath);
+            Error error;
+            QVERIFY2(store.open(&error), qPrintable(error.message()));
+            QVERIFY(store.stage(makeLoreRecord(QStringLiteral("kept"),
+                                               QStringLiteral("committed")),
+                                &error));
+            QVERIFY2(store.commit(QStringLiteral("Baseline"), &error).has_value(),
+                     qPrintable(error.message()));
+            store.close();
+        }
+
+        QProcess helper;
+        helper.start(m_helperPath,
+                     {QStringLiteral("commit-then-die"), storePath, QStringLiteral("25")});
+        QVERIFY(helper.waitForStarted(30'000));
+        QVERIFY(helper.waitForFinished(120'000));
+        const QString output = QString::fromUtf8(helper.readAllStandardOutput());
+        QVERIFY2(output.startsWith(QLatin1String("committed ")), qPrintable(output));
+        const QString reported = output.mid(QLatin1String("committed ").size()).trimmed();
+
+        LoreDurableStore recovered(storePath);
+        Error error;
+        QVERIFY2(recovered.open(&error), qPrintable(error.message()));
+
+        const QList<Checkpoint> history = recovered.history(-1, nullptr);
+        QCOMPARE(history.size(), 2);
+        QCOMPARE(history.constFirst().id, reported);
+        QCOMPARE(recovered.listIds(nullptr).size(), 26);
+        QVERIFY(recovered.load(MediaId(QStringLiteral("helper-0024")), nullptr).has_value());
+        QVERIFY(recovered.load(MediaId(QStringLiteral("kept")), nullptr).has_value());
+    }
 }
 
 void TestLoreFaults::unwritableCheckoutFailsVisiblyAndKeepsStagedWork()
