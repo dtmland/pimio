@@ -176,12 +176,20 @@ if [ -x "$app_binary" ]; then
 else
     say "  (application binary not found; skipping)"
 fi
-lib_list=$(mktemp 2>/dev/null || echo /tmp/pimio-doctor-libs.$$)
-find "$here" -type f -name "*$lib_suffix*" 2>/dev/null | sort >"$lib_list"
-while IFS= read -r lib; do
-    [ -n "$lib" ] && scan_one "$lib"
-done <"$lib_list"
-rm -f "$lib_list"
+lib_list=$(mktemp 2>/dev/null) || lib_list=""
+if [ -n "$lib_list" ]; then
+    find "$here" -type f -name "*$lib_suffix*" 2>/dev/null | sort >"$lib_list"
+    while IFS= read -r lib; do
+        [ -n "$lib" ] && scan_one "$lib"
+    done <"$lib_list"
+    rm -f "$lib_list"
+else
+    # No mktemp: fall back to word splitting rather than to a predictable
+    # path in /tmp, which a symlink planted ahead of us could hijack.
+    for lib in $(find "$here" -type f -name "*$lib_suffix*" 2>/dev/null | sort); do
+        scan_one "$lib"
+    done
+fi
 if [ -n "$missing_libs" ]; then
     unique_missing=$(printf '%s\n' "$missing_libs" | grep -v '^$' | sort -u | tr '\n' ' ')
     section "Unresolved libraries"

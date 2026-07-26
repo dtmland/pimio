@@ -46,6 +46,33 @@ The CMake minimum Qt version is intentionally lower than the pinned CI version
 so contributors can build with a distribution Qt. Only the pinned version is
 verified by CI.
 
+### Linux runtime prerequisites
+
+The Linux archive bundles Qt, but a few libraries must come from the
+distribution because they are tied to the graphics stack and the session:
+
+| Package (Debian, Ubuntu) | Provides | Why |
+| --- | --- | --- |
+| `libxcb-cursor0` | `libxcb-cursor.so.0` | Required by the xcb platform plugin from Qt 6.5 onwards. Without it the plugin is found but cannot be loaded, and startup fails with `Could not load the Qt platform plugin "xcb" in "" even though it was found.` |
+| `libgl1`, `libegl1` | GL and EGL dispatch | Vendor-neutral entry points that must match the installed driver. |
+| `libxkbcommon-x11-0` | keymap handling | Loaded by the xcb platform plugin. |
+
+The equivalents on Fedora are `xcb-util-cursor`, `mesa-libGL`, `mesa-libEGL`,
+and `libxkbcommon-x11`.
+
+### Wayland and X11
+
+The release archive ships both platform plugins: `qtwayland` is installed in
+the release build, so `plugins/platforms` carries the Wayland plugins alongside
+`libqxcb.so`. The bundled launcher picks Wayland on a Wayland session when the
+plugin is present and falls back to xcb through XWayland otherwise. Setting
+`QT_QPA_PLATFORM` overrides the choice.
+
+Only X11 is exercised by CI, through the `default-x11` CTest preset under Xvfb.
+Wayland remains provisional: the plugin ships and the archive is verified to
+start under the offscreen platform, but no hosted runner provides a real
+Wayland compositor.
+
 ## CI runner images
 
 Pinned labels, chosen to avoid silent `*-latest` image changes:

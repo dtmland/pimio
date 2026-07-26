@@ -329,7 +329,7 @@ jobs:
           set -euo pipefail
           # A nested, freshly named directory: the archive must not depend on
           # where it was extracted or on the current working directory.
-          target="$RUNNER_TEMP/extract-$RANDOM/pimio-$RANDOM"
+          target="$(mktemp -d "$RUNNER_TEMP/extract-XXXXXXXX")/pimio-release"
           mkdir -p "$target"
           tar -xzf "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.tar.gz" -C "$target"
           cd /
