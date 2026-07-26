@@ -93,6 +93,54 @@ jobs:
           LORE_LIB=$(sed -n 's/^library=//p' build/default/lore-acquired.txt)
           [ -n "$LORE_LIB" ] && cp "$LORE_LIB" deploy/bin/
 
+      - name: Copy Linux graphics runtime libraries to deployment
+        if: matrix.name == 'Linux'
+        run: |
+          set -euo pipefail
+          mkdir -p deploy/lib
+          runtime_scan_paths=(deploy/bin)
+          for path in deploy/lib deploy/plugins deploy/qml; do
+            [ -e "$path" ] && runtime_scan_paths+=("$path")
+          done
+          mapfile -d '' -t runtime_candidates < <(find "${runtime_scan_paths[@]}" -type f \( -executable -o -name '*.so*' \) -print0)
+          runtime_inputs=()
+          for candidate in "${runtime_candidates[@]}"; do
+            if file -b "$candidate" | grep -q '^ELF '; then
+              runtime_inputs+=("$candidate")
+            fi
+          done
+          mapfile -t runtime_libs < <(
+            {
+              for input in "${runtime_inputs[@]}"; do
+                if ! ldd_output=$(ldd "$input" 2>&1); then
+                  printf '%s\n' "$ldd_output" >&2
+                  echo "Failed to analyze runtime dependencies for: $input" >&2
+                  exit 1
+                fi
+                printf '%s\n' "$ldd_output"
+              done
+            } |
+              grep -E '=> /(lib|usr/lib)/' |
+              awk '{ print $3 }' |
+              while read -r lib; do
+                case "$(basename "$lib")" in
+                  libEGL.so.1|libGLX.so.0|libGLdispatch.so.0|libOpenGL.so.0|\
+                  libX11-xcb.so.1|libX11.so.6|libXau.so.6|libXdmcp.so.6|\
+                  libxcb.so.1|libxcb-icccm.so.4|libxcb-image.so.0|libxcb-keysyms.so.1|\
+                  libxcb-randr.so.0|libxcb-render-util.so.0|libxcb-render.so.0|libxcb-shape.so.0|\
+                  libxcb-shm.so.0|libxcb-sync.so.1|libxcb-util.so.1|libxcb-xfixes.so.0|\
+                  libxcb-xkb.so.1|libxkbcommon.so.0|libxkbcommon-x11.so.0)
+                    printf '%s\n' "$lib"
+                    ;;
+                esac
+              done |
+              sort -u
+          )
+          for lib in "${runtime_libs[@]}"; do
+            echo "Copying runtime library: $lib"
+            cp -L "$lib" deploy/lib/
+          done
+
       - name: Copy LORE library to deployment (macOS)
         if: matrix.name == 'macOS'
         run: |
@@ -117,10 +165,13 @@ jobs:
       - name: Archive deployment (Windows)
         if: matrix.archive == 'zip'
         shell: pwsh
-        run: >-
-          Compress-Archive
-          -Path deploy/bin/*
-          -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
+        run: |
+          Push-Location deploy
+          $archivePaths = @('bin/*')
+          # Include the standard Qt runtime directories when the deploy step creates them.
+          $archivePaths += @('./lib', './plugins', './qml', './translations') | Where-Object { Test-Path $_ }
+          Compress-Archive -Path $archivePaths -DestinationPath ../pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
+          Pop-Location
 
       - name: Upload binary archive artifact
         uses: actions/upload-artifact@v4
