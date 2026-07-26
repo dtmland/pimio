@@ -96,10 +96,15 @@ jobs:
       - name: Copy Linux graphics runtime libraries to deployment
         if: matrix.name == 'Linux'
         run: |
+          set -euo pipefail
           mkdir -p deploy/lib
+          mapfile -d '' -t runtime_inputs < <(find deploy -type f \( -perm -111 -o -name '*.so*' \) -print0)
           mapfile -t runtime_libs < <(
-            find deploy -type f \( -perm -111 -o -name '*.so*' \) -print0 |
-              xargs -0r ldd |
+            {
+              if [ "${#runtime_inputs[@]}" -gt 0 ]; then
+                ldd "${runtime_inputs[@]}"
+              fi
+            } |
               awk '/=> \/(lib|usr\/lib)\// { print $3 }' |
               while read -r lib; do
                 case "$(basename "$lib")" in
