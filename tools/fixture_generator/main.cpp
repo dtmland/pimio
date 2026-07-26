@@ -111,6 +111,84 @@ QByteArray structuralMp4()
     return result;
 }
 
+/// A structurally valid ISO base media file carrying one video and one audio
+/// track, so that duration, display dimensions, and audio presence can be read
+/// from the container alone. Like `structural.mp4` it holds no samples and is
+/// deliberately not decodable.
+QByteArray audioVideoMp4()
+{
+    QByteArray mvhdPayload;
+    appendU32Be(mvhdPayload, 0);          // version and flags
+    appendU32Be(mvhdPayload, 0);          // creation time: not recorded
+    appendU32Be(mvhdPayload, 0);          // modification time
+    appendU32Be(mvhdPayload, 600);        // timescale
+    appendU32Be(mvhdPayload, 3000);       // duration: five seconds
+    appendU32Be(mvhdPayload, 0x00010000); // rate
+    appendU32Be(mvhdPayload, 0x01000000); // volume and reserved
+    appendU32Be(mvhdPayload, 0);
+    appendU32Be(mvhdPayload, 0);
+    const quint32 identityMatrix[9] = {0x00010000, 0, 0, 0, 0x00010000, 0, 0, 0, 0x40000000};
+    for (quint32 value : identityMatrix) {
+        appendU32Be(mvhdPayload, value);
+    }
+    for (int i = 0; i < 6; ++i) {
+        appendU32Be(mvhdPayload, 0);
+    }
+    appendU32Be(mvhdPayload, 3); // next track id
+
+    const auto trackHeader = [&identityMatrix](quint32 trackId, quint32 width, quint32 height) {
+        QByteArray payload;
+        appendU32Be(payload, 0);    // version and flags
+        appendU32Be(payload, 0);    // creation time
+        appendU32Be(payload, 0);    // modification time
+        appendU32Be(payload, trackId);
+        appendU32Be(payload, 0);    // reserved
+        appendU32Be(payload, 3000); // duration in movie timescale
+        appendU32Be(payload, 0);    // reserved
+        appendU32Be(payload, 0);    // reserved
+        appendU32Be(payload, 0);    // layer and alternate group
+        appendU32Be(payload, 0);    // volume and reserved
+        for (quint32 value : identityMatrix) {
+            appendU32Be(payload, value);
+        }
+        appendU32Be(payload, width << 16);  // 16.16 fixed-point display width
+        appendU32Be(payload, height << 16); // 16.16 fixed-point display height
+        return box("tkhd", payload);
+    };
+
+    const auto handler = [](const char *handlerType) {
+        QByteArray payload;
+        appendU32Be(payload, 0); // version and flags
+        appendU32Be(payload, 0); // predefined
+        payload.append(handlerType, 4);
+        for (int i = 0; i < 3; ++i) {
+            appendU32Be(payload, 0); // reserved
+        }
+        payload.append('\0'); // empty handler name
+        return box("hdlr", payload);
+    };
+
+    QByteArray videoTrack = trackHeader(1, 1920, 1080);
+    videoTrack.append(box("mdia", handler("vide")));
+
+    QByteArray audioTrack = trackHeader(2, 0, 0);
+    audioTrack.append(box("mdia", handler("soun")));
+
+    QByteArray moovPayload = box("mvhd", mvhdPayload);
+    moovPayload.append(box("trak", videoTrack));
+    moovPayload.append(box("trak", audioTrack));
+
+    QByteArray ftypPayload;
+    ftypPayload.append("isom", 4);
+    appendU32Be(ftypPayload, 512);
+    ftypPayload.append("isomiso2mp41", 12);
+
+    QByteArray result;
+    result.append(box("ftyp", ftypPayload));
+    result.append(box("moov", moovPayload));
+    return result;
+}
+
 /// A synthetic RAW-like container holding a real JPEG preview at a recorded
 /// offset. It exercises embedded-preview extraction without depending on a RAW
 /// decoder or on a camera vendor's proprietary sample file.
@@ -233,6 +311,13 @@ QList<Fixture> buildFixtures()
                      QStringLiteral("ISO base media container parsing: ftyp, moov, mvhd."),
                      QStringLiteral("Structurally valid but deliberately not decodable. Real "
                                     "clips are generated in the video increment.")});
+
+    fixtures.append({QStringLiteral("video/audio-video.mp4"), audioVideoMp4(),
+                     QStringLiteral("Video duration, display dimensions, and audio-track "
+                                    "presence read from the container."),
+                     QStringLiteral("Structurally valid but deliberately not decodable: it "
+                                    "declares a video and an audio track but holds no "
+                                    "samples.")});
 
     fixtures.append({QStringLiteral("malformed/truncated.jpg"), baseJpeg().left(64),
                      QStringLiteral("A JPEG truncated mid-stream."),

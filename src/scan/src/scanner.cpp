@@ -197,6 +197,11 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
                 const auto metaResult = d->reader->read(path, &metaError);
                 if (metaResult.has_value()) {
                     existing.metadata = metaResult->metadata;
+                    // Damage the reader recovered from still has to reach the
+                    // user; the item is indexed, but not silently.
+                    for (const core::Error &warning : std::as_const(metaResult->warnings)) {
+                        result->warnings.append(warning);
+                    }
                 } else if (metaError.isError()) {
                     result->warnings.append(metaError.withContext(
                         QJsonObject{{QStringLiteral("path"), path}}));
@@ -259,6 +264,9 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
                     newRecord.metadata = metaResult->metadata;
                     newRecord.metadata.fileName = QFileInfo(path).fileName();
                     newRecord.metadata.folderPath = QFileInfo(path).absolutePath();
+                    for (const core::Error &warning : std::as_const(metaResult->warnings)) {
+                        result->warnings.append(warning);
+                    }
                 } else if (metaError.isError()) {
                     result->warnings.append(metaError.withContext(
                         QJsonObject{{QStringLiteral("path"), path}}));

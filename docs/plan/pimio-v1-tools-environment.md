@@ -2,8 +2,13 @@
 
 This is an environment and options inventory, not an implementation sequence.
 See [pimio-v1-implementation.md](pimio-v1-implementation.md) for the staged
-delivery gates, acceptance tests, and required CI evidence. Tool and hosted
-runner availability must be rechecked when the project skeleton is created.
+delivery gates, acceptance tests, and required CI evidence.
+
+Sections 1 to 4 remain an inventory of what is available. **Section 5 onward now
+describes CI as it is actually built**, not as it was planned: `.github/workflows/ci.yml`
+and [../supported-platforms.md](../supported-platforms.md) are the authoritative
+record, and this document is a reader's guide to them. Anything still undecided
+is called out as such.
 
 ## 1. My Sandbox Environment
 
@@ -14,7 +19,7 @@ shows what is and is not available to me directly.
 |---|---|---|
 | apt package manager | ✅ Yes | Full access |
 | GCC 13+ / Clang 17+ / CMake / Ninja | ✅ Yes | Standard Linux build toolchain |
-| Qt 6 (via apt) | ✅ Yes | `qt6-base-dev`, `qt6-declarative-dev`, etc. |
+| Qt 6 (via apt) | ✅ Yes | `qt6-base-dev`, `qt6-declarative-dev` give Qt 6.4.2, which builds and tests the repository. Only the QML runtime modules the app smoke test needs are missing. |
 | Qt 6 (via aqtinstall) | ✅ Yes | Python tool — downloads any Qt version/module without the Qt GUI installer |
 | SQLite | ✅ Yes | `libsqlite3-dev` |
 | libexiv2 | ✅ Yes | `libexiv2-dev` |
@@ -63,7 +68,7 @@ shows what is and is not available to me directly.
 
 | Tool | Purpose | Free? | My Env? | Notes |
 |---|---|---|---|---|
-| libexiv2 | EXIF/IPTC/XMP read+write | ✅ Free (GPL/LGPL) | ✅ Yes | GPL — review linking strategy before distribution |
+| libexiv2 | EXIF/IPTC/XMP read+write | ✅ Free (GPL/LGPL) | ✅ Yes | GPL — review linking strategy before distribution. Not used for the read path: Increment 5 reads container headers with parsers owned by this project, see [../decisions/0002-metadata-adapter.md](../decisions/0002-metadata-adapter.md) |
 | libraw | RAW image decode | ✅ Free (LGPL/CDDL) | ✅ Yes | |
 | libjpeg-turbo | JPEG decode / lossless transform | ✅ Free | ✅ Yes | Needed for lossless EXIF-preserving rotation |
 | FFmpeg (LGPL build) | Video decode, thumbnails, trim | ✅ Free | ✅ Yes | Avoid GPL codecs to keep distribution simpler |
@@ -75,7 +80,7 @@ shows what is and is not available to me directly.
 | Tool | Purpose | Free? | My Env? | Notes |
 |---|---|---|---|---|
 | SQLite | Local cache / index | ✅ Free (Public Domain) | ✅ Yes | |
-| LORE | Versioned ground-truth store | ✅ Free (if OSS) | ⚠️ Unknown | Availability and packaging is a wildcard for v1 |
+| LORE | Versioned ground-truth store | ✅ Free (MIT) | ✅ Yes | Adopted in Increment 2; see [../decisions/0001-lore-durable-store.md](../decisions/0001-lore-durable-store.md). Acquired by `cmake/PimioLore.cmake` |
 
 ### AI & Computer Vision
 
@@ -132,7 +137,7 @@ shows what is and is not available to me directly.
 | CMake project skeleton + CI | ✅ | ✅ |
 | Core C++ library layer (scanner, indexer, job queue) | ✅ | ✅ Unit tests |
 | SQLite schema + migrations | ✅ | ✅ |
-| EXIF/IPTC/XMP read+write (libexiv2) | ✅ | ✅ |
+| EXIF/IPTC/XMP read (built-in parsers) | ✅ | ✅ Golden tests against the committed fixture corpus |
 | RAW decode (libraw) | ✅ | ✅ |
 | Thumbnail generation (headless) | ✅ | ✅ |
 | FFmpeg video decode + thumbnail extraction | ✅ | ✅ |
@@ -164,34 +169,65 @@ Everything else needed to build pimio v1 is **free open-source software**.
 
 ---
 
-## 5. GitHub Actions — Cross-Platform CI
+## 5. GitHub Actions — Cross-Platform CI (in place)
 
-### How It Works
+### What runs today
 
-GitHub Actions provides hosted virtual machines (runners) for Linux, Windows, and macOS.
-When a commit or pull request is pushed, GitHub starts a fresh VM, runs the workflow steps
-defined in `.github/workflows/`, and destroys the VM when the job ends.
+`.github/workflows/ci.yml` runs one `build-and-test` job per platform on every
+pull request, every push to `main`, and on manual dispatch. The three jobs are
+independent (`fail-fast: false`), so one platform failing still shows the result
+of the other two.
 
-**For a public repository, all GitHub-hosted runners are free with no minute limits.**
-For a private repository, macOS runners cost 10× more minutes than Linux.
+| Job name | Runner label | Notes |
+|---|---|---|
+| Build and test (Linux) | `ubuntu-24.04` | Also runs the X11 test pass under Xvfb |
+| Build and test (Windows) | `windows-2025` | MSVC developer environment via `ilammy/msvc-dev-cmd` |
+| Build and test (macOS) | `macos-15` | arm64. macOS x86-64 is not a v1 target |
+
+Labels are pinned rather than `*-latest`, so a runner image change is a
+deliberate commit instead of a surprise. The labels are also recorded in
+[../supported-platforms.md](../supported-platforms.md), which is the policy
+document; this table is a convenience copy.
+
+### What each job does
+
+1. Checks out the repository (`actions/checkout@v5`).
+2. Installs native dependencies: X11/XCB, GL, Ninja, and Xvfb on Linux;
+   `seanmiddleditch/gha-setup-ninja` on Windows and macOS.
+3. Installs the pinned Qt release with `jurplel/install-qt-action`, cached per
+   runner and version. The pinned version lives in one place, the workflow's
+   `PIMIO_QT_VERSION`.
+4. Restores the cached LORE artifact, keyed by runner and `PIMIO_LORE_VERSION`.
+5. Configures with `cmake --preset default -DPIMIO_REQUIRE_LORE=ON`. LORE is
+   optional locally but required in CI: a job that quietly skipped the
+   durable-store tests would report green without running the evidence an
+   increment depends on.
+6. Prints the acquired LORE version from `build/default/lore-acquired.txt`, so
+   every run states what it actually used.
+7. Builds, then runs `ctest --preset default` (offscreen) on all three
+   platforms, writing JUnit XML.
+8. On Linux only, runs `ctest --preset default-x11` under `xvfb-run`, which is
+   the pass that exercises a real X server.
+9. Uploads `build/default/test-results/` and `build/default/Testing/` as
+   `test-results-<platform>`, always, including on failure.
+
+### Proving that failures are reported
+
+`workflow_dispatch` accepts a `failing_selftest` input. Setting it configures
+with `-DPIMIO_ENABLE_FAILING_SELFTEST=ON`, which registers a CTest case that
+always fails. It exists to demonstrate that each platform job really reports a
+red result rather than silently skipping tests — a green matrix means nothing
+until the red case has been seen.
 
 ### What You Can See
 
 | Access Point | Who | What |
 |---|---|---|
 | GitHub Actions tab (web UI) | You | All workflow runs, logs, pass/fail status, artifacts |
-| GitHub MCP tools | Me (agent) | Same data — I can inspect runs and logs during a session |
+| GitHub MCP tools | Me (agent) | Same data — I can inspect runs, jobs, and logs during a session |
+| Uploaded artifacts | Both | `test-results-<platform>`: CTest JUnit XML and `Testing/` logs, kept 14 days |
 | Interactive shell | Limited | A debug tty can be opened manually in a workflow for troubleshooting — not a normal interactive shell |
 | Persistent desktop / GUI | ❌ | GitHub Actions is not Codespaces — there is no persistent dev desktop or GUI session |
-
-### GitHub-Hosted Runner Comparison
-
-| Platform | Runner Label | Cost (public repo) | Cost (private repo) | Setup Effort |
-|---|---|---|---|---|
-| Linux x86_64 | Select a pinned supported image | ✅ Free | Base minute multiplier | Trivial |
-| Windows x64 | Select a pinned supported image | ✅ Free | Higher minute multiplier | Low |
-| macOS arm64 (M-series) | Select a pinned supported image | ✅ Free | Higher minute multiplier | Low |
-| macOS x64 (Intel) | Select a pinned supported image if Intel is supported | ✅ Free | Higher minute multiplier | Low |
 
 ### GUI Testing on GitHub Actions
 
@@ -205,19 +241,52 @@ For a private repository, macOS runners cost 10× more minutes than Linux.
 | Installer UX / Gatekeeper / SmartScreen | ❌ | ❌ | ❌ |
 
 GitHub Actions runners do **not** provide a real logged-in desktop session. GUI automation is
-possible on Linux via a virtual framebuffer (`Xvfb`), but macOS and Windows runners do not
-easily support this path.
+possible on Linux via a virtual framebuffer (`Xvfb`), which is why only the Linux job has a
+second X11 pass. macOS and Windows runners do not easily support this path, so anything in
+the ❌ rows needs a documented manual test or a self-hosted runner before release.
+
+### Runner behaviour worth knowing
+
+These are quirks observed on the actual runners, recorded so they are not
+rediscovered as bugs:
+
+- **Windows rewrites line endings.** GitHub's Windows runners default to
+  `core.autocrlf=true`, which would rewrite LF-only text fixtures to CRLF on
+  checkout and break byte-exact and hash-exact comparisons. The repository's
+  root `.gitattributes` marks the fixture corpus binary (`-text`) to prevent it.
+- **Windows hides test stdout.** QtTest executable output is not captured into
+  the Windows `LastTest.log`, so a blank Windows test log is a capture quirk
+  rather than a crash. Read per-test detail from the Linux or macOS artifact of
+  the same run.
+- **Hidden files behave differently.** `QDir::Files` skips dot-prefixed files on
+  Unix but not on Windows, where hidden is an attribute. Configuration files
+  inside a walked directory therefore change results on Windows only.
+- **macOS x86-64 has no runner and no LORE build.** `macos-15` is arm64;
+  Intel macOS is out of scope for v1 for the reason recorded in
+  [../supported-platforms.md](../supported-platforms.md).
+
+### Still open
+
+- Branch protection must require all three jobs. That is a repository setting,
+  not something the workflow can assert.
+- No hosted runner exercises Linux arm64, so it stays buildable and unverified.
+- Packaging, signing, and notarization jobs do not exist yet; they belong to
+  Increment 12.
 
 ---
 
 ## 6. Options for Cross-Platform Build & Test
 
-### Option A: GitHub Actions (Recommended Primary Path)
+### Option A: GitHub Actions — **chosen, and in place**
 
-I write `.github/workflows/` YAML; GitHub runs builds and tests on Linux, Windows, and
-macOS automatically on every push or PR. You see the results in the GitHub Actions tab.
+`.github/workflows/ci.yml` builds and tests on Linux, Windows, and macOS on every push
+and pull request, as described in section 5. Results appear in the GitHub Actions tab.
 
 **Best for:** compile checks, unit tests, integration tests, packaging, smoke tests.
+
+The remaining options below were not adopted. They are kept because they are the
+answers to problems hosted CI genuinely cannot solve, and those problems arrive
+at packaging time.
 
 ### Option B: Self-Hosted GitHub Actions Runners on Your Machines
 
@@ -267,8 +336,12 @@ builds and read results directly within a session.
 | Code signing, notarization, real-hardware tests | Self-hosted runner on your machines (if needed) |
 | Visual QML inspection, GPU/hardware acceleration, installer smoke tests | Manual — you on your own machines |
 
-For implementation, replace `*-latest` with runner labels selected by the
-supported-platform policy, keep the three platform jobs independently visible,
-and require all of them through branch protection. Hosted-runner availability,
-labels, pricing, and preinstalled software can change; the workflow and Qt
-version are the authoritative reproducible configuration once they exist.
+The first two rows are implemented: pinned runner labels selected by the
+supported-platform policy, three independently visible platform jobs, and a
+pinned Qt version. Requiring all three jobs through branch protection is still a
+repository setting that has to be turned on outside the workflow.
+
+Hosted-runner availability, labels, pricing, and preinstalled software can
+change. `.github/workflows/ci.yml`, `CMakePresets.json`, and
+[../supported-platforms.md](../supported-platforms.md) are the authoritative
+reproducible configuration; this document is not.

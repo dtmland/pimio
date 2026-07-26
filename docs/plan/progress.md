@@ -15,7 +15,7 @@ Update this file in the same change that moves an increment forward.
 | 2 | LORE feasibility gate | Complete (go) |
 | 3 | SQLite projection, migrations, and jobs | Complete |
 | 4 | Incremental scan and media identity | Complete |
-| 5 | Metadata read, query, and search | Not started |
+| 5 | Metadata read, query, and search | Complete |
 | 6 | Thumbnails, models, and basic browser | Not started |
 | 7 | Watching and reconciliation | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
@@ -82,3 +82,30 @@ Update this file in the same change that moves an increment forward.
   move, duplicate, symlink policy, permission failure, disappearing file,
   restart idempotency, unavailable root, cancellation, metadata reader
   integration, and large-tree benchmark (1000 files).
+
+## Increment 5 — Metadata read, query, and search — Complete
+
+- `pimio::metadata::BuiltinMetadataReader` implements `core::MetadataReader`
+  with parsers written for this project: JPEG/TIFF EXIF, PNG headers, XMP
+  packets, and ISO base media boxes. No metadata library is linked; the choice
+  and what would reverse it are recorded in
+  [../decisions/0002-metadata-adapter.md](../decisions/0002-metadata-adapter.md).
+- Precedence is explicit — UserEdit > Sidecar > Embedded > FileSystem — and
+  every disagreement between a sidecar and the embedded block is kept as a
+  `core::MetadataConflict` carrying both values and both origins.
+- A capture time with no zone information stays offset-unknown instead of being
+  assumed to be UTC; a file with no capture time at all falls back to the
+  filesystem under `MetadataOrigin::FileSystem`, so the fallback is visible.
+- Failure policy: an unrecognized container is `UnsupportedMedia` and a
+  recognized but broken one is `CorruptData`, both recorded by the scan as
+  warnings so a bad file never blocks it. Recoverable damage, such as a corrupt
+  EXIF block in a readable JPEG, is a warning and the item is still indexed.
+- Chronological queries, filters, pagination, and FTS5 full-text search live in
+  `pimio::projection::ProjectionDatabase`; ordering is total (`capture_sort_key`
+  then `id`) so equal, missing, and zone-less timestamps still page
+  deterministically.
+- Evidence: `metadata.golden` (capture-time precedence, timezone
+  presence/absence, rotation, GPS, camera fields, video duration, audio-track
+  presence, malformed values, unsupported media, scan integration) and
+  `projection.metadata` (ordering, pagination, filters, Unicode and
+  operator-character search, conflicts, and missing timestamps).
