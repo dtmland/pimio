@@ -9,8 +9,10 @@ target_include_directories(pimio_app_lib PUBLIC include)
 
 target_link_libraries(pimio_app_lib PUBLIC
     pimio::core
+    pimio::browser
     Qt6::Gui
     Qt6::Quick
+    Qt6::QuickControls2
 )
 
 qt_add_qml_module(pimio_app_lib
