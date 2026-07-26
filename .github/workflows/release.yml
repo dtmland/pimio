@@ -107,7 +107,7 @@ jobs:
             {
               for input in "${runtime_inputs[@]}"; do
                 if ! ldd "$input"; then
-                  echo "Failed to analyze runtime dependencies for $input" >&2
+                  echo "Failed to analyze runtime dependencies for: $input" >&2
                   exit 1
                 fi
               done
@@ -157,7 +157,7 @@ jobs:
         run: |
           Push-Location deploy
           $archivePaths = @('bin/*')
-          # qt_generate_deploy_app_script installs Windows runtime directories here when present.
+          # Include any Windows runtime directories that the Qt deploy step created.
           $archivePaths += @('lib', 'plugins', 'qml', 'translations') | Where-Object { Test-Path $_ }
           Compress-Archive -Path $archivePaths -DestinationPath ../pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
           Pop-Location
