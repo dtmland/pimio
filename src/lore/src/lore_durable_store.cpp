@@ -286,6 +286,32 @@ bool removeDirectoryContents(const QString &path)
     return removed;
 }
 
+bool copyDirectory(const QString &sourcePath, const QString &targetPath)
+{
+    if (!removeDirectoryContents(targetPath) || !QDir().mkpath(targetPath)) {
+        return false;
+    }
+
+    const QDir source(sourcePath);
+    QDirIterator iterator(sourcePath, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot,
+                          QDirIterator::Subdirectories);
+    while (iterator.hasNext()) {
+        const QString sourceFilePath = iterator.next();
+        const QString targetFilePath = targetPath + QLatin1Char('/')
+                                       + source.relativeFilePath(sourceFilePath);
+        const QFileInfo sourceFile(sourceFilePath);
+        if (sourceFile.isDir()) {
+            if (!QDir().mkpath(targetFilePath)) {
+                return false;
+            }
+        } else if (!QDir().mkpath(QFileInfo(targetFilePath).absolutePath())
+                   || !QFile::copy(sourceFilePath, targetFilePath)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 class LoreDurableStore::Private
@@ -299,6 +325,12 @@ public:
     QString repositoryPath() const { return storePath + QStringLiteral("/repository"); }
     QString recordsPath() const { return repositoryPath() + QStringLiteral("/records"); }
     QString stagingPath() const { return storePath + QStringLiteral("/staging"); }
+    QString lorePath() const { return repositoryPath() + QStringLiteral("/.lore"); }
+    QString commitBackupPath() const { return storePath + QStringLiteral("/.pimio-lore-backup"); }
+    QString commitMarkerPath() const
+    {
+        return storePath + QStringLiteral("/.pimio-lore-commit-in-progress");
+    }
 
     QString committedRecordPath(const core::MediaId &id) const
     {
@@ -343,6 +375,9 @@ public:
     /// commit that failed part way through. Staged records live outside the
     /// checkout, so this never destroys uncommitted pimio work.
     bool restoreCheckoutToCommittedState(Error *error);
+    bool recoverInterruptedCommit(Error *error);
+    bool prepareCommitRecovery(Error *error);
+    void clearCommitRecovery();
 
     QString queryStateToken(Error *error) const;
     bool runStatus(Operation &operation, bool checkDirty, Error *error) const;
@@ -423,6 +458,52 @@ bool LoreDurableStore::Private::restoreCheckoutToCommittedState(Error *error)
     return true;
 }
 
+bool LoreDurableStore::Private::recoverInterruptedCommit(Error *error)
+{
+    if (!QFileInfo::exists(commitMarkerPath())) {
+        return true;
+    }
+    if (!QFileInfo::exists(commitBackupPath())) {
+        setError(error, ErrorCode::CorruptData,
+                 QStringLiteral("The interrupted-commit backup is missing at %1.")
+                     .arg(commitBackupPath()));
+        return false;
+    }
+    if (!QDir(lorePath()).removeRecursively()
+        || !QDir().rename(commitBackupPath(), lorePath())
+        || !QFile::remove(commitMarkerPath())) {
+        setError(error, ErrorCode::PermissionDenied,
+                 QStringLiteral("Could not restore the repository after an interrupted commit."));
+        return false;
+    }
+    repairedOnOpen = true;
+    return true;
+}
+
+bool LoreDurableStore::Private::prepareCommitRecovery(Error *error)
+{
+    if (!copyDirectory(lorePath(), commitBackupPath())) {
+        setError(error, ErrorCode::OutOfSpace,
+                 QStringLiteral("Could not back up the repository before committing."));
+        return false;
+    }
+
+    QSaveFile marker(commitMarkerPath());
+    if (!marker.open(QIODevice::WriteOnly) || marker.write("1") != 1 || !marker.commit()) {
+        removeDirectoryContents(commitBackupPath());
+        setError(error, ErrorCode::OutOfSpace,
+                 QStringLiteral("Could not mark the repository commit as in progress."));
+        return false;
+    }
+    return true;
+}
+
+void LoreDurableStore::Private::clearCommitRecovery()
+{
+    QFile::remove(commitMarkerPath());
+    QDir(commitBackupPath()).removeRecursively();
+}
+
 LoreDurableStore::LoreDurableStore(QString storePath)
     : d(std::make_unique<Private>(std::move(storePath)))
 {
@@ -487,6 +568,11 @@ bool LoreDurableStore::open(Error *error)
         return false;
     }
 
+    if (!d->recoverInterruptedCommit(error)) {
+        d->writerLock.reset();
+        return false;
+    }
+
     // Now that no other writer can be active, an empty pending marker in
     // LORE's local store can only be residue from a killed process, so it is
     // safe to clear automatically. The flag keeps the recovery visible.
@@ -499,7 +585,7 @@ bool LoreDurableStore::open(Error *error)
         d->repairedOnOpen = true;
     }
 
-    const bool existing = QFileInfo::exists(d->repositoryPath() + QStringLiteral("/.lore"));
+    const bool existing = QFileInfo::exists(d->lorePath());
     if (!existing) {
         const lore_global_args_t args = d->globals();
         lore_repository_create_args_t createArgs;
@@ -737,11 +823,16 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     std::memset(&commitArgs, 0, sizeof(commitArgs));
     const QByteArray messageUtf8 = message.toUtf8();
     commitArgs.message = loreString(messageUtf8);
+    if (!d->prepareCommitRecovery(error)) {
+        d->restoreCheckoutToCommittedState(nullptr);
+        return std::nullopt;
+    }
     api.revisionCommit(&args, &commitArgs, commitOperation.config());
     if (commitOperation.status != 0 || commitOperation.checkpoints.isEmpty()) {
         // The staging area is untouched, so the work is still recoverable and
         // the checkout is returned to the last committed revision.
         d->restoreCheckoutToCommittedState(nullptr);
+        d->clearCommitRecovery();
         setError(error, mapFailure(commitOperation),
                  QStringLiteral("The commit failed: %1").arg(commitOperation.message),
                  failureContext(commitOperation, QStringLiteral("revision_commit")));
@@ -758,6 +849,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
                  QStringLiteral("The commit succeeded but the staging area could not be cleared."));
     }
 
+    d->clearCommitRecovery();
     return checkpoint;
 }
 
