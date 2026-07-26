@@ -73,6 +73,22 @@ install(TARGETS pimio_app
 )
 install(SCRIPT ${PIMIO_DEPLOY_SCRIPT})
 
+# The Qt SDK ships a Mimer SQL driver plugin (libqsqlmimer.so) that has a hard
+# dependency on libmimerapi.so.  That library is not available as a system
+# package on any supported Linux distribution, and pimio uses SQLite rather
+# than Mimer SQL, so the plugin is never loaded.  Remove it from Linux
+# deployments so that the bundled ELF dependency check in the release workflow
+# does not fail with "libmimerapi.so => not found".
+if(UNIX AND NOT APPLE)
+    install(CODE "
+        set(_mimer \"\${CMAKE_INSTALL_PREFIX}/plugins/sqldrivers/libqsqlmimer.so\")
+        if(EXISTS \"\${_mimer}\")
+            file(REMOVE \"\${_mimer}\")
+            message(STATUS \"Removing Mimer SQL plugin (libmimerapi.so unavailable): \${_mimer}\")
+        endif()
+    ")
+endif()
+
 # Launcher, README, and diagnostic tool shipped at the root of every release
 # archive.  They are installed rather than copied by the workflow so that a
 # local `cmake --install` produces the same tree the release publishes.
