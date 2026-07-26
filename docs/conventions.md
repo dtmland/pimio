@@ -11,6 +11,8 @@ These conventions apply to all implementation increments described in
 | `src/core/include/pimio/core/` | Public core headers. Include as `#include "pimio/core/<name>.h"`. |
 | `src/core/src/` | Core implementation files. |
 | `src/lore/` | LORE-backed durable store (`pimio::lore`). Built only when LORE is available. `lore.h` stays private to this directory so the dependency has one boundary. |
+| `src/metadata/` | Metadata read adapters (`pimio::metadata`). Container parsers are private to `src/metadata/src/`; the only public surface is the `core::MetadataReader` implementation. |
+| `src/scan/` | Incremental scan and media identity (`pimio::scan`). Reaches the filesystem only through `core::FileSystem`. |
 | `src/projection/` | SQLite query cache (`pimio::projection`). The only place Qt Sql is linked. Holds nothing that cannot be rebuilt from the durable store. |
 | `src/app/` | Qt application shell. `pimio::app_lib` holds testable startup logic; `pimio_app` is the thin executable. |
 | `src/app/qml/` | QML files, exposed through the `Pimio` QML module. |

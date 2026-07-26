@@ -22,6 +22,10 @@ Qt is used under the LGPL dynamic-linking path. The application must keep Qt
 replaceable by the user, ship the required license text and notices, and avoid
 static linking unless a commercial license is obtained.
 
+Metadata is read by `pimio::metadata`, parsers written for this project, so the
+read path adds no row here. The reasoning and what would reverse it are in
+[decisions/0002-metadata-adapter.md](decisions/0002-metadata-adapter.md).
+
 SQLite reaches pimio through Qt's bundled QSQLITE driver rather than as a
 separate dependency, so it carries no obligation of its own. If pimio ever
 links a system SQLite directly, this table gains a row for it.
@@ -68,7 +72,7 @@ integration.
 
 | Candidate | Purpose | Known licensing concern |
 | --- | --- | --- |
-| libexiv2 | EXIF/IPTC/XMP read and write | GPL-2.0-or-later. Linking strategy must be resolved before distribution. |
+| libexiv2 | EXIF/IPTC/XMP write, and read coverage beyond plain container headers | GPL-2.0-or-later. Linking strategy must be resolved before distribution. Increment 5 declined it for the read path; see [decisions/0002-metadata-adapter.md](decisions/0002-metadata-adapter.md). |
 | libraw | RAW decode | LGPL-2.1 / CDDL dual license. |
 | libjpeg-turbo | Lossless JPEG transforms | Permissive. Low risk. |
 | FFmpeg | Video decode, thumbnails, trim | License depends on configure flags. An LGPL build is required unless the product license changes. |

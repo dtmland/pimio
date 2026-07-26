@@ -139,6 +139,46 @@ private slots:
         PIMIO_COMPARE_ID(ordered[1], r2.id);
     }
 
+    void captureTimeMissingTimestampsSortFirstAndByIdAmongThemselves()
+    {
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+
+        const auto dated = core::CaptureTime::fromOffset(
+            QDateTime(QDate(2024, 5, 15), QTime(10, 30, 0), Qt::UTC), 0);
+
+        core::MediaRecord undated1 = makeRecord("no-date-b.jpg");
+        core::MediaRecord undated2 = makeRecord("no-date-a.jpg");
+        core::MediaRecord datedRecord = makeRecord("dated.jpg", dated);
+        undated1.id = core::MediaId(QStringLiteral("id-bbb"));
+        undated2.id = core::MediaId(QStringLiteral("id-aaa"));
+        datedRecord.id = core::MediaId(QStringLiteral("id-ccc"));
+
+        // Insert in an order that would expose any reliance on insertion order.
+        addRecord(store, datedRecord);
+        addRecord(store, undated1);
+        addRecord(store, undated2);
+
+        ProjectionDatabase db;
+        db.openInMemory(nullptr);
+        rebuild(db, store);
+
+        core::Error err;
+        const QList<core::MediaId> ordered = db.idsByCaptureTime(&err);
+        QVERIFY(!err.isError());
+        QCOMPARE(ordered.size(), 3);
+        // Items with no capture time are grouped ahead of dated ones and are
+        // ordered by id among themselves, so paging through them never
+        // repeats or skips an item.
+        PIMIO_COMPARE_ID(ordered[0], undated2.id); // id-aaa
+        PIMIO_COMPARE_ID(ordered[1], undated1.id); // id-bbb
+        PIMIO_COMPARE_ID(ordered[2], datedRecord.id);
+
+        // The same query asked twice returns the same answer.
+        QCOMPARE(db.idsByCaptureTime(&err), ordered);
+        QVERIFY(!err.isError());
+    }
+
     // ---- Pagination ----
 
     void captureTimePaginationReturnsCorrectSlice()

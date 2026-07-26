@@ -40,3 +40,8 @@ Policy and reference:
 - [Repository conventions](docs/conventions.md)
 - [Supported platform policy](docs/supported-platforms.md)
 - [Dependency bill of materials](docs/dependency-bom.md)
+
+Decisions:
+
+- [0001 — LORE as pimio's durable store](docs/decisions/0001-lore-durable-store.md)
+- [0002 — A built-in metadata reader for v1's read path](docs/decisions/0002-metadata-adapter.md)

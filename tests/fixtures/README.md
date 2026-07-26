@@ -43,6 +43,9 @@ committed rather than generated during the test run.
 - `video/structural.mp4` is a structurally valid ISO base media file (`ftyp`,
   `moov`, `mvhd`) but is not decodable. Real clips need an encoder and are
   generated in the video increment.
+- `video/audio-video.mp4` adds a video and an audio track (`trak`, `tkhd`,
+  `hdlr`) so that duration, display dimensions, and audio-track presence can be
+  read from the container. It holds no samples and is likewise not decodable.
 - `raw/simulated-raw-with-preview.pimraw` is a synthetic container owned by
   pimio that holds a real JPEG preview at a recorded offset. It exercises
   embedded-preview extraction; it is not a substitute for testing a real RAW
