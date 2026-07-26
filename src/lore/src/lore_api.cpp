@@ -2,6 +2,7 @@
 
 #include "pimio/lore/lore_durable_store.h"
 
+#include <QCoreApplication>
 #include <QFileInfo>
 #include <QLibrary>
 
@@ -13,6 +14,14 @@ namespace {
 #define PIMIO_LORE_SHARED_LIBRARY ""
 #endif
 
+#if defined(Q_OS_WIN)
+constexpr QLatin1String k_loreLibraryName{"lore.dll"};
+#elif defined(Q_OS_MACOS)
+constexpr QLatin1String k_loreLibraryName{"liblore.dylib"};
+#else
+constexpr QLatin1String k_loreLibraryName{"liblore.so"};
+#endif
+
 } // namespace
 
 QString defaultLibraryPath()
@@ -21,6 +30,17 @@ QString defaultLibraryPath()
     if (!fromEnvironment.isEmpty()) {
         return QString::fromLocal8Bit(fromEnvironment);
     }
+
+    // Deployed releases bundle LORE next to the executable. Check there first
+    // so a self-contained archive works without setting PIMIO_LORE_LIBRARY.
+    const QString appDir = QCoreApplication::applicationDirPath();
+    if (!appDir.isEmpty()) {
+        const QString candidate = appDir + QLatin1Char('/') + k_loreLibraryName;
+        if (QFileInfo::exists(candidate)) {
+            return candidate;
+        }
+    }
+
     return QString::fromUtf8(PIMIO_LORE_SHARED_LIBRARY);
 }
 

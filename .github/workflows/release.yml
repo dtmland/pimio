@@ -48,7 +48,8 @@ jobs:
             libxcb-shape0 \
             libxcb-xinerama0 \
             libxcb-xkb1 \
-            ninja-build
+            ninja-build \
+            patchelf   # needed by cmake --install to rewrite ELF RPATH for the Qt deployment
 
       - name: Install Ninja (Windows and macOS)
         if: matrix.name != 'Linux'
@@ -81,19 +82,44 @@ jobs:
       - name: Build app
         run: cmake --build --preset default --target pimio_app
 
-      - name: Archive binaries (Linux and macOS)
+      - name: Stage deployment
+        run: >-
+          cmake --install build/default
+          --prefix "${{ github.workspace }}/deploy"
+
+      - name: Copy LORE library to deployment (Linux)
+        if: matrix.name == 'Linux'
+        run: |
+          LORE_LIB=$(sed -n 's/^library=//p' build/default/lore-acquired.txt)
+          [ -n "$LORE_LIB" ] && cp "$LORE_LIB" deploy/bin/
+
+      - name: Copy LORE library to deployment (macOS)
+        if: matrix.name == 'macOS'
+        run: |
+          LORE_LIB=$(sed -n 's/^library=//p' build/default/lore-acquired.txt)
+          [ -n "$LORE_LIB" ] && cp "$LORE_LIB" deploy/pimio.app/Contents/MacOS/
+
+      - name: Copy LORE library to deployment (Windows)
+        if: matrix.name == 'Windows'
+        shell: pwsh
+        run: |
+          $lorePath = (Get-Content build/default/lore-acquired.txt |
+            Where-Object { $_ -match '^library=' }) -replace '^library=', ''
+          if ($lorePath) { Copy-Item $lorePath deploy/bin/ }
+
+      - name: Archive deployment (Linux and macOS)
         if: matrix.archive == 'tar.gz'
         run: >-
-          tar -C build/default/bin -czf
+          tar -C deploy -czf
           "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.tar.gz"
-          pimio
+          .
 
-      - name: Archive binaries (Windows)
+      - name: Archive deployment (Windows)
         if: matrix.archive == 'zip'
         shell: pwsh
         run: >-
           Compress-Archive
-          -Path build/default/bin/pimio.exe
+          -Path deploy/bin/*
           -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
 
       - name: Upload binary archive artifact
