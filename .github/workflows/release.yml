@@ -112,10 +112,12 @@ jobs:
           mapfile -t runtime_libs < <(
             {
               for input in "${runtime_inputs[@]}"; do
-                if ! ldd "$input"; then
+                if ! ldd_output=$(ldd "$input" 2>&1); then
+                  printf '%s\n' "$ldd_output" >&2
                   echo "Failed to analyze runtime dependencies for: $input" >&2
                   exit 1
                 fi
+                printf '%s\n' "$ldd_output"
               done
             } |
               grep -E '=> /(lib|usr/lib)/' |
@@ -163,7 +165,7 @@ jobs:
         run: |
           Push-Location deploy
           $archivePaths = @('bin/*')
-          # Include any Windows runtime directories that the Qt deploy step created.
+          # Include the standard Qt runtime directories when the deploy step creates them.
           $archivePaths += @('lib', 'plugins', 'qml', 'translations') | Where-Object { Test-Path $_ }
           Compress-Archive -Path $archivePaths -DestinationPath ../pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
           Pop-Location
