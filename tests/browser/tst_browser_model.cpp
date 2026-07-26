@@ -331,10 +331,10 @@ void TestBrowserModel::modelPassesGenericModelTest()
     auto model = std::make_unique<MediaLibraryModel>();
     model->setDatabase(m_db.get());
 
-    // QAbstractItemModelTester verifies basic model contract invariants.
-    QAbstractItemModelTester tester(model.get(),
-                                    QAbstractItemModelTester::FailureReportingMode::Fatal);
-    Q_UNUSED(tester)
+    // QAbstractItemModelTester verifies basic model contract invariants on
+    // construction and during any model mutations via Qt's own test harness.
+    QAbstractItemModelTester{model.get(),
+                             QAbstractItemModelTester::FailureReportingMode::Fatal};
 }
 
 QTEST_MAIN(TestBrowserModel)

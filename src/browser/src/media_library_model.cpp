@@ -221,8 +221,6 @@ void MediaLibraryModel::requestThumbnailIfNeeded(int row) const
     req.targetSize = m_thumbnailSize;
     req.priority = core::JobPriority::Interactive;
 
-    const QString key = req.cacheKey();
-
     item.thumbnailStatus = ThumbnailStatus::Loading;
     item.thumbnailHandle = m_service->request(
             req,
@@ -232,7 +230,7 @@ void MediaLibraryModel::requestThumbnailIfNeeded(int row) const
             [this](const core::MediaRequest &r, const core::Error &err) {
                 const_cast<MediaLibraryModel *>(this)->onThumbnailError(r, err);
             });
-    m_requestIndex.insert(key, row);
+    m_requestIndex.insert(req.cacheKey(), row);
 }
 
 void MediaLibraryModel::onThumbnailResult(const core::MediaRequest &request,

@@ -102,10 +102,9 @@ private:
     void deliverResult(const core::MediaResult &result)
     {
         const auto item = m_item;
-        const quint64 handle = m_handle;
         QMetaObject::invokeMethod(
                 m_service,
-                [item, handle, result]() {
+                [item, result]() {
                     if (!item->cancelled.load()) {
                         item->onResult(item->request, result);
                     }
@@ -116,10 +115,9 @@ private:
     void deliverError(const core::Error &error)
     {
         const auto item = m_item;
-        const quint64 handle = m_handle;
         QMetaObject::invokeMethod(
                 m_service,
-                [item, handle, error]() {
+                [item, error]() {
                     if (!item->cancelled.load()) {
                         item->onError(item->request, error);
                     }
