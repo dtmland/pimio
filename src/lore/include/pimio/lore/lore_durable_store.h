@@ -99,6 +99,7 @@ public:
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;
     bool discardStaged(core::Error *error) override;
     bool hasStagedChanges() const override;
+    bool remove(const core::MediaId &id, core::Error *error) override;
     std::optional<core::MediaRecord> load(const core::MediaId &id,
                                           core::Error *error) const override;
     QList<core::MediaId> listIds(core::Error *error) const override;

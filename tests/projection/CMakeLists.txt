@@ -34,3 +34,29 @@ target_link_libraries(tst_projection_rebuild PRIVATE
 )
 
 add_test(NAME projection.rebuild COMMAND tst_projection_rebuild)
+
+qt_add_executable(tst_projection_jobs
+    tst_projection_jobs.cpp
+)
+
+target_link_libraries(tst_projection_jobs PRIVATE
+    pimio::projection
+    pimio::test_support
+    Qt6::Sql
+    Qt6::Test
+)
+
+add_test(NAME projection.jobs COMMAND tst_projection_jobs)
+
+qt_add_executable(tst_projection_metadata
+    tst_projection_metadata.cpp
+)
+
+target_link_libraries(tst_projection_metadata PRIVATE
+    pimio::projection
+    pimio::test_support
+    Qt6::Sql
+    Qt6::Test
+)
+
+add_test(NAME projection.metadata COMMAND tst_projection_metadata)

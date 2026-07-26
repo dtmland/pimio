@@ -4,6 +4,7 @@
 #include "pimio/core/durable_store.h"
 
 #include <QHash>
+#include <QSet>
 
 namespace pimio::testing {
 
@@ -34,6 +35,7 @@ public:
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;
     bool discardStaged(core::Error *error) override;
     bool hasStagedChanges() const override;
+    bool remove(const core::MediaId &id, core::Error *error) override;
     std::optional<core::MediaRecord> load(const core::MediaId &id,
                                           core::Error *error) const override;
     QList<core::MediaId> listIds(core::Error *error) const override;
@@ -49,6 +51,7 @@ private:
 
     QHash<QString, core::MediaRecord> m_committed;
     QHash<QString, core::MediaRecord> m_staged;
+    QSet<QString> m_stagedRemovals;
     QList<core::Checkpoint> m_history;
     quint64 m_stateCounter = 0;
 };

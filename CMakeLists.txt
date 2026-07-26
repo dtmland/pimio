@@ -66,6 +66,7 @@ if(PIMIO_LORE_FOUND)
     add_subdirectory(src/lore)
 endif()
 add_subdirectory(src/projection)
+add_subdirectory(src/scan)
 add_subdirectory(src/app)
 
 if(PIMIO_BUILD_TESTS)

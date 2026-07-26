@@ -64,6 +64,61 @@ const QList<Migration> &projectionMigrations()
                 QStringLiteral("CREATE INDEX media_tag_tag ON media_tag(tag)"),
             },
         },
+        Migration{
+            2,
+            QStringLiteral("full-text-search"),
+            QStringList{
+                // FTS5 virtual table for caption and file-name text search.
+                // The unicode61 tokenizer handles accented characters and CJK
+                // decomposition. id is UNINDEXED so it is stored but not
+                // tokenised; callers join on it to retrieve the media id.
+                QStringLiteral(R"(
+                    CREATE VIRTUAL TABLE media_fts USING fts5(
+                        id     UNINDEXED,
+                        caption,
+                        file_name,
+                        tokenize = 'unicode61'
+                    )
+                )"),
+            },
+        },
+    };
+    return migrations;
+}
+
+} // namespace pimio::projection
+
+// ---- Job queue schema -------------------------------------------------------
+
+namespace pimio::projection {
+
+const QList<Migration> &jobQueueMigrations()
+{
+    static const QList<Migration> migrations{
+        Migration{
+            1,
+            QStringLiteral("create-job-table"),
+            QStringList{
+                QStringLiteral(R"(
+                    CREATE TABLE job (
+                        id             TEXT    PRIMARY KEY NOT NULL,
+                        kind           TEXT    NOT NULL DEFAULT 'unknown',
+                        priority       INTEGER NOT NULL DEFAULT 2,
+                        state          TEXT    NOT NULL DEFAULT 'pending',
+                        coalescing_key TEXT    NOT NULL DEFAULT '',
+                        payload        TEXT    NOT NULL DEFAULT '{}',
+                        attempts       INTEGER NOT NULL DEFAULT 0,
+                        max_attempts   INTEGER NOT NULL DEFAULT 3,
+                        created_at_ms  INTEGER,
+                        not_before_ms  INTEGER,
+                        last_error     TEXT    NOT NULL DEFAULT '{}'
+                    )
+                )"),
+                QStringLiteral(
+                    "CREATE INDEX job_claimable ON job(priority ASC, created_at_ms ASC, id ASC)"
+                    " WHERE state = 'pending'"),
+            },
+        },
     };
     return migrations;
 }

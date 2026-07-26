@@ -1,6 +1,10 @@
 add_library(pimio_projection STATIC
+    include/pimio/projection/job_dispatcher.h
+    include/pimio/projection/job_queue.h
     include/pimio/projection/migration.h
     include/pimio/projection/projection_database.h
+    src/job_dispatcher.cpp
+    src/job_queue.cpp
     src/migration.cpp
     src/projection_database.cpp
     src/projection_schema.cpp

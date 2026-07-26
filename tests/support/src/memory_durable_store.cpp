@@ -79,7 +79,7 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
         setError(error, code, QStringLiteral("The commit failed."));
         return std::nullopt;
     }
-    if (m_staged.isEmpty()) {
+    if (m_staged.isEmpty() && m_stagedRemovals.isEmpty()) {
         setError(error, core::ErrorCode::Conflict,
                  QStringLiteral("There are no staged changes to commit."));
         return std::nullopt;
@@ -89,6 +89,11 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
         m_committed.insert(it.key(), it.value());
     }
     m_staged.clear();
+
+    for (const QString &id : std::as_const(m_stagedRemovals)) {
+        m_committed.remove(id);
+    }
+    m_stagedRemovals.clear();
 
     core::Checkpoint checkpoint;
     checkpoint.id = QStringLiteral("checkpoint-%1").arg(m_history.size() + 1);
@@ -103,12 +108,26 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
 bool MemoryDurableStore::discardStaged(core::Error *)
 {
     m_staged.clear();
+    m_stagedRemovals.clear();
     return true;
 }
 
 bool MemoryDurableStore::hasStagedChanges() const
 {
-    return !m_staged.isEmpty();
+    return !m_staged.isEmpty() || !m_stagedRemovals.isEmpty();
+}
+
+bool MemoryDurableStore::remove(const core::MediaId &id, core::Error *error)
+{
+    if (!m_available) {
+        setError(error, core::ErrorCode::StorageUnavailable,
+                 QStringLiteral("The durable store is unavailable."));
+        return false;
+    }
+    // Removing a staged update supersedes it.
+    m_staged.remove(id.value());
+    m_stagedRemovals.insert(id.value());
+    return true;
 }
 
 std::optional<core::MediaRecord> MemoryDurableStore::load(const core::MediaId &id,

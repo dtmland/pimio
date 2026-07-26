@@ -90,6 +90,26 @@ public:
     /// total even when timestamps collide.
     QList<core::MediaId> idsByCaptureTime(core::Error *error) const;
 
+    /// Paginated capture-time query. \a offset is the number of records to
+    /// skip; \a limit is the maximum number to return. \a limit < 0 returns
+    /// all remaining records from \a offset.
+    QList<core::MediaId> idsByCaptureTime(int offset, int limit, core::Error *error) const;
+
+    /// Ids whose kind matches \a kind, ordered chronologically.
+    QList<core::MediaId> idsWithKind(core::MediaKind kind, core::Error *error) const;
+
+    /// Ids with rating >= \a minRating, ordered chronologically.
+    QList<core::MediaId> idsWithMinimumRating(int minRating, core::Error *error) const;
+
+    /// Full-text search over caption and file name. Results are returned in
+    /// relevance order (best match first). An empty query returns an empty list.
+    ///
+    /// The text is treated as literal terms, never as FTS5 syntax, so any
+    /// character the user can type is searchable rather than an error. Terms
+    /// match on prefix and all of them must match, so "gold gat" finds a
+    /// "Golden Gate" caption and a leading substring finds an unbroken CJK run.
+    QList<core::MediaId> searchText(const QString &query, core::Error *error) const;
+
 private:
     class Private;
     std::unique_ptr<Private> d;

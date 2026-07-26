@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QRegularExpression>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -18,6 +19,7 @@ using core::DurableStore;
 using core::Error;
 using core::ErrorCode;
 using core::MediaId;
+using core::MediaKind;
 using core::MediaRecord;
 
 namespace {
@@ -29,6 +31,39 @@ void setError(Error *error, ErrorCode code, const QString &message)
     if (error != nullptr) {
         *error = Error(code, message);
     }
+}
+
+/// Turns what the user typed into an FTS5 MATCH expression.
+///
+/// The text is never handed to FTS5 as-is. FTS5 reads its own operators in a
+/// bare string, so an ordinary search such as "foo(bar", "AND" or "gate:sun"
+/// is a syntax error rather than a search, and the user sees a failure for
+/// text they were entitled to type. Each whitespace-separated term is instead
+/// wrapped in a quoted phrase, which has no operators inside it, so any
+/// character is searchable.
+///
+/// Each phrase also carries a trailing \c * . The unicode61 tokenizer breaks
+/// on character category, not on meaning, so an unbroken CJK run like
+/// "東京タワー" is a single token: without the prefix operator, searching
+/// "東京" would find nothing. The same operator gives ASCII the search-as-you-
+/// type behaviour a search box is expected to have.
+///
+/// Returns an empty string when there is nothing to search for, which the
+/// caller reports as an empty result rather than as an error.
+QString ftsMatchExpression(const QString &query)
+{
+    const QStringList terms = query.split(QRegularExpression(QStringLiteral("\\s+")),
+                                          Qt::SkipEmptyParts);
+    QStringList phrases;
+    phrases.reserve(terms.size());
+    for (const QString &term : terms) {
+        // A literal double quote is escaped by doubling it, so the phrase
+        // cannot be closed early by anything the user typed.
+        QString escaped = term;
+        escaped.replace(QLatin1Char('"'), QLatin1String("\"\""));
+        phrases.append(QLatin1Char('"') + escaped + QLatin1String("\"*"));
+    }
+    return phrases.join(QLatin1Char(' '));
 }
 
 } // namespace
@@ -390,6 +425,24 @@ bool ProjectionDatabase::Private::insertRecord(QSqlDatabase &db, const MediaReco
             return false;
         }
     }
+
+    // Populate the full-text index.
+    QSqlQuery ftsQuery(db);
+    if (!prepared(ftsQuery,
+                  QStringLiteral("INSERT INTO media_fts(id, caption, file_name) VALUES (?, ?, ?)"),
+                  error)) {
+        return false;
+    }
+    ftsQuery.addBindValue(record.id.value());
+    ftsQuery.addBindValue(metadata.caption);
+    ftsQuery.addBindValue(metadata.fileName);
+    if (!ftsQuery.exec()) {
+        setError(error, ErrorCode::Internal,
+                 QStringLiteral("Could not index the text of record %1: %2")
+                     .arg(record.id.value(), ftsQuery.lastError().text()));
+        return false;
+    }
+
     return true;
 }
 
@@ -445,7 +498,8 @@ bool ProjectionDatabase::rebuildFrom(const DurableStore &store, Error *error)
 
     QSqlQuery clear(db);
     if (!clear.exec(QStringLiteral("DELETE FROM media_tag"))
-        || !clear.exec(QStringLiteral("DELETE FROM media"))) {
+        || !clear.exec(QStringLiteral("DELETE FROM media"))
+        || !clear.exec(QStringLiteral("DELETE FROM media_fts"))) {
         return fail(error, ErrorCode::Internal,
                     QStringLiteral("Could not clear the projection: %1")
                         .arg(clear.lastError().text()));
@@ -567,6 +621,40 @@ QList<MediaId> ProjectionDatabase::idsByCaptureTime(Error *error) const
 {
     return d->idsFrom(
         QStringLiteral("SELECT id FROM media ORDER BY capture_sort_key, id"), {}, error);
+}
+
+QList<MediaId> ProjectionDatabase::idsByCaptureTime(int offset, int limit, Error *error) const
+{
+    const int sqlLimit = limit < 0 ? -1 : limit;
+    return d->idsFrom(
+        QStringLiteral("SELECT id FROM media ORDER BY capture_sort_key, id LIMIT ? OFFSET ?"),
+        {sqlLimit, offset}, error);
+}
+
+QList<MediaId> ProjectionDatabase::idsWithKind(MediaKind kind, Error *error) const
+{
+    return d->idsFrom(
+        QStringLiteral("SELECT id FROM media WHERE kind = ? ORDER BY capture_sort_key, id"),
+        {toString(kind)}, error);
+}
+
+QList<MediaId> ProjectionDatabase::idsWithMinimumRating(int minRating, Error *error) const
+{
+    return d->idsFrom(
+        QStringLiteral(
+            "SELECT id FROM media WHERE rating >= ? ORDER BY capture_sort_key, id"),
+        {minRating}, error);
+}
+
+QList<MediaId> ProjectionDatabase::searchText(const QString &query, Error *error) const
+{
+    const QString expression = ftsMatchExpression(query);
+    if (expression.isEmpty()) {
+        return {};
+    }
+    return d->idsFrom(QStringLiteral("SELECT id FROM media_fts WHERE media_fts MATCH ? "
+                                     "ORDER BY rank"),
+                      {expression}, error);
 }
 
 std::optional<MediaRecord> ProjectionDatabase::load(const MediaId &id, Error *error) const
