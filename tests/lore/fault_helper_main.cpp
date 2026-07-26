@@ -140,6 +140,18 @@ int main(int argc, char **argv)
         std::_Exit(0);
     }
 
+    if (mode == QLatin1String("inspect")) {
+        const auto history = store.history(-1, nullptr);
+        const auto ids = store.listIds(nullptr);
+        out << QStringLiteral("inspect revisions=%1 records=%2 repaired=%3\n")
+                   .arg(history.size())
+                   .arg(ids.size())
+                   .arg(store.repairedInterruptedWriteOnOpen() ? 1 : 0);
+        out.flush();
+        store.close();
+        return 0;
+    }
+
     if (mode == QLatin1String("commit")) {
         const auto checkpoint = store.commit(QStringLiteral("Helper commit"), &error);
         if (!checkpoint) {

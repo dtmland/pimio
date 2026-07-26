@@ -192,6 +192,12 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
             ++interrupted;
         }
 
+        const QString snapshot = QStringLiteral("/tmp/snap-%1-%2")
+                                     .arg(QCoreApplication::applicationPid())
+                                     .arg(delayMs);
+        QDir(snapshot).removeRecursively();
+        QProcess::execute(QStringLiteral("cp"), {QStringLiteral("-a"), storePath, snapshot});
+
         // Known defect in the pinned LORE release: a kill inside its local
         // store can leave an empty pending marker that blocks every later
         // open. open() clears it and says so; no committed data is lost.
@@ -212,12 +218,17 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
                                      .arg(delayMs)
                                      .arg(history.size())
                                      .arg(ids.size());
-        if (history.size() == 1) {
-            QVERIFY2(ids.size() == 1, qPrintable(observed));
+        const bool consistent = (history.size() == 1 && ids.size() == 1)
+                                || (history.size() == 2 && ids.size() == 26);
+        if (consistent) {
+            QDir(snapshot).removeRecursively();
         } else {
-            QVERIFY2(history.size() == 2, qPrintable(observed));
-            QVERIFY2(ids.size() == 26, qPrintable(observed));
+            QProcess::execute(QStringLiteral("cp"),
+                              {QStringLiteral("-a"), storePath, snapshot + QStringLiteral("-post")});
+            qWarning("PIMIOSNAP %s repaired=%d kept %s", qPrintable(observed),
+                     recovered.repairedInterruptedWriteOnOpen() ? 1 : 0, qPrintable(snapshot));
         }
+        QVERIFY2(consistent, qPrintable(observed));
 
         // Whatever happened, every listed record is loadable and the
         // repository still accepts new work.

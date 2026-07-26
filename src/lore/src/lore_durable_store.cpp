@@ -22,6 +22,18 @@
 #include <memory>
 
 namespace pimio::lore {
+
+namespace {
+int pimioDebugCount(const QString &path)
+{
+    int n = 0;
+    QDirIterator it(path, QStringList{QStringLiteral("*.json")}, QDir::Files | QDir::Hidden,
+                    QDirIterator::Subdirectories);
+    while (it.hasNext()) { it.next(); ++n; }
+    return n;
+}
+} // namespace
+
 namespace {
 
 using core::Error;
@@ -454,6 +466,12 @@ bool LoreDurableStore::Private::restoreCheckoutToCommittedState(Error *error)
     resetArgs.purge = 1;
     api.fileReset(&args, &resetArgs, reset.config());
 
+    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
+        qWarning("PIMIODBG restore unstage.status=%d msg=%s reset.status=%d msg=%s",
+                 unstage.status, qPrintable(unstage.message), reset.status,
+                 qPrintable(reset.message));
+    }
+
     if (reset.status != 0) {
         setError(error, mapFailure(reset),
                  QStringLiteral("Could not restore the checkout: %1").arg(reset.message),
@@ -482,6 +500,9 @@ bool LoreDurableStore::Private::recoverInterruptedCommit(Error *error)
         return false;
     }
     repairedOnOpen = true;
+    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
+        qWarning("PIMIODBG rolled back .lore from backup");
+    }
     return true;
 }
 
@@ -645,6 +666,10 @@ bool LoreDurableStore::open(Error *error)
         return false;
     }
 
+    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
+        qWarning("PIMIODBG open after-restore records=%d", pimioDebugCount(d->recordsPath()));
+    }
+
     return true;
 }
 
@@ -747,6 +772,7 @@ bool LoreDurableStore::hasStagedChanges() const
     return iterator.hasNext();
 }
 
+
 std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message, Error *error)
 {
     if (!d->available()) {
@@ -813,6 +839,10 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         }
     }
 
+    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
+        qWarning("PIMIODBG commit after-copy records=%d", pimioDebugCount(d->recordsPath()));
+    }
+
     LoreApi &api = LoreApi::instance();
     const lore_global_args_t args = d->globals();
     const QByteArray recordsPath = nativePath(records);
@@ -854,8 +884,35 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         return std::nullopt;
     }
 
+    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
+        qWarning("PIMIODBG commit after-lore-commit records=%d", pimioDebugCount(d->recordsPath()));
+    }
+
+    // LORE reports a revision as committed before it has written it out, so a
+    // process that dies between here and close() loses a save it already
+    // reported as durable. Flushing here is what makes the checkpoint this
+    // function returns mean what it says.
+    Operation flushOperation;
+    lore_repository_flush_args_t flushArgs;
+    std::memset(&flushArgs, 0, sizeof(flushArgs));
+    api.repositoryFlush(&args, &flushArgs, flushOperation.config());
+    if (flushOperation.status != 0) {
+        d->clearCommitRecovery();
+        setError(error, mapFailure(flushOperation),
+                 QStringLiteral("The commit could not be made durable: %1")
+                     .arg(flushOperation.message),
+                 failureContext(flushOperation, QStringLiteral("repository_flush")));
+        return std::nullopt;
+    }
+
     core::Checkpoint checkpoint = commitOperation.checkpoints.constFirst();
     checkpoint.message = message;
+
+    // The revision is durable, so the rollback path must be retired before the
+    // staging area is touched. A kill between these two steps would otherwise
+    // roll the commit back while its staged inputs were already half deleted,
+    // which is the one outcome the store promises cannot happen.
+    d->clearCommitRecovery();
 
     if (!removeDirectoryContents(d->stagingPath())) {
         // The commit itself succeeded; report the residue rather than claiming
@@ -864,7 +921,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
                  QStringLiteral("The commit succeeded but the staging area could not be cleared."));
     }
 
-    d->clearCommitRecovery();
     return checkpoint;
 }
 
