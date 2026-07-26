@@ -102,7 +102,13 @@ jobs:
           for path in deploy/lib deploy/plugins deploy/qml; do
             [ -e "$path" ] && runtime_scan_paths+=("$path")
           done
-          mapfile -d '' -t runtime_inputs < <(find "${runtime_scan_paths[@]}" -type f \( -executable -o -name '*.so*' \) -print0)
+          mapfile -d '' -t runtime_candidates < <(find "${runtime_scan_paths[@]}" -type f \( -executable -o -name '*.so*' \) -print0)
+          runtime_inputs=()
+          for candidate in "${runtime_candidates[@]}"; do
+            if file -b "$candidate" | grep -q '^ELF '; then
+              runtime_inputs+=("$candidate")
+            fi
+          done
           mapfile -t runtime_libs < <(
             {
               for input in "${runtime_inputs[@]}"; do
