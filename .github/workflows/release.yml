@@ -98,7 +98,11 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p deploy/lib
-          mapfile -d '' -t runtime_inputs < <(find deploy -type f \( -perm -111 -o -name '*.so*' \) -print0)
+          runtime_scan_paths=(deploy/bin)
+          for path in deploy/lib deploy/plugins deploy/qml; do
+            [ -e "$path" ] && runtime_scan_paths+=("$path")
+          done
+          mapfile -d '' -t runtime_inputs < <(find "${runtime_scan_paths[@]}" -type f \( -perm -111 -o -name '*.so*' \) -print0)
           mapfile -t runtime_libs < <(
             {
               if [ "${#runtime_inputs[@]}" -gt 0 ]; then
@@ -148,6 +152,7 @@ jobs:
         run: |
           Push-Location deploy
           $archivePaths = @('bin/*')
+          # qt_generate_deploy_app_script installs Windows runtime directories here when present.
           $archivePaths += @('lib', 'plugins', 'qml', 'translations') | Where-Object { Test-Path $_ }
           Compress-Archive -Path $archivePaths -DestinationPath ../pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
           Pop-Location
