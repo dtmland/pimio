@@ -20,9 +20,7 @@ jobs:
           - name: Linux
             runner: ubuntu-24.04
             archive: tar.gz
-            # qtwayland ships the Wayland platform plugin. Without it a Wayland
-            # session has no plugin to load and falls back to xcb via XWayland.
-            qt_modules: qtwayland
+            qt_modules: ''
           - name: Windows
             runner: windows-2025
             archive: zip
