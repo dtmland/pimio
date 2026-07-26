@@ -4,6 +4,8 @@ add_subdirectory(fixtures)
 add_subdirectory(metadata)
 add_subdirectory(projection)
 add_subdirectory(scan)
+add_subdirectory(thumbnail)
+add_subdirectory(browser)
 add_subdirectory(app)
 
 if(PIMIO_LORE_FOUND)

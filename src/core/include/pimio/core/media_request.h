@@ -31,6 +31,11 @@ struct MediaRequest
     ContentFingerprint fingerprint;
     MediaRequestKind kind = MediaRequestKind::Thumbnail;
 
+    /// Absolute filesystem path to the source file. Required by renderers
+    /// that read the file directly. Not part of the cache key: identical
+    /// content at different paths shares the cache entry.
+    QString absolutePath;
+
     /// Maximum size in device-independent pixels. The result may be smaller.
     QSize targetSize;
 

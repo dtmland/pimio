@@ -16,7 +16,7 @@ Update this file in the same change that moves an increment forward.
 | 3 | SQLite projection, migrations, and jobs | Complete |
 | 4 | Incremental scan and media identity | Complete |
 | 5 | Metadata read, query, and search | Complete |
-| 6 | Thumbnails, models, and basic browser | Not started |
+| 6 | Thumbnails, models, and basic browser | In progress |
 | 7 | Watching and reconciliation | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
@@ -109,3 +109,42 @@ Update this file in the same change that moves an increment forward.
   presence, malformed values, unsupported media, scan integration) and
   `projection.metadata` (ordering, pagination, filters, Unicode and
   operator-character search, conflicts, and missing timestamps).
+
+## Increment 6 — Thumbnails, Models, and Basic Browser
+
+**Status: In progress**
+
+### Deliverables
+
+- `pimio::thumbnail::ThumbnailDiskCache` — persistent fingerprint-keyed JPEG
+  cache with LRU trim and atomic writes (`QSaveFile`).
+- `pimio::thumbnail::ThumbnailRenderer` — abstract renderer interface.
+- `pimio::thumbnail::ImageRenderer` — Qt `QImageReader`-based renderer with
+  EXIF rotation, configurable target size, and JPEG output.
+- `pimio::thumbnail::ThumbnailService` — `core::MediaRequestService`
+  implementation backed by `QThreadPool`; per-request cancel flags;
+  callbacks delivered via `QMetaObject::invokeMethod(Qt::QueuedConnection)`.
+- `pimio::browser::MediaLibraryModel` — `QAbstractListModel` backed by
+  `ProjectionDatabase`; lazy thumbnail loading; `setVisibleRange` with
+  configurable prefetch margin; `ThumbnailStatus` role per row.
+- Basic GridView QML UI in `src/app/qml/Main.qml`: toolbar, tile delegates
+  with placeholder/thumbnail/video-badge states, empty-library splash.
+- `docs/plan/manual-testing.md` — manual test plan for cases that require a
+  real display server or hardware.
+
+### Automated evidence
+
+- `thumbnail.cache` (11 subtests) — round-trip, corrupt-entry detection,
+  fingerprint invalidation, LRU trim by mtime, `totalSize`.
+- `thumbnail.service` (6 subtests) — cache hit/miss, delivery, cancellation,
+  `cancelAllExcept`, error delivery, priority ordering.
+- `browser.model` (16 subtests including `QAbstractItemModelTester`) — row
+  count, roles (MediaId, absolutePath, captureTimeString, MediaKind,
+  ThumbnailStatus), visible-range request/cancel lifecycle, result/error
+  callbacks, reload.
+
+### Manual testing
+
+See `docs/plan/manual-testing.md` items MT-6.1 through MT-6.6 for QML
+rendering, visible-window correctness, empty-library state, cache repair,
+large-library performance, and GPU acceleration.
