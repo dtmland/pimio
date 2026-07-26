@@ -89,9 +89,10 @@ message and timestamp from it.
 - Globals are fixed to `offline`, `local`, and `sync_data`. Nothing contacts a
   server; a repository URL is required syntactically at creation and is never
   resolved.
-- `sync_data` is kept even though it does not prevent the defect below: it is
+- `sync_data` is kept even though it does not prevent the defects below: it is
   what makes committed content durable against host power loss, which is a
-  different failure from a process kill.
+  different failure from a process kill. It governs how LORE writes, not when
+  it decides to write, so `commit()` also flushes explicitly.
 - LORE resolves relative paths against the process working directory, so the
   adapter always passes absolute native paths.
 - The `lore` CLI is test-only. It is used to prove a pimio repository is
@@ -117,18 +118,23 @@ Tested by `lore.faults`, on every CI platform.
 | --- | --- |
 | Process killed after records reach the checkout, before commit | Checkout is restored on next open; staged work is intact and re-committable |
 | Process killed during commit | Commit either landed whole or not at all; never partially |
+| Process killed immediately after a successful commit | The reported revision is still there: `commit()` flushes before it returns |
 | Checkout deleted entirely | Rebuilt from the committed revision, no loss |
 | Record file corrupted in the checkout | Detected, and repaired from the committed revision |
 | Checkout made read-only | Commit fails visibly, staged work is preserved |
 | Second process writing concurrently | Refused by the writer lock before reaching LORE |
 
-Two recovery rules follow, and both are implemented in `open()`:
+Three rules follow. The first is on the write path, the other two are
+implemented in `open()`:
 
-1. **Always restore the checkout.** An interrupted commit leaves untracked
+1. **A commit is not finished until it is flushed.** See the defect below.
+   `commit()` calls `repository flush` before it reports a checkpoint, and only
+   then retires the rollback marker and clears the staging area.
+2. **Always restore the checkout.** An interrupted commit leaves untracked
    files, and LORE's dirty check does not see untracked files, so a cheap
    status cannot be trusted to decide whether recovery is needed. The full
    restore is paid once per open.
-2. **Clear interrupted-write residue.** See the defect below.
+3. **Clear interrupted-write residue.** See the defect below.
 
 Disk-full is not simulated: filling a real volume portably is not something a
 test suite should do to a contributor's machine. The write path uses `QSaveFile`
@@ -155,6 +161,41 @@ holding the writer lock — that lock is what proves a marker is leftover rather
 than a write in flight — and reports it through
 `repairedInterruptedWriteOnOpen()` so a silent recovery never looks like a
 clean start.
+
+### A committed revision is not durable until the repository is flushed
+
+`revision commit` reports a revision as committed before LORE has written it
+out. A process that died between that report and `repository flush` — which
+pimio originally issued only from `close()` — lost the revision entirely in
+about 20% of trials, while the record files it had already copied into the
+checkout stayed on disk. The application had told the user the save was safe,
+the staging area had been cleared, and the work was gone.
+
+The same window explains an intermittent `lore.faults` failure on Linux and
+macOS. A kill shortly after `commit()` returned left LORE's revision log and
+its index partially written and disagreeing with each other, and the two
+outcomes seen in CI are the two directions of that disagreement:
+
+* `history()` reported two revisions while `listIds()` reported one record —
+  the revision log had the commit, the index did not, so the checkout restore
+  purged the new records as untracked; and
+* `history()` reported one revision while `listIds()` reported 26 records — the
+  index had the files, the revision log did not.
+
+`commit()` now flushes before it returns, so the checkpoint it hands back names
+a revision that is on disk, and the marker-and-backup rollback is retired only
+after that flush. Everything the commit touches — the LORE repository, the
+checkout, and the staging area — is therefore either fully before or fully
+after the commit at every instant a process can die.
+`killedProcessAfterCommitKeepsTheRevisionItReported` is the regression test; it
+failed on every attempt before the flush was added.
+
+The ordering of the last two steps was wrong for the same reason. The staging
+area used to be cleared before the rollback marker was removed, so a kill in
+between rolled a landed commit back while its staged inputs were already partly
+deleted — a batch that was neither applied nor recoverable. Retiring the
+rollback first makes the worst case a repeat of work that is already committed,
+which is harmless.
 
 ### A kill can advance the branch past a non-durable revision
 
@@ -216,14 +257,17 @@ batch, and the job queue in Increment 3b has to be designed with that in mind.
 1. **Single-writer enforcement stays.** Removing the lock re-exposes the
    concurrent-writer corruption. Any future multi-process feature must
    coordinate above LORE, not inside it.
-2. **The interrupted-write repair stays visible.** It may be automatic, but it
+2. **`commit()` stays a durability boundary.** It must flush before it reports
+   a checkpoint and before it clears staged work. A caller that gets a
+   `Checkpoint` is entitled to assume a power cut changes nothing.
+3. **The interrupted-write repair stays visible.** It may be automatic, but it
    must be reported, and it must never widen beyond removing empty markers.
-3. **The branch-advance defect must be closed before v1 ships.** Either
+4. **The branch-advance defect must be closed before v1 ships.** Either
    upstream fixes it, or pimio gains a durable-store rebuild path that reads
    the surviving records and rewrites them into a fresh repository, losing
    revision history but no user data. This is a release blocker, not a
    nice-to-have, and it needs its own increment.
-4. **The pin moves deliberately.** LORE is pre-1.0 and its C API is still
+5. **The pin moves deliberately.** LORE is pre-1.0 and its C API is still
    gaining verbs. A version bump re-runs `lore.faults` on all three platforms
    before it lands.
 

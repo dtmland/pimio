@@ -13,6 +13,10 @@
 //   crash-during-commit   stage records and abort from a watchdog thread while
 //                         LORE is committing. The delay selects which part of
 //                         the commit is interrupted.
+//   commit-then-die       stage and commit records, print the checkpoint the
+//                         commit reported, then die without closing the store.
+//                         A checkpoint that does not survive this was never
+//                         durable when it was reported.
 //   commit                stage and commit records, reporting success on
 //                         stdout. Used as a concurrent second writer.
 
@@ -140,16 +144,17 @@ int main(int argc, char **argv)
         std::_Exit(0);
     }
 
-    if (mode == QLatin1String("inspect")) {
-        const auto history = store.history(-1, nullptr);
-        const auto ids = store.listIds(nullptr);
-        out << QStringLiteral("inspect revisions=%1 records=%2 repaired=%3\n")
-                   .arg(history.size())
-                   .arg(ids.size())
-                   .arg(store.repairedInterruptedWriteOnOpen() ? 1 : 0);
+    if (mode == QLatin1String("commit-then-die")) {
+        const auto checkpoint = store.commit(QStringLiteral("Commit then die"), &error);
+        if (!checkpoint) {
+            out << QStringLiteral("commit failed: %1\n").arg(error.message());
+            return 6;
+        }
+        out << QStringLiteral("committed %1\n").arg(checkpoint->id);
         out.flush();
-        store.close();
-        return 0;
+        // No close(): the store must already be durable at the moment commit()
+        // reported the checkpoint above.
+        std::_Exit(9);
     }
 
     if (mode == QLatin1String("commit")) {

@@ -24,17 +24,6 @@
 namespace pimio::lore {
 
 namespace {
-int pimioDebugCount(const QString &path)
-{
-    int n = 0;
-    QDirIterator it(path, QStringList{QStringLiteral("*.json")}, QDir::Files | QDir::Hidden,
-                    QDirIterator::Subdirectories);
-    while (it.hasNext()) { it.next(); ++n; }
-    return n;
-}
-} // namespace
-
-namespace {
 
 using core::Error;
 using core::ErrorCode;
@@ -466,12 +455,6 @@ bool LoreDurableStore::Private::restoreCheckoutToCommittedState(Error *error)
     resetArgs.purge = 1;
     api.fileReset(&args, &resetArgs, reset.config());
 
-    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
-        qWarning("PIMIODBG restore unstage.status=%d msg=%s reset.status=%d msg=%s",
-                 unstage.status, qPrintable(unstage.message), reset.status,
-                 qPrintable(reset.message));
-    }
-
     if (reset.status != 0) {
         setError(error, mapFailure(reset),
                  QStringLiteral("Could not restore the checkout: %1").arg(reset.message),
@@ -500,9 +483,6 @@ bool LoreDurableStore::Private::recoverInterruptedCommit(Error *error)
         return false;
     }
     repairedOnOpen = true;
-    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
-        qWarning("PIMIODBG rolled back .lore from backup");
-    }
     return true;
 }
 
@@ -664,10 +644,6 @@ bool LoreDurableStore::open(Error *error)
         d->opened = false;
         d->writerLock.reset();
         return false;
-    }
-
-    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
-        qWarning("PIMIODBG open after-restore records=%d", pimioDebugCount(d->recordsPath()));
     }
 
     return true;
@@ -839,10 +815,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         }
     }
 
-    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
-        qWarning("PIMIODBG commit after-copy records=%d", pimioDebugCount(d->recordsPath()));
-    }
-
     LoreApi &api = LoreApi::instance();
     const lore_global_args_t args = d->globals();
     const QByteArray recordsPath = nativePath(records);
@@ -884,10 +856,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         return std::nullopt;
     }
 
-    if (qEnvironmentVariableIsSet("PIMIO_LORE_DEBUG")) {
-        qWarning("PIMIODBG commit after-lore-commit records=%d", pimioDebugCount(d->recordsPath()));
-    }
-
     // LORE reports a revision as committed before it has written it out, so a
     // process that dies between here and close() loses a save it already
     // reported as durable. Flushing here is what makes the checkpoint this
@@ -897,7 +865,10 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     std::memset(&flushArgs, 0, sizeof(flushArgs));
     api.repositoryFlush(&args, &flushArgs, flushOperation.config());
     if (flushOperation.status != 0) {
-        d->clearCommitRecovery();
+        // The backup and the in-progress marker are deliberately left in
+        // place: the revision is not durable, so the next open must roll the
+        // repository back rather than trust whatever reached the disk.
+        d->restoreCheckoutToCommittedState(nullptr);
         setError(error, mapFailure(flushOperation),
                  QStringLiteral("The commit could not be made durable: %1")
                      .arg(flushOperation.message),
