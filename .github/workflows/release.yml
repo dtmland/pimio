@@ -118,15 +118,10 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $archiveDir = Join-Path $env:RUNNER_TEMP 'pimio-archive-staging'
-          New-Item -ItemType Directory -Force -Path $archiveDir
-          Copy-Item -Path deploy/bin -Destination $archiveDir -Recurse -Force
-          Get-ChildItem "$archiveDir/bin" | ForEach-Object { Move-Item -Path $_.FullName -Destination $archiveDir -Force }
-          Remove-Item -Path "$archiveDir/bin" -Recurse -Force
-          # Copy any additional deployment entries without re-copying bin.
-          Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { Copy-Item -Path $_.FullName -Destination $archiveDir -Recurse -Force }
-          Compress-Archive -Path "$archiveDir/*" -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
-          Remove-Item -Path $archiveDir -Recurse -Force
+          $archivePaths = @()
+          $archivePaths += (Get-ChildItem deploy/bin | ForEach-Object { $_.FullName })
+          $archivePaths += (Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { $_.FullName })
+          Compress-Archive -Path $archivePaths -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
 
       - name: Upload binary archive artifact
         uses: actions/upload-artifact@v4
