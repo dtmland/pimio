@@ -124,6 +124,7 @@ jobs:
           # Copy any additional deployment entries without re-copying bin.
           Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { Copy-Item -Path $_.FullName -Destination $archiveDir -Recurse -Force }
           Compress-Archive -Path "$archiveDir/*" -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
+          Remove-Item -Path $archiveDir -Recurse -Force
 
       - name: Upload binary archive artifact
         uses: actions/upload-artifact@v4
