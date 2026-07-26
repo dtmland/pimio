@@ -11,3 +11,9 @@
 # are hidden on Unix but not on Windows, which would fail the "every file on disk
 # is listed" check on Windows only).
 tests/fixtures/data/** -text
+
+# Shell scripts shipped in the release archives must keep LF endings: a CRLF
+# shebang line makes the kernel report "bad interpreter". Windows batch files
+# are the mirror image and need CRLF.
+packaging/*.sh text eol=lf
+packaging/*.bat text eol=crlf

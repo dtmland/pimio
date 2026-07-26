@@ -41,6 +41,50 @@ release assets:
 - `pimio-<tag>-Windows-binaries.zip`
 - `pimio-<tag>-macOS-binaries.tar.gz`
 
+### Binary archive layout
+
+Each binary archive is self-contained and is meant to be extracted anywhere and
+run in place:
+
+```
+README.txt        how to run it, and what the platform still needs installed
+pimio             launcher (pimio.bat on Windows)
+pimio-doctor      diagnostic script (pimio-doctor.ps1 on Windows)
+bin/              the executable, qt.conf, and on Windows the Qt DLLs
+lib/              bundled Qt and system libraries (Linux)
+plugins/          Qt plugins, including plugins/platforms
+qml/              the QML modules the application imports
+translations/     Qt's own translations
+```
+
+macOS ships `pimio.app` in place of `bin/`, `lib/`, `plugins/`, and `qml/`;
+everything lives inside the bundle.
+
+Start the application through the launcher. It changes to its own directory
+first, so it works from any working directory, and on Linux it selects the
+Wayland or xcb platform plugin to match the session. Running the executable in
+`bin/` directly also works, but only from the extracted directory: Qt resolves
+its plugin paths through `bin/qt.conf`, whose `Prefix` is relative to the
+executable. Moving individual files out of the tree breaks that resolution.
+
+### Diagnosing a broken archive
+
+`pimio-doctor` collects one pasteable report — system and session details,
+archive layout, unresolved libraries, `qt.conf` and where it resolves to, the
+plugin inventory, and a `QT_DEBUG_PLUGINS=1` launch capture — then prints a
+short `LIKELY CAUSE` summary and writes `pimio-doctor-report.txt`. It exits
+non-zero when it finds a hard problem. Attach its report to bug reports about
+startup failures.
+
+The release workflow runs the same script against every freshly built archive
+on a clean runner that has never built pimio, then launches the application
+with `--self-check` under `QT_QPA_PLATFORM=offscreen`, so a broken archive
+fails the release instead of reaching users.
+
+The sources for all of this live in [packaging/](packaging/) and are installed
+by `cmake --install`, so a local install produces the same tree a release
+publishes.
+
 ## Documents
 
 All documentation lives under [docs/](docs/); planning documents live under

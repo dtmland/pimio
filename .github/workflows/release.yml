@@ -20,12 +20,17 @@ jobs:
           - name: Linux
             runner: ubuntu-24.04
             archive: tar.gz
+            # qtwayland ships the Wayland platform plugin. Without it a Wayland
+            # session has no plugin to load and falls back to xcb via XWayland.
+            qt_modules: qtwayland
           - name: Windows
             runner: windows-2025
             archive: zip
+            qt_modules: ''
           - name: macOS
             runner: macos-15
             archive: tar.gz
+            qt_modules: ''
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -48,6 +53,9 @@ jobs:
             libxcb-shape0 \
             libxcb-xinerama0 \
             libxcb-xkb1 \
+            libwayland-client0 \
+            libwayland-cursor0 \
+            libwayland-egl1 \
             ninja-build \
             patchelf   # needed by cmake --install to rewrite ELF RPATH for the Qt deployment
 
@@ -61,6 +69,7 @@ jobs:
           version: 6.8.3
           cache: true
           cache-key-prefix: qt-${{ matrix.runner }}-6.8.3
+          modules: ${{ matrix.qt_modules }}
           extra: --base https://download.qt.io
 
       - name: Cache LORE 0.8.5
@@ -129,7 +138,10 @@ jobs:
                   libxcb.so.1|libxcb-icccm.so.4|libxcb-image.so.0|libxcb-keysyms.so.1|\
                   libxcb-randr.so.0|libxcb-render-util.so.0|libxcb-render.so.0|libxcb-shape.so.0|\
                   libxcb-shm.so.0|libxcb-sync.so.1|libxcb-util.so.1|libxcb-xfixes.so.0|\
-                  libxcb-xkb.so.1|libxkbcommon.so.0|libxkbcommon-x11.so.0)
+                  libxcb-xkb.so.1|libxkbcommon.so.0|libxkbcommon-x11.so.0|\
+                  libxcb-cursor.so.0|libxcb-glx.so.0|libxcb-present.so.0|\
+                  libxcb-dri2.so.0|libxcb-dri3.so.0|libxcb-xinerama.so.0|\
+                  libwayland-client.so.0|libwayland-cursor.so.0|libwayland-egl.so.1)
                     printf '%s\n' "$lib"
                     ;;
                 esac
@@ -155,6 +167,77 @@ jobs:
             Where-Object { $_ -match '^library=' }) -replace '^library=', ''
           if ($lorePath) { Copy-Item $lorePath deploy/bin/ }
 
+      - name: Verify deployment layout (Linux)
+        if: matrix.name == 'Linux'
+        run: |
+          set -euo pipefail
+          status=0
+          for required in bin/pimio bin/qt.conf lib plugins/platforms/libqxcb.so \
+            qml/QtQuick pimio pimio-doctor README.txt; do
+            if [ -e "deploy/$required" ]; then
+              echo "ok      $required"
+            else
+              echo "MISSING $required"
+              status=1
+            fi
+          done
+          # Every bundled ELF must resolve entirely from the archive plus the
+          # base system. A "not found" here is the defect that reaches users as
+          # "Could not load the Qt platform plugin".
+          unresolved=$(
+            find deploy -type f \( -executable -o -name '*.so*' \) -print0 |
+              while IFS= read -r -d '' candidate; do
+                file -b "$candidate" | grep -q '^ELF ' || continue
+                ldd "$candidate" 2>/dev/null |
+                  grep 'not found' |
+                  sed "s|^|$candidate: |"
+              done
+          )
+          if [ -n "$unresolved" ]; then
+            echo "Unresolved shared libraries in the deployment:"
+            printf '%s\n' "$unresolved"
+            status=1
+          fi
+          exit "$status"
+
+      - name: Verify deployment layout (macOS)
+        if: matrix.name == 'macOS'
+        run: |
+          set -euo pipefail
+          status=0
+          for required in pimio.app/Contents/MacOS/pimio \
+            pimio.app/Contents/PlugIns/platforms \
+            pimio.app/Contents/Resources/qml/QtQuick \
+            pimio pimio-doctor README.txt; do
+            if [ -e "deploy/$required" ]; then
+              echo "ok      $required"
+            else
+              echo "MISSING $required"
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - name: Verify deployment layout (Windows)
+        if: matrix.name == 'Windows'
+        shell: pwsh
+        run: |
+          $status = 0
+          $required = @(
+            'bin/pimio.exe', 'bin/qt.conf', 'bin/Qt6Core.dll',
+            'plugins/platforms/qwindows.dll', 'qml/QtQuick',
+            'pimio.bat', 'pimio-doctor.ps1', 'README.txt'
+          )
+          foreach ($item in $required) {
+            if (Test-Path -LiteralPath (Join-Path 'deploy' $item)) {
+              Write-Host "ok      $item"
+            } else {
+              Write-Host "MISSING $item"
+              $status = 1
+            }
+          }
+          exit $status
+
       - name: Archive deployment (Linux and macOS)
         if: matrix.archive == 'tar.gz'
         run: >-
@@ -166,12 +249,37 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          Push-Location deploy
-          $archivePaths = @('bin/*')
-          # Include the standard Qt runtime directories when the deploy step creates them.
-          $archivePaths += @('./lib', './plugins', './qml', './translations') | Where-Object { Test-Path $_ }
-          Compress-Archive -Path $archivePaths -DestinationPath ../pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
-          Pop-Location
+          # Archive the top-level entries of deploy/, which preserves the bin/
+          # level. Globbing bin/* instead would hoist pimio.exe and qt.conf to
+          # the archive root while leaving plugins/ one level up, so qt.conf's
+          # relative Prefix would resolve outside the extracted tree and Qt
+          # would find no platform plugin.
+          Compress-Archive -Path 'deploy/*' `
+            -DestinationPath "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip"
+
+      - name: Verify archive contents (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead(
+            (Resolve-Path "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip").Path)
+          try {
+            $entries = $zip.Entries | ForEach-Object { $_.FullName -replace '\\', '/' }
+          } finally {
+            $zip.Dispose()
+          }
+          $status = 0
+          foreach ($item in @('bin/pimio.exe', 'bin/qt.conf',
+              'plugins/platforms/qwindows.dll', 'qml/QtQuick/')) {
+            if ($entries | Where-Object { $_ -eq $item -or $_.StartsWith($item) }) {
+              Write-Host "ok      $item"
+            } else {
+              Write-Host "MISSING $item"
+              $status = 1
+            }
+          }
+          exit $status
 
       - name: Upload binary archive artifact
         uses: actions/upload-artifact@v4
@@ -181,9 +289,72 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  verify-archives:
+    name: Verify archive (${{ matrix.name }})
+    needs: build-binaries
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            runner: ubuntu-24.04
+            archive: tar.gz
+          - name: Windows
+            runner: windows-2025
+            archive: zip
+          - name: macOS
+            runner: macos-15
+            archive: tar.gz
+    steps:
+      # No checkout and no Qt: this job proves the archive is self-contained on
+      # a machine that has never built pimio.
+      - name: Download binary archive
+        uses: actions/download-artifact@v5
+        with:
+          name: binary-archive-${{ matrix.name }}
+
+      - name: Install the Linux runtime packages the README asks users for
+        if: matrix.name == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgl1 libegl1 libxcb-cursor0 libxkbcommon-x11-0
+
+      - name: Extract, run pimio-doctor, and launch offscreen (Linux and macOS)
+        if: matrix.archive == 'tar.gz'
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -euo pipefail
+          # A nested, freshly named directory: the archive must not depend on
+          # where it was extracted or on the current working directory.
+          target="$(mktemp -d "$RUNNER_TEMP/extract-XXXXXXXX")/pimio-release"
+          mkdir -p "$target"
+          tar -xzf "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.tar.gz" -C "$target"
+          cd /
+          "$target/pimio-doctor"
+          "$target/pimio" --self-check
+
+      - name: Extract, run pimio-doctor, and launch offscreen (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP ("extract-" + [System.IO.Path]::GetRandomFileName())
+          New-Item -ItemType Directory -Path $target | Out-Null
+          Expand-Archive -Path "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip" `
+            -DestinationPath $target
+          Set-Location $env:SystemDrive\
+          & powershell -ExecutionPolicy Bypass -File (Join-Path $target 'pimio-doctor.ps1')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $target 'pimio.bat') --self-check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
   create-release:
     name: Create GitHub Release
-    needs: build-binaries
+    needs: [build-binaries, verify-archives]
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository

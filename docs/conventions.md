@@ -23,6 +23,7 @@ These conventions apply to all implementation increments described in
 | `tests/projection/` | Schema migration and projection rebuild tests. |
 | `tests/fixtures/` | Fixture manifest test. The media itself lives in `tests/fixtures/data/` with recorded provenance and hashes. See [tests/fixtures/README.md](../tests/fixtures/README.md). |
 | `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |
+| `packaging/` | Files shipped at the root of each release archive: the launcher, the per-platform `README.txt`, and the `pimio-doctor` diagnostic script. Installed by `cmake --install`, so a local install matches a release. |
 | `cmake/` | Reusable CMake modules, such as the pinned, checksum-verified LORE acquisition. |
 | `docs/` | All project documentation. The repository root holds only files a project normally keeps there, such as `README.md` and build configuration. |
 | `docs/decisions/` | Numbered decision records. Written when a choice is made, not reconstructed afterwards. |
