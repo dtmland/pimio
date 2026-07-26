@@ -119,7 +119,7 @@ jobs:
         shell: pwsh
         run: |
           $archiveDir = Join-Path $env:RUNNER_TEMP 'pimio-archive'
-          Remove-Item -Path $archiveDir -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path $archiveDir) { Remove-Item -Path $archiveDir -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $archiveDir
           Copy-Item -Path deploy/bin/* -Destination $archiveDir -Recurse -Force
           Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { Copy-Item -Path $_.FullName -Destination $archiveDir -Recurse -Force }
