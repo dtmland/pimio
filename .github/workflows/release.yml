@@ -100,7 +100,7 @@ jobs:
           mapfile -t runtime_libs < <(
             find deploy -type f \( -perm -111 -o -name '*.so*' \) -print0 |
               xargs -0r ldd |
-              awk '/=> \\/(lib|usr\\/lib)\\// { print $3 }' |
+              awk '/=> \/(lib|usr\/lib)\// { print $3 }' |
               while read -r lib; do
                 case "$(basename "$lib")" in
                   libEGL.so.1|libGLX.so.0|libGLdispatch.so.0|libOpenGL.so.0|\
@@ -143,7 +143,7 @@ jobs:
         run: |
           Push-Location deploy
           $archivePaths = @('bin/*')
-          $archivePaths += (Get-ChildItem . | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { $_.Name })
+          $archivePaths += @('lib', 'plugins', 'qml', 'translations') | Where-Object { Test-Path $_ }
           Compress-Archive -Path $archivePaths -DestinationPath ../pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
           Pop-Location
 
