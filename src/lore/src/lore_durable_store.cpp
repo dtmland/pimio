@@ -14,6 +14,7 @@
 #include <QMutexLocker>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QThread>
 #include <QTimeZone>
 
 #include <algorithm>
@@ -27,6 +28,7 @@ using core::Error;
 using core::ErrorCode;
 
 constexpr int kShardNameLength = 2;
+constexpr char kCommitMarkerContents[] = "in-progress";
 
 void setError(Error *target, ErrorCode code, const QString &message, QJsonObject context = {})
 {
@@ -304,6 +306,9 @@ bool copyDirectory(const QString &sourcePath, const QString &targetPath)
             if (!QDir().mkpath(targetFilePath)) {
                 return false;
             }
+        } else if (sourceFile.fileName() == QLatin1String("lock")) {
+            // LORE recreates these transient files when it opens the restored store.
+            continue;
         } else if (!QDir().mkpath(QFileInfo(targetFilePath).absolutePath())
                    || !QFile::copy(sourceFilePath, targetFilePath)) {
             return false;
@@ -482,16 +487,26 @@ bool LoreDurableStore::Private::recoverInterruptedCommit(Error *error)
 
 bool LoreDurableStore::Private::prepareCommitRecovery(Error *error)
 {
-    if (!copyDirectory(lorePath(), commitBackupPath())) {
-        setError(error, ErrorCode::OutOfSpace,
+    bool backedUp = false;
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        if (copyDirectory(lorePath(), commitBackupPath())) {
+            backedUp = true;
+            break;
+        }
+        QThread::msleep(10);
+    }
+    if (!backedUp) {
+        setError(error, ErrorCode::Internal,
                  QStringLiteral("Could not back up the repository before committing."));
         return false;
     }
 
     QSaveFile marker(commitMarkerPath());
-    if (!marker.open(QIODevice::WriteOnly) || marker.write("1") != 1 || !marker.commit()) {
+    if (!marker.open(QIODevice::WriteOnly)
+        || marker.write(kCommitMarkerContents) != qint64(sizeof(kCommitMarkerContents) - 1)
+        || !marker.commit()) {
         removeDirectoryContents(commitBackupPath());
-        setError(error, ErrorCode::OutOfSpace,
+        setError(error, ErrorCode::Internal,
                  QStringLiteral("Could not mark the repository commit as in progress."));
         return false;
     }
