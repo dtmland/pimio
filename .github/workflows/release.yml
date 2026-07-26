@@ -118,9 +118,10 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path deploy/archive | Out-Null
+          $excludedNames = @('bin', 'archive')
+          New-Item -ItemType Directory -Force -Path deploy/archive
           Copy-Item -Path deploy/bin/* -Destination deploy/archive -Recurse -Force
-          Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' -and $_.Name -ne 'archive' } |
+          Get-ChildItem deploy | Where-Object { $_.Name -notin $excludedNames } |
             ForEach-Object { Copy-Item -Path $_.FullName -Destination deploy/archive -Recurse -Force }
           Compress-Archive -Path deploy/archive/* -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
 
