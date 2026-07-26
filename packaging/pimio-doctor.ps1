@@ -112,6 +112,7 @@ Check-Path $qtConf 'bin\qt.conf'
 Check-Path (Join-Path $here 'bin\Qt6Core.dll') 'bin\Qt6Core.dll'
 Check-Path $platformPluginDir 'plugins\platforms'
 Check-Path (Join-Path $platformPluginDir 'qwindows.dll') 'plugins\platforms\qwindows.dll'
+Check-Path (Join-Path $platformPluginDir 'qoffscreen.dll') 'plugins\platforms\qoffscreen.dll'
 Check-Path (Join-Path $here 'qml') 'qml\'
 Check-Path (Join-Path $here 'qml\QtQuick') 'qml\QtQuick'
 if (-not $layoutOk) {
@@ -151,6 +152,19 @@ if (Test-Path -LiteralPath $qtConf) {
 Section 'Platform plugins present'
 if (Test-Path -LiteralPath $platformPluginDir) {
     Say-Indented (Get-ChildItem -LiteralPath $platformPluginDir | ForEach-Object { $_.Name })
+    # A QT_QPA_PLATFORM naming a plugin that is not in the archive aborts the
+    # application with "no Qt platform plugin could be initialized", and on
+    # Windows that abort raises a dialog that makes the launch below hang
+    # instead of reporting anything.
+    $requestedPlatform = $null
+    if ($env:QT_QPA_PLATFORM -and
+        ($env:QT_QPA_PLATFORM -match '^([a-z0-9]+)(:.*)?$')) {
+        $requestedPlatform = $Matches[1]
+    }
+    if ($requestedPlatform -and
+        -not (Test-Path -LiteralPath (Join-Path $platformPluginDir "q$requestedPlatform.dll"))) {
+        Add-Problem ("QT_QPA_PLATFORM requests the '$requestedPlatform' platform plugin, but q$requestedPlatform.dll is not in $platformPluginDir. Unset QT_QPA_PLATFORM, or choose one of the plugins listed above.")
+    }
 } else {
     Say-Indented ("(none: " + $platformPluginDir + " does not exist)")
 }
@@ -198,6 +212,10 @@ if (Test-Path -LiteralPath $appBinary) {
             -RedirectStandardOutput $stdout -RedirectStandardError $stderr
         if (-not $process.WaitForExit(60000)) {
             $process.Kill()
+            # Wait again so that ExitCode is readable: a Qt fatal error raises
+            # the Windows abort dialog, and without this the report would show
+            # an empty status for a process that never got to print one.
+            [void]$process.WaitForExit(10000)
             Add-Problem 'The application did not exit within 60 seconds.'
         }
         $launchStatus = $process.ExitCode

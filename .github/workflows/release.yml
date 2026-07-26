@@ -171,6 +171,7 @@ jobs:
           set -euo pipefail
           status=0
           for required in bin/pimio bin/qt.conf lib plugins/platforms/libqxcb.so \
+            plugins/platforms/libqoffscreen.so \
             qml/QtQuick pimio pimio-doctor README.txt; do
             if [ -e "deploy/$required" ]; then
               echo "ok      $required"
@@ -205,6 +206,7 @@ jobs:
           status=0
           for required in pimio.app/Contents/MacOS/pimio \
             pimio.app/Contents/PlugIns/platforms \
+            pimio.app/Contents/PlugIns/platforms/libqoffscreen.dylib \
             pimio.app/Contents/Resources/qml/QtQuick \
             pimio pimio-doctor README.txt; do
             if [ -e "deploy/$required" ]; then
@@ -223,8 +225,8 @@ jobs:
           $status = 0
           $required = @(
             'bin/pimio.exe', 'bin/qt.conf', 'bin/Qt6Core.dll',
-            'plugins/platforms/qwindows.dll', 'qml/QtQuick',
-            'pimio.bat', 'pimio-doctor.ps1', 'README.txt'
+            'plugins/platforms/qwindows.dll', 'plugins/platforms/qoffscreen.dll',
+            'qml/QtQuick', 'pimio.bat', 'pimio-doctor.ps1', 'README.txt'
           )
           foreach ($item in $required) {
             if (Test-Path -LiteralPath (Join-Path 'deploy' $item)) {
@@ -269,7 +271,8 @@ jobs:
           }
           $status = 0
           foreach ($item in @('bin/pimio.exe', 'bin/qt.conf',
-              'plugins/platforms/qwindows.dll', 'qml/QtQuick/')) {
+              'plugins/platforms/qwindows.dll', 'plugins/platforms/qoffscreen.dll',
+              'qml/QtQuick/')) {
             if ($entries | Where-Object { $_ -eq $item -or $_.StartsWith($item) }) {
               Write-Host "ok      $item"
             } else {
