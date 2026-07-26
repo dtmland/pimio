@@ -118,8 +118,7 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $archiveDir = Join-Path $env:RUNNER_TEMP ("pimio-archive-{0}-{1}" -f $env:GITHUB_RUN_ID, $env:GITHUB_RUN_ATTEMPT)
-          if (Test-Path $archiveDir) { Remove-Item -Path $archiveDir -Recurse -Force }
+          $archiveDir = Join-Path $env:RUNNER_TEMP 'pimio-archive-staging'
           New-Item -ItemType Directory -Force -Path $archiveDir
           Copy-Item -Path deploy/bin/* -Destination $archiveDir -Recurse -Force
           Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { Copy-Item -Path $_.FullName -Destination $archiveDir -Recurse -Force }
