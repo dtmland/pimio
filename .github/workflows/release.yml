@@ -118,10 +118,11 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: |
-          $archivePaths = @()
-          $archivePaths += (Get-ChildItem deploy/bin | ForEach-Object { $_.FullName })
-          $archivePaths += (Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { $_.FullName })
-          Compress-Archive -Path $archivePaths -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
+          Push-Location deploy
+          $archivePaths = @('bin/*')
+          $archivePaths += (Get-ChildItem . | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { $_.Name })
+          Compress-Archive -Path $archivePaths -DestinationPath ../pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
+          Pop-Location
 
       - name: Upload binary archive artifact
         uses: actions/upload-artifact@v4
