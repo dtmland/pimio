@@ -102,11 +102,17 @@ jobs:
           for path in deploy/lib deploy/plugins deploy/qml; do
             [ -e "$path" ] && runtime_scan_paths+=("$path")
           done
-          mapfile -d '' -t runtime_inputs < <(find "${runtime_scan_paths[@]}" -type f \( -perm -111 -o -name '*.so*' \) -print0)
+          mapfile -d '' -t runtime_inputs < <(find "${runtime_scan_paths[@]}" -type f \( -executable -o -name '*.so*' \) -print0)
           mapfile -t runtime_libs < <(
             {
-              if [ "${#runtime_inputs[@]}" -gt 0 ]; then
-                ldd "${runtime_inputs[@]}"
+              for input in "${runtime_inputs[@]}"; do
+                if ! ldd "$input"; then
+                  echo "ldd failed for $input" >&2
+                  exit 1
+                fi
+              done
+              if [ "${#runtime_inputs[@]}" -eq 0 ]; then
+                exit 0
               fi
             } |
               awk '/=> \/(lib|usr\/lib)\// { print $3 }' |
@@ -122,6 +128,7 @@ jobs:
               sort -u
           )
           for lib in "${runtime_libs[@]}"; do
+            echo "Copying runtime library: $lib"
             cp -L "$lib" deploy/lib/
           done
 
