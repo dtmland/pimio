@@ -120,7 +120,8 @@ jobs:
         run: |
           $archiveDir = Join-Path $env:RUNNER_TEMP 'pimio-archive-staging'
           New-Item -ItemType Directory -Force -Path $archiveDir
-          Copy-Item -Path deploy/bin/* -Destination $archiveDir -Recurse -Force
+          Get-ChildItem deploy/bin | Copy-Item -Destination $archiveDir -Recurse -Force
+          # Copy Qt deployment directories (plugins, qml, translations, etc.) without re-copying bin.
           Get-ChildItem deploy | Where-Object { $_.Name -ne 'bin' } | ForEach-Object { Copy-Item -Path $_.FullName -Destination $archiveDir -Recurse -Force }
           Compress-Archive -Path "$archiveDir/*" -DestinationPath pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip
 
