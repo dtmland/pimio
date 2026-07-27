@@ -38,6 +38,16 @@ pimio needs the Microsoft Visual C++ 2015-2022 x64 redistributable. Most
 machines already have it. If startup fails with a missing VCRUNTIME140.dll or
 MSVCP140.dll, run bin\vc_redist.x64.exe once and try again.
 
+Headless machines
+-----------------
+
+The archive also ships the offscreen platform plugin, so the build can be
+started on a machine without a desktop session, for example to verify an
+installation over a remote shell:
+
+  set QT_QPA_PLATFORM=offscreen
+  pimio.bat --self-check
+
 When something goes wrong
 -------------------------
 

@@ -73,6 +73,69 @@ install(TARGETS pimio_app
 )
 install(SCRIPT ${PIMIO_DEPLOY_SCRIPT})
 
+# Qt's deployment tools bundle only the desktop platform plugin: libqxcb.so on
+# Linux, libqcocoa.dylib on macOS, qwindows.dll on Windows.  Anything headless
+# -- a server, an SSH session, CI, and the QT_QPA_PLATFORM=offscreen fallback
+# that README.txt and pimio-doctor both recommend -- then dies with "no Qt
+# platform plugin could be initialized" (on Windows the resulting abort dialog
+# simply hangs the process).  Ship the offscreen plugin alongside the desktop
+# one so that a release archive can run without a display.
+if(WIN32)
+    set(PIMIO_OFFSCREEN_PLUGIN_NAME qoffscreen.dll)
+    set(PIMIO_PLATFORM_PLUGIN_DESTINATION plugins/platforms)
+elseif(APPLE)
+    set(PIMIO_OFFSCREEN_PLUGIN_NAME libqoffscreen.dylib)
+    set(PIMIO_PLATFORM_PLUGIN_DESTINATION pimio.app/Contents/PlugIns/platforms)
+else()
+    set(PIMIO_OFFSCREEN_PLUGIN_NAME libqoffscreen.so)
+    set(PIMIO_PLATFORM_PLUGIN_DESTINATION plugins/platforms)
+endif()
+
+install(FILES
+    "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_PLUGINS}/platforms/${PIMIO_OFFSCREEN_PLUGIN_NAME}"
+    DESTINATION ${PIMIO_PLATFORM_PLUGIN_DESTINATION})
+
+if(APPLE)
+    # macdeployqt never saw this plugin, so its Qt references are still the
+    # @rpath ones of the Qt installation.  Point them at the frameworks inside
+    # the bundle the way macdeployqt does for the plugins it copies, then
+    # re-sign: an edited Mach-O carries a broken signature and macOS refuses to
+    # load it on Apple silicon.
+    install(CODE "
+        set(_plugin \"\${CMAKE_INSTALL_PREFIX}/${PIMIO_PLATFORM_PLUGIN_DESTINATION}/${PIMIO_OFFSCREEN_PLUGIN_NAME}\")
+        execute_process(COMMAND otool -L \"\${_plugin}\"
+            OUTPUT_VARIABLE _otool_output
+            RESULT_VARIABLE _otool_result)
+        if(NOT _otool_result EQUAL 0)
+            message(FATAL_ERROR \"otool failed for \${_plugin}\")
+        endif()
+        string(REGEX MATCHALL \"@rpath/[^ \\t\\r\\n]+\" _rpath_references \"\${_otool_output}\")
+        list(REMOVE_DUPLICATES _rpath_references)
+        foreach(_reference IN LISTS _rpath_references)
+            string(REPLACE \"@rpath/\" \"@loader_path/../../Frameworks/\"
+                _bundled \"\${_reference}\")
+            execute_process(COMMAND install_name_tool
+                -change \"\${_reference}\" \"\${_bundled}\" \"\${_plugin}\"
+                COMMAND_ERROR_IS_FATAL ANY)
+        endforeach()
+        execute_process(COMMAND codesign --force --sign - \"\${_plugin}\"
+            COMMAND_ERROR_IS_FATAL ANY)
+    ")
+elseif(UNIX)
+    # The Linux deployment relocates the Qt libraries into lib/ and patchelfs
+    # every file it copied.  This plugin arrives afterwards, so give it the same
+    # relative RPATH; the Qt installation's own value may be absolute.
+    find_program(PIMIO_PATCHELF_EXECUTABLE patchelf)
+    if(PIMIO_PATCHELF_EXECUTABLE)
+        install(CODE "
+            execute_process(COMMAND \"${PIMIO_PATCHELF_EXECUTABLE}\"
+                --set-rpath \"\$ORIGIN/../../lib\"
+                \"\${CMAKE_INSTALL_PREFIX}/${PIMIO_PLATFORM_PLUGIN_DESTINATION}/${PIMIO_OFFSCREEN_PLUGIN_NAME}\"
+                COMMAND_ERROR_IS_FATAL ANY)
+        ")
+    endif()
+endif()
+
 # The Qt SDK ships a Mimer SQL driver plugin (libqsqlmimer.so) that has a hard
 # dependency on libmimerapi.so.  That library is not available as a system
 # package on any supported Linux distribution, and pimio uses SQLite rather

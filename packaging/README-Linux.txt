@@ -54,6 +54,15 @@ explicitly:
   QT_QPA_PLATFORM=xcb ./pimio
   QT_QPA_PLATFORM=wayland ./pimio
 
+Headless machines
+-----------------
+
+The archive also ships the offscreen platform plugin, so the build can be
+started without any display server, for example to verify an installation over
+SSH:
+
+  QT_QPA_PLATFORM=offscreen ./pimio --self-check
+
 When something goes wrong
 -------------------------
 

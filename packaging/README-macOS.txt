@@ -35,6 +35,14 @@ once, after you have satisfied yourself the download is genuine:
 
 You can also right-click the bundle, choose Open, and confirm the dialog.
 
+Headless machines
+-----------------
+
+The bundle also ships the offscreen platform plugin, so it can be started
+without a window server, for example to verify an installation over SSH:
+
+  QT_QPA_PLATFORM=offscreen ./pimio --self-check
+
 When something goes wrong
 -------------------------
 

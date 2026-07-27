@@ -150,6 +150,14 @@ fi
 section "Platform plugins present"
 if [ -d "$platform_plugin_dir" ]; then
     ls "$platform_plugin_dir" | sed 's/^/  /' | tee -a "$report"
+    # A QT_QPA_PLATFORM naming a plugin that is not in the archive aborts the
+    # application with "no Qt platform plugin could be initialized", which says
+    # nothing about which name was requested.
+    requested=$(printf '%s' "${QT_QPA_PLATFORM:-}" | sed -n 's/^\([a-z0-9]*\)\(:.*\)\{0,1\}$/\1/p')
+    if [ -n "$requested" ] &&
+        ! ls "$platform_plugin_dir"/libq"$requested"*"$lib_suffix" >/dev/null 2>&1; then
+        note_problem "QT_QPA_PLATFORM requests the '$requested' platform plugin, but libq$requested$lib_suffix is not in $platform_plugin_dir. Unset QT_QPA_PLATFORM, or choose one of the plugins listed above."
+    fi
 else
     say "  (none: $platform_plugin_dir does not exist)"
 fi
