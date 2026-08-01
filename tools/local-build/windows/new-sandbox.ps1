@@ -5,6 +5,7 @@
 # results folder on the host, and then stays open for Field Notes.
 #
 # Usage:
+#   tools\local-build\windows\new-sandbox.bat
 #   powershell -ExecutionPolicy Bypass -File tools\local-build\windows\new-sandbox.ps1
 #
 # Options:
@@ -58,7 +59,7 @@ $bootstrapArguments = "-ExecutionPolicy Bypass -NoProfile -NoExit -File `"$boots
 if ($NoStudio) {
     $bootstrapArguments += ' -NoStudio'
 }
-$logonCommand = "powershell.exe $bootstrapArguments"
+$logonCommand = "cmd.exe /c start `"`" powershell.exe $bootstrapArguments"
 
 $template = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'pimio.wsb.template') -Raw
 $configuration = $template.

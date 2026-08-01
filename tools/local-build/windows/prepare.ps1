@@ -8,6 +8,7 @@
 # is fetched from its own vendor by the developer who will use it.
 #
 # Usage:
+#   tools\local-build\windows\prepare.bat
 #   powershell -ExecutionPolicy Bypass -File tools\local-build\windows\prepare.ps1
 #
 # Options:
@@ -315,4 +316,6 @@ Write-Host "Cache        : $CacheRoot"
 Write-Host "Manifest     : $manifestPath"
 Write-Host ''
 Write-Host 'Next step:'
+Write-Host '  tools\local-build\windows\new-sandbox.bat'
+Write-Host '  or'
 Write-Host '  powershell -ExecutionPolicy Bypass -File tools\local-build\windows\new-sandbox.ps1'
