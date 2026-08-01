@@ -351,7 +351,7 @@ jobs:
       # No checkout and no Qt: this job proves the archive is self-contained on
       # a machine that has never built pimio.
       - name: Download binary archive
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: binary-archive-${{ matrix.name }}
 
@@ -478,7 +478,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download binary archives
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: .
           pattern: binary-archive-*
