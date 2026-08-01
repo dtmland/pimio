@@ -141,6 +141,27 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 ---
 
+### MT-6.7 — Progressive image detail
+
+**Condition**: A real display server and a library containing a large image.
+
+**Steps**
+
+1. Wait for the image's grid thumbnail to appear.
+2. Select the image tile.
+3. Observe the detail view while the original image loads.
+4. Press Escape, then reopen the item and use the Close button.
+
+**Acceptance**
+
+- The detail view opens immediately with a loading indicator while the original
+  image is decoded asynchronously.
+- The full image is fitted without changing its aspect ratio.
+- The path and capture time remain readable below the preview.
+- Escape and the Close button both return focus to the grid.
+
+---
+
 ## General / Cross-increment
 
 ### MT-G.1 — Application does not modify originals during scan

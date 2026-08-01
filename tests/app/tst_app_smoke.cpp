@@ -133,7 +133,9 @@ void TestAppSmoke::gridTracksVisibleRangeAndOpensDetail()
     auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
     QVERIFY(grid != nullptr);
 
-    QTRY_VERIFY(!rangeSpy.isEmpty());
+    QTRY_VERIFY(grid->width() > 0 && grid->height() > 0);
+    QVERIFY(QMetaObject::invokeMethod(grid, "updateVisibleRange"));
+    QTRY_VERIFY(!rangeSpy.isEmpty() && rangeSpy.constLast().at(1).toInt() > 0);
     const QList<QVariant> initialRange = rangeSpy.constLast();
     QCOMPARE(initialRange.at(0).toInt(), 0);
     QVERIFY(initialRange.at(1).toInt() > 0);
@@ -144,13 +146,15 @@ void TestAppSmoke::gridTracksVisibleRangeAndOpensDetail()
     QTRY_VERIFY(rangeSpy.size() > callsBeforeScroll);
     QVERIFY(rangeSpy.constLast().at(0).toInt() > 0);
 
-    QVERIFY(QMetaObject::invokeMethod(window, "showDetail", Q_ARG(QVariant, 5)));
+    grid->setProperty("contentY", 0);
+    QTRY_COMPARE(grid->property("contentY").toInt(), 0);
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, QPoint(88, 136));
     auto *detail = window->findChild<QQuickItem *>(QStringLiteral("detailView"));
     QVERIFY(detail != nullptr);
-    QTRY_VERIFY(detail->isVisible());
-    QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-5"));
+    QTRY_VERIFY(detail->property("visible").toBool());
+    QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-0"));
     QCOMPARE(detail->property("absolutePath").toString(),
-             QStringLiteral("/library/item-5.jpg"));
+             QStringLiteral("/library/item-0.jpg"));
 }
 
 QTEST_MAIN(TestAppSmoke)

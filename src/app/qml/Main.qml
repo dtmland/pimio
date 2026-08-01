@@ -122,10 +122,13 @@ Window {
         Component.onCompleted: Qt.callLater(updateVisibleRange)
 
         function updateVisibleRange() {
-            const first = indexAt(1, contentY + 1)
-            const last  = indexAt(width - 1, contentY + height - 1)
+            const columns = Math.max(1, Math.floor(width / cellWidth))
+            const firstRow = Math.floor(Math.max(0, contentY) / cellHeight)
+            const lastRow = Math.floor(Math.max(0, contentY + height - 1) / cellHeight)
+            const first = Math.min(count - 1, firstRow * columns)
+            const last = Math.min(count - 1, (lastRow + 1) * columns - 1)
             if (model && typeof model.setVisibleRange === "function") {
-                model.setVisibleRange(Math.max(0, first), last >= 0 ? last : count - 1)
+                model.setVisibleRange(Math.max(0, first), Math.max(0, last))
             }
         }
     }
@@ -179,16 +182,6 @@ Window {
                 }
             }
 
-            DetailView {
-                id: detail
-                anchors.fill: parent
-                z: 10
-                onCloseRequested: {
-                    visible = false
-                    root.selectedIndex = -1
-                    grid.forceActiveFocus()
-                }
-            }
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -196,6 +189,17 @@ Window {
             font.pixelSize: 16
             horizontalAlignment: Text.AlignHCenter
             text: qsTr("No media yet — library folders can't be added in this build.\nThe library browser is still in development.")
+        }
+    }
+
+    DetailView {
+        id: detail
+        anchors.fill: parent
+        z: 10
+        onCloseRequested: {
+            visible = false
+            root.selectedIndex = -1
+            grid.forceActiveFocus()
         }
     }
 }
