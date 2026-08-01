@@ -781,6 +781,16 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     std::sort(stagedFiles.begin(), stagedFiles.end());
     std::sort(tombstoneFiles.begin(), tombstoneFiles.end());
 
+    // Snapshot .lore before any changes are applied. At this point the
+    // directory is fully quiesced (the last operation ended with a flush or
+    // the store was just created), so every file is stable on disk and the
+    // copy is reliable. Placing the snapshot here rather than after
+    // lore_file_stage avoids racing with the writes that lore_file_stage
+    // triggers inside .lore on a large repository.
+    if (!d->prepareCommitRecovery(error)) {
+        return std::nullopt;
+    }
+
     // Apply tombstone deletions to the checkout first so that fileStage(scan=1)
     // picks them up as removals.
     const QDir staging(d->stagingPath());
@@ -800,6 +810,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         const QFileInfo targetInfo(target);
         if (!QDir().mkpath(targetInfo.absolutePath())) {
             d->restoreCheckoutToCommittedState(nullptr);
+            d->clearCommitRecovery();
             setError(error, ErrorCode::PermissionDenied,
                      QStringLiteral("Could not create %1.").arg(targetInfo.absolutePath()));
             return std::nullopt;
@@ -808,6 +819,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         if (!QFile::copy(stagedFile, target)) {
             // Roll back so the checkout never holds a partially applied batch.
             d->restoreCheckoutToCommittedState(nullptr);
+            d->clearCommitRecovery();
             setError(error, ErrorCode::OutOfSpace,
                      QStringLiteral("Could not copy the staged record %1 into the checkout.")
                          .arg(relative));
@@ -829,6 +841,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     api.fileStage(&args, &stageArgs, stageOperation.config());
     if (stageOperation.status != 0) {
         d->restoreCheckoutToCommittedState(nullptr);
+        d->clearCommitRecovery();
         setError(error, mapFailure(stageOperation),
                  QStringLiteral("Could not stage the records: %1").arg(stageOperation.message),
                  failureContext(stageOperation, QStringLiteral("file_stage")));
@@ -840,10 +853,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     std::memset(&commitArgs, 0, sizeof(commitArgs));
     const QByteArray messageUtf8 = message.toUtf8();
     commitArgs.message = loreString(messageUtf8);
-    if (!d->prepareCommitRecovery(error)) {
-        d->restoreCheckoutToCommittedState(nullptr);
-        return std::nullopt;
-    }
     api.revisionCommit(&args, &commitArgs, commitOperation.config());
     if (commitOperation.status != 0 || commitOperation.checkpoints.isEmpty()) {
         // The staging area is untouched, so the work is still recoverable and
