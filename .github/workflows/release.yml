@@ -88,9 +88,13 @@ jobs:
           echo "Release version: $version"
 
       - name: Configure
+        # The version argument must be quoted. On Windows this step runs under
+        # PowerShell, whose parser splits an unquoted -DNAME=0.1.7 into
+        # "-DNAME=0" and ".1.7"; cmake then reads ".1.7" as the source
+        # directory and fails with "Could not read presets from .../.1.7".
         run: >-
           cmake --preset default
-          -DPIMIO_RELEASE_VERSION=${{ env.PIMIO_RELEASE_VERSION }}
+          "-DPIMIO_RELEASE_VERSION=${{ env.PIMIO_RELEASE_VERSION }}"
           -DPIMIO_REQUIRE_LORE=ON
           -DPIMIO_BUILD_TESTS=OFF
 
@@ -165,6 +169,23 @@ jobs:
           LORE_LIB=$(sed -n 's/^library=//p' build/default/lore-acquired.txt)
           [ -n "$LORE_LIB" ] && cp "$LORE_LIB" deploy/pimio.app/Contents/MacOS/
 
+      - name: Re-sign the macOS bundle
+        if: matrix.name == 'macOS'
+        # Anything added to or edited inside the bundle after macdeployqt signed
+        # it leaves a stale seal, and macOS kills a process whose mapped pages
+        # fail signature validation ("Termination Reason: CODESIGNING, Invalid
+        # Page").  Sign what arrived last, then the bundle as a whole, and
+        # verify: an unverifiable bundle must fail here rather than on a user's
+        # machine.
+        run: |
+          set -euo pipefail
+          for dylib in deploy/pimio.app/Contents/MacOS/*.dylib; do
+            [ -e "$dylib" ] || continue
+            codesign --force --sign - "$dylib"
+          done
+          codesign --force --deep --sign - deploy/pimio.app
+          codesign --verify --deep --strict --verbose=2 deploy/pimio.app
+
       - name: Copy LORE library to deployment (Windows)
         if: matrix.name == 'Windows'
         shell: pwsh
@@ -224,6 +245,17 @@ jobs:
               status=1
             fi
           done
+          # Every Mach-O inside the bundle must validate on its own. Qt maps
+          # each plugin file to read its metadata, so one stale signature
+          # anywhere under pimio.app is enough for macOS to kill the process
+          # before the first window appears.
+          while IFS= read -r -d '' macho; do
+            file -b "$macho" | grep -q 'Mach-O' || continue
+            if ! codesign --verify --strict "$macho"; then
+              echo "INVALID SIGNATURE $macho"
+              status=1
+            fi
+          done < <(find deploy/pimio.app -type f -print0)
           exit "$status"
 
       - name: Verify deployment layout (Windows)
@@ -341,6 +373,13 @@ jobs:
           target="$(mktemp -d "$RUNNER_TEMP/extract-XXXXXXXX")/pimio-release"
           mkdir -p "$target"
           tar -xzf "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.tar.gz" -C "$target"
+          if [ "$RUNNER_OS" = macOS ]; then
+            # What users download must still verify after being archived and
+            # extracted. On macOS an invalid signature is not a warning: the
+            # kernel kills the process with "Termination Reason: CODESIGNING,
+            # Invalid Page" as soon as Qt maps a plugin whose seal is stale.
+            codesign --verify --deep --strict --verbose=2 "$target/pimio.app"
+          fi
           cd /
           "$target/pimio-doctor"
           "$target/pimio" --self-check

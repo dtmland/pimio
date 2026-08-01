@@ -121,6 +121,25 @@ if(APPLE)
         execute_process(COMMAND codesign --force --sign - \"\${_plugin}\"
             COMMAND_ERROR_IS_FATAL ANY)
     ")
+
+    # macdeployqt seals the bundle when it finishes, so every file added or
+    # edited afterwards -- the plugin above, and whatever the release workflow
+    # copies into Contents/ -- leaves that seal stale.  macOS does not warn
+    # about a stale seal: it kills the process as soon as a mapped page fails
+    # validation ("Termination Reason: CODESIGNING, Invalid Page"), which for a
+    # Qt application happens while QFactoryLoader scans the plugin directory,
+    # before any window appears.  Re-sign the bundle as the last deployment
+    # action and refuse to install one that does not verify.
+    install(CODE "
+        set(_bundle \"\${CMAKE_INSTALL_PREFIX}/pimio.app\")
+        if(EXISTS \"\${_bundle}\")
+            message(STATUS \"Ad-hoc signing \${_bundle}\")
+            execute_process(COMMAND codesign --force --deep --sign - \"\${_bundle}\"
+                COMMAND_ERROR_IS_FATAL ANY)
+            execute_process(COMMAND codesign --verify --deep --strict \"\${_bundle}\"
+                COMMAND_ERROR_IS_FATAL ANY)
+        endif()
+    ")
 elseif(UNIX)
     # The Linux deployment relocates the Qt libraries into lib/ and patchelfs
     # every file it copied.  This plugin arrives afterwards, so give it the same
