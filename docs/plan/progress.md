@@ -129,6 +129,9 @@ Update this file in the same change that moves an increment forward.
   configurable prefetch margin; `ThumbnailStatus` role per row.
 - Basic GridView QML UI in `src/app/qml/Main.qml`: toolbar, tile delegates
   with placeholder/thumbnail/video-badge states, empty-library splash.
+- Selectable progressive detail view: the grid first has a thumbnail source
+  available, then asynchronously loads the original image for full-size
+  display; Escape and the Close button return to the grid.
 - `docs/plan/manual-testing.md` — manual test plan for cases that require a
   real display server or hardware.
 
@@ -140,11 +143,19 @@ Update this file in the same change that moves an increment forward.
   `cancelAllExcept`, error delivery, priority ordering.
 - `browser.model` (16 subtests including `QAbstractItemModelTester`) — row
   count, roles (MediaId, absolutePath, captureTimeString, MediaKind,
-  ThumbnailStatus), visible-range request/cancel lifecycle, result/error
-  callbacks, reload.
+  ThumbnailStatus), detail-view lookup, visible-range request/cancel lifecycle,
+  result/error callbacks, reload.
+- `app.smoke` — creates the grid and detail view, scrolls a 100-row synthetic
+  model, verifies the visible range changes, and opens a selected item.
 
 ### Manual testing
 
-See `docs/plan/manual-testing.md` items MT-6.1 through MT-6.6 for QML
+See `docs/plan/manual-testing.md` items MT-6.1 through MT-6.7 for QML
 rendering, visible-window correctness, empty-library state, cache repair,
-large-library performance, and GPU acceleration.
+large-library performance, GPU acceleration, and progressive detail loading.
+
+### Remaining
+
+- Add video-frame thumbnail rendering and its portable platform evidence.
+- Wire the real projection, scan, and thumbnail service into application
+  startup so the shipped browser can open a configured library.

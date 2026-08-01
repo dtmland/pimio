@@ -65,6 +65,7 @@ private slots:
     void captureTimeStringRoleReturnsIsoString();
     void mediaKindRoleReturnsImageForImages();
     void thumbnailStatusStartsAsPending();
+    void itemAtReturnsDetailRoles();
     void setVisibleRangeRequestsThumbnailsForWindow();
     void setVisibleRangeWithPrefetchExpandsWindow();
     void setVisibleRangeChangesCancelsPreviousRequests();
@@ -173,6 +174,21 @@ void TestBrowserModel::thumbnailStatusStartsAsPending()
         const int status = model.data(model.index(i), MediaLibraryModel::ThumbnailStatusRole).toInt();
         QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Pending));
     }
+}
+
+void TestBrowserModel::itemAtReturnsDetailRoles()
+{
+    populate(1);
+    MediaLibraryModel model;
+    model.setDatabase(m_db.get());
+
+    const QVariantMap item = model.itemAt(0);
+    QVERIFY(!item.value(QStringLiteral("mediaId")).toString().isEmpty());
+    QCOMPARE(item.value(QStringLiteral("absolutePath")).toString(),
+             QStringLiteral("/library/item000.jpg"));
+    QCOMPARE(item.value(QStringLiteral("mediaKind")).toInt(),
+             static_cast<int>(MediaKind::Image));
+    QVERIFY(model.itemAt(-1).isEmpty());
 }
 
 void TestBrowserModel::setVisibleRangeRequestsThumbnailsForWindow()

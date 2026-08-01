@@ -118,6 +118,21 @@ void MediaLibraryModel::setVisibleRange(int first, int last)
     }
 }
 
+QVariantMap MediaLibraryModel::itemAt(int row) const
+{
+    if (row < 0 || row >= m_items.size()) {
+        return {};
+    }
+
+    const QModelIndex itemIndex = index(row);
+    return {
+        {QStringLiteral("mediaId"), data(itemIndex, MediaIdRole)},
+        {QStringLiteral("absolutePath"), data(itemIndex, AbsolutePathRole)},
+        {QStringLiteral("captureTimeString"), data(itemIndex, CaptureTimeStringRole)},
+        {QStringLiteral("mediaKind"), data(itemIndex, MediaKindRole)},
+    };
+}
+
 int MediaLibraryModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid()) {
