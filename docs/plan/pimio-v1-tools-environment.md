@@ -418,10 +418,12 @@ launch starts clean. It also requires a supported Windows Pro, Enterprise, or
 Education edition with virtualization and the optional Windows Sandbox feature
 enabled.
 
-The repository will contain:
+The repository contains (see
+[tools/local-build/windows/README.md](../../tools/local-build/windows/README.md)):
 
 | Path | Responsibility |
 |---|---|
+| `tools/local-build/windows/pinned.ps1` | Single source of the pinned versions, URLs, and hashes, cross-checked against `ci.yml` and `cmake/PimioLore.cmake`. |
 | `tools/local-build/windows/prepare.ps1` | Check host prerequisites and download pinned vendor installers and portable dependencies into an ignored host cache. |
 | `tools/local-build/windows/new-sandbox.ps1` | Generate a `.wsb` file containing absolute mapped-folder paths and launch it. |
 | `tools/local-build/windows/sandbox-bootstrap.ps1` | Install from the mapped cache, copy the read-only source into the sandbox, build, run Darkroom and Studio, stage the application, and copy all results back to the host. |
@@ -487,9 +489,13 @@ path.
    application.
 3. **Windows preparation:** prerequisite checks and a checksum-verified,
    resumable host tool cache work on a supported Windows edition.
+   *Implemented in `tools/local-build/windows/prepare.ps1`; awaiting a rehearsal
+   on a real Windows Sandbox host.*
 4. **Windows Sandbox orchestration:** one command generates and opens the
    sandbox; Darkroom and Studio run automatically; build, logs, screenshots, and
    staged application survive sandbox closure; Field Notes open for the user.
+   *Implemented in `tools/local-build/windows/new-sandbox.ps1` and
+   `sandbox-bootstrap.ps1`; awaiting the same rehearsal.*
 5. **Hosted distribution:** CI validates both script sets and publishes the
    Linux image to GHCR by immutable digest. No proprietary installer is
    uploaded.

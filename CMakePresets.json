@@ -42,7 +42,8 @@
       "name": "default",
       "configurePreset": "default",
       "environment": {
-        "QT_QPA_PLATFORM": "offscreen"
+        "QT_QPA_PLATFORM": "offscreen",
+        "QT_ASSUME_STDERR_HAS_CONSOLE": "1"
       },
       "filter": {
         "exclude": {
@@ -73,6 +74,9 @@
       "name": "studio",
       "configurePreset": "default",
       "displayName": "Studio GUI tests on the native display",
+      "environment": {
+        "QT_ASSUME_STDERR_HAS_CONSOLE": "1"
+      },
       "filter": {
         "include": {
           "label": "studio"
@@ -89,7 +93,8 @@
       "name": "debug",
       "configurePreset": "debug",
       "environment": {
-        "QT_QPA_PLATFORM": "offscreen"
+        "QT_QPA_PLATFORM": "offscreen",
+        "QT_ASSUME_STDERR_HAS_CONSOLE": "1"
       },
       "filter": {
         "exclude": {

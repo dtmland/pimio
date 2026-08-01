@@ -25,6 +25,7 @@ These conventions apply to all implementation increments described in
 | `tests/studio/` | Studio (Tests B) GUI tests: automated, but they need a real display. CTest label `studio`; excluded from the offscreen `default` preset, run by the `studio` preset and under Xvfb by `default-x11`. See [docs/testing.md](testing.md). |
 | `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |
 | `tools/field-tests/` | `run-studio.sh` / `run-studio.ps1`: run the Studio suite on a desktop machine and bundle logs and screenshots for reporting. |
+| `tools/local-build/` | Per-platform reproducible local build environments: pinned definitions, launchers, and bootstrap scripts. Generated images, vendor SDKs, and build output stay out of Git. See [tools/local-build/windows/README.md](../tools/local-build/windows/README.md). |
 | `packaging/` | Files shipped at the root of each release archive: the launcher, the per-platform `README.txt`, and the `pimio-doctor` diagnostic script. Installed by `cmake --install`, so a local install matches a release. |
 | `cmake/` | Reusable CMake modules, such as the pinned, checksum-verified LORE acquisition. |
 | `docs/` | All project documentation. The repository root holds only files a project normally keeps there, such as `README.md` and build configuration. |
@@ -77,6 +78,11 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" ctest --preset default-x11
 
 The `default` test preset sets `QT_QPA_PLATFORM=offscreen`; `default-x11` sets
 `QT_QPA_PLATFORM=xcb`.
+
+Every test preset also sets `QT_ASSUME_STDERR_HAS_CONSOLE=1`. Without it, a
+Windows process with no console window (which is how CI and most launchers run
+the tests) sends all Qt Test output to `OutputDebugString` instead of stdout, so
+CTest records an empty log and a failing test reports nothing but its name.
 
 ## Proving that CI reports failures
 

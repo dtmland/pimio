@@ -74,6 +74,11 @@ welcome.
 To run the suite without the script: `ctest --preset studio`. Set
 `PIMIO_STUDIO_RESULTS=<dir>` to choose where logs and screenshots are written.
 
+On Windows you can also get a Studio run without installing a toolchain at all,
+using the disposable sandbox described in
+[tools/local-build/windows/README.md](../tools/local-build/windows/README.md);
+it runs Darkroom and Studio and exports the same kind of results bundle.
+
 ## Tests C — Field Notes
 
 Field Notes are the checks that stay manual as a last resort: judging visual
