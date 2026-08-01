@@ -1,0 +1,45 @@
+<!--
+  Windows Sandbox configuration template for a pimio local build.
+
+  new-sandbox.ps1 renders this file: every {{PLACEHOLDER}} is replaced with an
+  absolute host path, because Windows Sandbox rejects relative HostFolder
+  entries. The rendered copy is written to the results directory so the exact
+  configuration a build ran under is kept beside its output.
+
+  Policy, stated rather than implied:
+    * The checkout and the tool cache are mapped read-only. A sandbox build can
+      therefore never modify the source it built from, which is what makes the
+      recorded commit meaningful.
+    * Only the results folder is writable, so everything that survives the
+      sandbox is something the build deliberately exported.
+    * Networking is enabled. The Build Tools bootstrapper completes its install
+      online, and leaving it on keeps the failure modes obvious; disable it here
+      if your policy requires it, and expect the Build Tools step to fail.
+    * vGPU is disabled: pimio's Studio tests must not depend on host GPU
+      passthrough, and the software renderer is the reproducible baseline.
+-->
+<Configuration>
+  <VGpu>Disable</VGpu>
+  <Networking>Default</Networking>
+  <MemoryInMB>{{MEMORY_MB}}</MemoryInMB>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>{{HOST_SOURCE}}</HostFolder>
+      <SandboxFolder>{{SANDBOX_SOURCE}}</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>{{HOST_CACHE}}</HostFolder>
+      <SandboxFolder>{{SANDBOX_CACHE}}</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>{{HOST_RESULTS}}</HostFolder>
+      <SandboxFolder>{{SANDBOX_RESULTS}}</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>{{LOGON_COMMAND}}</Command>
+  </LogonCommand>
+</Configuration>
