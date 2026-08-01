@@ -106,21 +106,59 @@ Window {
 
     // Empty-library placeholder
     Column {
+        objectName: "emptyLibraryPlaceholder"
         anchors.centerIn: grid
         visible: grid.count === 0
         spacing: 12
 
-        Text {
+        // Camera glyph drawn from primitives: a color-emoji glyph ("📷")
+        // renders as an empty box on Linux systems without an emoji font,
+        // so the icon is drawn instead of typed.
+        Item {
+            objectName: "emptyLibraryIcon"
+            width: 72
+            height: 60
             anchors.horizontalCenter: parent.horizontalCenter
-            color: "#666666"
-            font.pixelSize: 48
-            text: "📷"
+
+            Rectangle { // viewfinder bump
+                x: 12; y: 0
+                width: 22; height: 14
+                radius: 4
+                color: "#666666"
+            }
+            Rectangle { // body
+                y: 8
+                width: parent.width
+                height: parent.height - 8
+                radius: 8
+                color: "#666666"
+
+                Rectangle { // lens outer ring
+                    anchors.centerIn: parent
+                    width: 32; height: 32; radius: 16
+                    color: "#3c3c3c"
+                    border.color: "#999999"
+                    border.width: 3
+
+                    Rectangle { // lens inner
+                        anchors.centerIn: parent
+                        width: 12; height: 12; radius: 6
+                        color: "#999999"
+                    }
+                }
+                Rectangle { // flash dot
+                    x: parent.width - 18; y: 8
+                    width: 8; height: 8; radius: 4
+                    color: "#999999"
+                }
+            }
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
             color: "#888888"
             font.pixelSize: 16
-            text: qsTr("No media — add a library folder to get started.")
+            horizontalAlignment: Text.AlignHCenter
+            text: qsTr("No media yet — library folders can't be added in this build.\nThe library browser is still in development.")
         }
     }
 }

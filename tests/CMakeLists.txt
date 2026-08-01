@@ -7,6 +7,7 @@ add_subdirectory(scan)
 add_subdirectory(thumbnail)
 add_subdirectory(browser)
 add_subdirectory(app)
+add_subdirectory(studio)
 
 if(PIMIO_LORE_FOUND)
     add_subdirectory(lore)

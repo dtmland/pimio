@@ -1,7 +1,26 @@
 cmake_minimum_required(VERSION 3.24)
 
+# The version baked into every binary. The release workflow overrides this
+# from the pushed tag so a v0.1.6 archive reports 0.1.6, not whatever the
+# repository default happened to be. Local builds keep the -dev suffix so a
+# development build is never mistaken for a release.
+set(PIMIO_RELEASE_VERSION "0.1.6-dev" CACHE STRING
+    "Full pimio version string; set from the tag by .github/workflows/release.yml")
+
+# project(VERSION) only accepts numeric components, so extract them and keep
+# the full string (minus any leading "v") for display.
+string(REGEX MATCH "^v?([0-9]+\\.[0-9]+\\.[0-9]+)" PIMIO_VERSION_NUMERIC_MATCH
+    "${PIMIO_RELEASE_VERSION}")
+if(NOT PIMIO_VERSION_NUMERIC_MATCH)
+    message(FATAL_ERROR
+        "PIMIO_RELEASE_VERSION must start with <major>.<minor>.<patch>, got: "
+        "${PIMIO_RELEASE_VERSION}")
+endif()
+set(PIMIO_VERSION_NUMERIC "${CMAKE_MATCH_1}")
+string(REGEX REPLACE "^v" "" PIMIO_VERSION_DISPLAY "${PIMIO_RELEASE_VERSION}")
+
 project(pimio
-    VERSION 0.1.0
+    VERSION ${PIMIO_VERSION_NUMERIC}
     DESCRIPTION "Local-first photo and video organizer"
     LANGUAGES CXX
 )

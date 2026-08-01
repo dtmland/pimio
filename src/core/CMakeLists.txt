@@ -35,5 +35,5 @@ target_include_directories(pimio_core PUBLIC include)
 target_link_libraries(pimio_core PUBLIC Qt6::Core)
 
 target_compile_definitions(pimio_core PRIVATE
-    PIMIO_VERSION_STRING="${PROJECT_VERSION}"
+    PIMIO_VERSION_STRING="${PIMIO_VERSION_DISPLAY}"
 )
