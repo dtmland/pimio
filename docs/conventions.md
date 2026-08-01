@@ -78,6 +78,11 @@ xvfb-run -a --server-args="-screen 0 1280x1024x24" ctest --preset default-x11
 The `default` test preset sets `QT_QPA_PLATFORM=offscreen`; `default-x11` sets
 `QT_QPA_PLATFORM=xcb`.
 
+Every test preset also sets `QT_ASSUME_STDERR_HAS_CONSOLE=1`. Without it, a
+Windows process with no console window (which is how CI and most launchers run
+the tests) sends all Qt Test output to `OutputDebugString` instead of stdout, so
+CTest records an empty log and a failing test reports nothing but its name.
+
 ## Proving that CI reports failures
 
 Configure with `-DPIMIO_ENABLE_FAILING_SELFTEST=ON`, or run the CI workflow

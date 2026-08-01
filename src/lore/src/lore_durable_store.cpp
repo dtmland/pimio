@@ -278,6 +278,28 @@ QStringList emptyPendingMarkers(const QString &repositoryPath)
     return markers;
 }
 
+/// Repeats a filesystem step that a healthy system can still refuse briefly.
+///
+/// Windows removes a directory entry only once the last handle to it closes and
+/// lets a scanner hold a file that was just written, so a delete or a rename can
+/// fail immediately after the step that made it possible succeeded. The store's
+/// recovery path is the place where that matters: reporting it as a fault turns
+/// a transient refusal into an unopenable library. Retrying costs nothing when
+/// the first attempt works, which is every attempt on Linux and macOS.
+template <typename Step>
+bool withTransientRetries(Step step)
+{
+    constexpr int kAttempts = 25;
+    constexpr unsigned long kDelayMs = 20;
+    for (int attempt = 0; attempt < kAttempts; ++attempt) {
+        if (step()) {
+            return true;
+        }
+        QThread::msleep(kDelayMs);
+    }
+    return step();
+}
+
 bool removeDirectoryContents(const QString &path)
 {
     QDir directory(path);
@@ -383,7 +405,7 @@ public:
     bool restoreCheckoutToCommittedState(Error *error);
     bool recoverInterruptedCommit(Error *error);
     bool prepareCommitRecovery(Error *error);
-    void clearCommitRecovery();
+    bool clearCommitRecovery();
 
     QString queryStateToken(Error *error) const;
     bool runStatus(Operation &operation, bool checkDirty, Error *error) const;
@@ -475,9 +497,10 @@ bool LoreDurableStore::Private::recoverInterruptedCommit(Error *error)
                      .arg(commitBackupPath()));
         return false;
     }
-    if (!QDir(lorePath()).removeRecursively()
-        || !QDir().rename(commitBackupPath(), lorePath())
-        || !QFile::remove(commitMarkerPath())) {
+    if (!withTransientRetries([this] { return QDir(lorePath()).removeRecursively(); })
+        || !withTransientRetries(
+            [this] { return QDir().rename(commitBackupPath(), lorePath()); })
+        || !withTransientRetries([this] { return QFile::remove(commitMarkerPath()); })) {
         setError(error, ErrorCode::PermissionDenied,
                  QStringLiteral("Could not restore the repository after an interrupted commit."));
         return false;
@@ -488,14 +511,8 @@ bool LoreDurableStore::Private::recoverInterruptedCommit(Error *error)
 
 bool LoreDurableStore::Private::prepareCommitRecovery(Error *error)
 {
-    bool backedUp = false;
-    for (int attempt = 0; attempt < 3; ++attempt) {
-        if (copyDirectory(lorePath(), commitBackupPath())) {
-            backedUp = true;
-            break;
-        }
-        QThread::msleep(10);
-    }
+    const bool backedUp =
+        withTransientRetries([this] { return copyDirectory(lorePath(), commitBackupPath()); });
     if (!backedUp) {
         setError(error, ErrorCode::Internal,
                  QStringLiteral("Could not back up the repository before committing."));
@@ -514,10 +531,17 @@ bool LoreDurableStore::Private::prepareCommitRecovery(Error *error)
     return true;
 }
 
-void LoreDurableStore::Private::clearCommitRecovery()
+bool LoreDurableStore::Private::clearCommitRecovery()
 {
-    QFile::remove(commitMarkerPath());
-    QDir(commitBackupPath()).removeRecursively();
+    // The marker goes first and its removal is the part that matters: while it
+    // exists, the next open rolls the repository back to the backup taken
+    // before this commit. A commit that is already durable must never be undone
+    // because a scanner held the marker open for a moment.
+    const bool markerRemoved =
+        withTransientRetries([this] { return !QFileInfo::exists(commitMarkerPath())
+                                             || QFile::remove(commitMarkerPath()); });
+    withTransientRetries([this] { return QDir(commitBackupPath()).removeRecursively(); });
+    return markerRemoved;
 }
 
 LoreDurableStore::LoreDurableStore(QString storePath)
@@ -883,7 +907,16 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     // staging area is touched. A kill between these two steps would otherwise
     // roll the commit back while its staged inputs were already half deleted,
     // which is the one outcome the store promises cannot happen.
-    d->clearCommitRecovery();
+    if (!d->clearCommitRecovery()) {
+        // The revision is durable, so this is residue rather than a failed
+        // save; it is reported because the next open would otherwise roll a
+        // committed revision back.
+        setError(error, ErrorCode::Internal,
+                 QStringLiteral("The commit succeeded but the rollback marker at %1 could not be "
+                                "removed.")
+                     .arg(d->commitMarkerPath()));
+        return checkpoint;
+    }
 
     if (!removeDirectoryContents(d->stagingPath())) {
         // The commit itself succeeded; report the residue rather than claiming
