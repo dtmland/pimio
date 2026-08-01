@@ -243,6 +243,10 @@ if [ "$os" = "Darwin" ] && [ -e "$here/pimio.app" ]; then
     section "macOS quarantine and signature"
     run xattr -l "$here/pimio.app"
     run codesign --verify --deep --verbose=2 "$here/pimio.app"
+    if command -v codesign >/dev/null 2>&1 &&
+        ! codesign --verify --deep --strict "$here/pimio.app" >/dev/null 2>&1; then
+        note_problem "The bundle's code signature does not verify. macOS kills such a process at startup (crash report: \"Termination Reason: CODESIGNING, Invalid Page\"). Clearing quarantine does not help; the download itself is damaged or was built unsigned -- please report this with the output above."
+    fi
     if xattr -p com.apple.quarantine "$here/pimio.app" >/dev/null 2>&1; then
         note_problem "The bundle is quarantined by Gatekeeper. Clear it with: xattr -dr com.apple.quarantine \"$here/pimio.app\""
     fi

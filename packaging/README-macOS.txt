@@ -26,10 +26,12 @@ paths.
 Gatekeeper
 ----------
 
-These builds are not code signed or notarized, so macOS quarantines them after
-download and refuses to open them ("pimio is damaged" or "cannot be opened
-because the developer cannot be verified"). Clear the quarantine attribute
-once, after you have satisfied yourself the download is genuine:
+These builds carry an ad-hoc signature (which macOS requires on Apple Silicon)
+but they are not signed with a developer certificate and not notarized, so
+macOS quarantines them after download and refuses to open them ("pimio is
+damaged" or "cannot be opened because the developer cannot be verified").
+Clear the quarantine attribute once, after you have satisfied yourself the
+download is genuine:
 
   xattr -dr com.apple.quarantine ~/pimio/pimio.app
 
