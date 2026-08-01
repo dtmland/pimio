@@ -203,45 +203,88 @@ if (Test-Path -LiteralPath $appBinary) {
     $previousRules = $env:QT_LOGGING_RULES
     $env:QT_DEBUG_PLUGINS = '1'
     $env:QT_LOGGING_RULES = 'qt.qpa.*=true'
-    $stdout = [System.IO.Path]::GetTempFileName()
-    $stderr = [System.IO.Path]::GetTempFileName()
     $launchStatus = 1
+    $launchOutput = @()
+    $exited = $false
+    $started = $false
+    # Not Start-Process: under Windows PowerShell 5.1 the object it returns with
+    # -PassThru does not keep the process handle, so ExitCode reads back as
+    # $null and a healthy launch looks like a failure. A Process this script
+    # owns keeps its handle until we dispose it, so ExitCode is always readable.
+    $process = New-Object System.Diagnostics.Process
     try {
-        $process = Start-Process -FilePath $appBinary -ArgumentList '--version' `
-            -WorkingDirectory $here -NoNewWindow -PassThru `
-            -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-        if (-not $process.WaitForExit(60000)) {
-            $process.Kill()
-            # Wait again so that ExitCode is readable: a Qt fatal error raises
-            # the Windows abort dialog, and without this the report would show
-            # an empty status for a process that never got to print one.
+        $process.StartInfo.FileName = $appBinary
+        $process.StartInfo.Arguments = '--version'
+        $process.StartInfo.WorkingDirectory = $here
+        # UseShellExecute = $false both allows the redirections below and passes
+        # this script's environment (QT_DEBUG_PLUGINS above) to the child.
+        $process.StartInfo.UseShellExecute = $false
+        $process.StartInfo.CreateNoWindow = $true
+        $process.StartInfo.RedirectStandardOutput = $true
+        $process.StartInfo.RedirectStandardError = $true
+        $started = $process.Start()
+        if (-not $started) {
+            Add-Problem 'The application could not be started.'
+        }
+        # Read both pipes concurrently: a synchronous read of one can block
+        # forever while the application fills the other.
+        $stdoutRead = $process.StandardOutput.ReadToEndAsync()
+        $stderrRead = $process.StandardError.ReadToEndAsync()
+        $exited = $process.WaitForExit(60000)
+        if (-not $exited) {
+            # A Qt fatal error raises the Windows abort dialog, and the process
+            # then waits for a click that will never come.
+            try { $process.Kill() } catch { }
             [void]$process.WaitForExit(10000)
             Add-Problem 'The application did not exit within 60 seconds.'
         }
-        $launchStatus = $process.ExitCode
+        foreach ($read in @($stdoutRead, $stderrRead)) {
+            # Killing the process above closes the pipe under the reader, which
+            # can fault the task; whatever it managed to read still matters.
+            try {
+                if ($read.Wait(10000) -and $read.Result) {
+                    $launchOutput += ($read.Result -split "`r?`n" |
+                        Where-Object { $_ -ne '' })
+                }
+            } catch {
+                Say-Indented ("could not read the launch output: " + $_.Exception.Message)
+            }
+        }
+        if ($exited) {
+            # Windows reports a crash as its exception code (for example
+            # 0xC0000005), which is non-zero and so still reads as a failure.
+            $launchStatus = $process.ExitCode
+        }
     } catch {
         Say-Indented ("failed to start: " + $_.Exception.Message)
         Add-Problem ("The application could not be started: " + $_.Exception.Message)
-    }
-    $launchOutput = @()
-    foreach ($file in @($stdout, $stderr)) {
-        if (Test-Path -LiteralPath $file) {
-            $launchOutput += Get-Content -LiteralPath $file
-            Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
-        }
+    } finally {
+        $process.Dispose()
     }
     $env:QT_DEBUG_PLUGINS = $previousDebug
     $env:QT_LOGGING_RULES = $previousRules
     Say-Indented $launchOutput
-    Say-Indented ("exit status: " + $launchStatus)
-    if ($launchStatus -ne 0) {
-        $joined = ($launchOutput -join "`n")
-        if ($joined -match 'no Qt platform plugin could be initialized') {
-            Add-Problem 'Qt could not initialize a platform plugin. The plugin search path and any load error appear in the launch output above.'
-        } elseif ($joined -match 'is not installed') {
-            Add-Problem 'A QML module is missing from this build. The archive was produced without the QML import tree.'
-        } else {
-            Add-Problem ("The application exited with status $launchStatus. See the launch output above.")
+    if (-not $started) {
+        # The catch above already recorded why.
+        Say-Indented 'exit status: (never started)'
+    } elseif (-not $exited) {
+        Say-Indented 'exit status: (killed after the timeout)'
+    } elseif ($null -eq $launchStatus) {
+        # Defence in depth: never let an unreadable status print as a blank and
+        # then be compared against 0, which is what made a healthy archive fail.
+        Say-Indented 'exit status: unknown'
+        Add-Problem 'The exit status of the application could not be read.'
+    } else {
+        Say-Indented ("exit status: " + $launchStatus)
+        if ($launchStatus -ne 0) {
+            $joined = ($launchOutput -join "`n")
+            if ($joined -match 'no Qt platform plugin could be initialized') {
+                Add-Problem 'Qt could not initialize a platform plugin. The plugin search path and any load error appear in the launch output above.'
+            } elseif ($joined -match 'is not installed') {
+                Add-Problem 'A QML module is missing from this build. The archive was produced without the QML import tree.'
+            } else {
+                Add-Problem ("The application exited with status $launchStatus. See the launch output above.")
+            }
         }
     }
 } else {
