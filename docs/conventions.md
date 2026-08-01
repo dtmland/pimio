@@ -25,6 +25,7 @@ These conventions apply to all implementation increments described in
 | `tests/studio/` | Studio (Tests B) GUI tests: automated, but they need a real display. CTest label `studio`; excluded from the offscreen `default` preset, run by the `studio` preset and under Xvfb by `default-x11`. See [docs/testing.md](testing.md). |
 | `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |
 | `tools/field-tests/` | `run-studio.sh` / `run-studio.ps1`: run the Studio suite on a desktop machine and bundle logs and screenshots for reporting. |
+| `tools/local-build/` | Per-platform reproducible local build environments: pinned definitions, launchers, and bootstrap scripts. Generated images, vendor SDKs, and build output stay out of Git. See [tools/local-build/windows/README.md](../tools/local-build/windows/README.md). |
 | `packaging/` | Files shipped at the root of each release archive: the launcher, the per-platform `README.txt`, and the `pimio-doctor` diagnostic script. Installed by `cmake --install`, so a local install matches a release. |
 | `cmake/` | Reusable CMake modules, such as the pinned, checksum-verified LORE acquisition. |
 | `docs/` | All project documentation. The repository root holds only files a project normally keeps there, such as `README.md` and build configuration. |
