@@ -5,11 +5,30 @@ import QtQuick.Controls
 Window {
     id: root
 
+    property var mediaModel: typeof mediaLibraryModel === "undefined"
+                             ? null : mediaLibraryModel
+    property int selectedIndex: -1
+
     objectName: "pimioMainWindow"
     width: 1024
     height: 720
     title: qsTr("pimio")
     visible: true
+
+    function showDetail(index) {
+        if (!mediaModel || index < 0 || index >= grid.count)
+            return
+
+        selectedIndex = index
+        const item = mediaModel.itemAt(index)
+        detail.mediaId = item.mediaId
+        detail.absolutePath = item.absolutePath
+        detail.captureTime = item.captureTimeString
+        detail.mediaKind = item.mediaKind
+        detail.thumbnailSource = "image://thumbnail/" + detail.mediaId
+        detail.visible = true
+        detail.forceActiveFocus()
+    }
 
     // Top bar
     Rectangle {
@@ -43,12 +62,17 @@ Window {
         cellHeight: 176
         clip: true
         cacheBuffer: cellHeight * 4
+        model: root.mediaModel
 
         delegate: Rectangle {
             width: grid.cellWidth - 4
             height: grid.cellHeight - 4
             color: "#3c3c3c"
             radius: 4
+
+            TapHandler {
+                onTapped: root.showDetail(index)
+            }
 
             // Thumbnail or placeholder
             Image {
@@ -94,10 +118,12 @@ Window {
         // thumbnail requests for the on-screen window plus prefetch margin.
         onContentYChanged: updateVisibleRange()
         onHeightChanged: updateVisibleRange()
+        onCountChanged: Qt.callLater(updateVisibleRange)
+        Component.onCompleted: Qt.callLater(updateVisibleRange)
 
         function updateVisibleRange() {
-            const first = indexAt(1, contentY)
-            const last  = indexAt(1, contentY + height - 1)
+            const first = indexAt(1, contentY + 1)
+            const last  = indexAt(width - 1, contentY + height - 1)
             if (model && typeof model.setVisibleRange === "function") {
                 model.setVisibleRange(Math.max(0, first), last >= 0 ? last : count - 1)
             }
@@ -150,6 +176,17 @@ Window {
                     x: parent.width - 18; y: 8
                     width: 8; height: 8; radius: 4
                     color: "#999999"
+                }
+            }
+
+            DetailView {
+                id: detail
+                anchors.fill: parent
+                z: 10
+                onCloseRequested: {
+                    visible = false
+                    root.selectedIndex = -1
+                    grid.forceActiveFocus()
                 }
             }
         }

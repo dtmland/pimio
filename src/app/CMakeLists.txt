@@ -21,6 +21,7 @@ qt_add_qml_module(pimio_app_lib
     RESOURCE_PREFIX /qt/qml
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/Pimio
     QML_FILES
+        qml/DetailView.qml
         qml/Main.qml
 )
 

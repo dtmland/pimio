@@ -85,6 +85,9 @@ public:
     /// changes.
     void setVisibleRange(int first, int last);
 
+    /// Returns the roles used by the detail view for a row, or an empty map.
+    Q_INVOKABLE QVariantMap itemAt(int row) const;
+
     int rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
