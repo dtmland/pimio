@@ -345,3 +345,157 @@ Hosted-runner availability, labels, pricing, and preinstalled software can
 change. `.github/workflows/ci.yml`, `CMakePresets.json`, and
 [../supported-platforms.md](../supported-platforms.md) are the authoritative
 reproducible configuration; this document is not.
+
+---
+
+## 8. Planned Local Build Environments
+
+This section is the implementation plan for reproducible local builds. The
+environment definitions and launchers belong in the source repository; generated
+images, downloaded SDKs, caches, and build output do not.
+
+### Design rules
+
+- Pin the same Qt, LORE, runner baseline, and CMake presets used by CI.
+- Mount or copy a clean source tree into an isolated environment and write all
+  durable output to a host directory.
+- Run Darkroom before exporting a build. A failed test means no successful local
+  build package.
+- Record the source commit, environment version or image digest, tool versions,
+  commands, and test results beside every exported build.
+- Treat Studio as an automated test suite and Field Notes as the manual checklist
+  in [manual-testing.md](manual-testing.md); neither is folded into a new test
+  category.
+- Never commit generated container images, vendor installers, SDKs, `.cache/`,
+  or build output.
+
+### Linux
+
+The repository will contain:
+
+| Path | Responsibility |
+|---|---|
+| `tools/local-build/linux/Containerfile` | Pinned Ubuntu x86-64 build environment with the compiler, CMake, Ninja, Qt, and native development packages. |
+| `tools/local-build/linux/build.sh` | Select Docker or Podman, build or pull the image, build a clean source copy, run Darkroom, stage the application, and export results to the host. |
+| `tools/local-build/linux/run-studio.sh` | Run Studio in the same image while forwarding the host's X11 or Wayland display. |
+| `tools/local-build/linux/README.md` | Docker/Podman installation notes for supported distributions, commands, output layout, display forwarding, and troubleshooting. |
+
+`build.sh` will accept a host output directory and use a separate container
+working tree so generated files never alter the checkout. It will run:
+
+1. `cmake --preset default -DPIMIO_REQUIRE_LORE=ON`;
+2. `cmake --build --preset default`;
+3. `ctest --preset default`;
+4. `cmake --install` into a staging directory; and
+5. archive and copy the staged application, test logs, and environment manifest
+   to the requested host output directory.
+
+The host only needs Git, Docker or Podman, and the Linux runtime packages listed
+in [../supported-platforms.md](../supported-platforms.md) to run the exported
+application. It does **not** need a compiler, CMake, Ninja, or a Qt SDK.
+
+Studio is different from a packaged-application smoke test: its executables and
+CTest metadata are build-tree artifacts, and they dynamically use the build
+environment's Qt. The reliable minimum-host-tools path is therefore to run
+Studio in the container and forward the real desktop into it. A native Studio
+run remains available through `tools/field-tests/run-studio.sh`, but requires
+the complete host build toolchain documented today. Field Notes should exercise
+the exported application natively on the host so they cover the actual host
+graphics stack, window manager, and integration behavior.
+
+The Linux image should be published to GitHub Container Registry (GHCR), not
+checked into Git and not wrapped in a release archive. A future
+`.github/workflows/build-environments.yml` will build it on changes to its
+definition and on manual dispatch, scan it, and publish immutable commit tags
+and digests. The launcher will support either pulling that image or building it
+locally from the committed `Containerfile`.
+
+### Windows Sandbox
+
+Windows Sandbox is suitable for the Windows workflow because it provides a real
+interactive desktop, but it is not a persistent or customizable image. Every
+launch starts clean. It also requires a supported Windows Pro, Enterprise, or
+Education edition with virtualization and the optional Windows Sandbox feature
+enabled.
+
+The repository will contain:
+
+| Path | Responsibility |
+|---|---|
+| `tools/local-build/windows/prepare.ps1` | Check host prerequisites and download pinned vendor installers and portable dependencies into an ignored host cache. |
+| `tools/local-build/windows/new-sandbox.ps1` | Generate a `.wsb` file containing absolute mapped-folder paths and launch it. |
+| `tools/local-build/windows/sandbox-bootstrap.ps1` | Install from the mapped cache, copy the read-only source into the sandbox, build, run Darkroom and Studio, stage the application, and copy all results back to the host. |
+| `tools/local-build/windows/pimio.wsb.template` | Sandbox configuration template with networking and mapped-folder policy made explicit. |
+| `tools/local-build/windows/README.md` | Feature-enablement, preparation, launch, output, test, cleanup, and troubleshooting steps. |
+
+The generated sandbox configuration will expose three folders:
+
+- the checkout, read-only;
+- the prepared tool cache, read-only; and
+- a dedicated results directory, writable.
+
+The bootstrap will install the cached MSVC Build Tools workload, CMake, Ninja,
+and Qt, then copy the source into the sandbox before using the standard presets.
+It will run Darkroom, run Studio on the sandbox desktop, stage the application
+and logs into the mapped results directory, open the Field Notes checklist, and
+leave the sandbox running for manual testing. Closing the sandbox discards its
+installed tools and working copy but not the mapped results.
+
+`prepare.ps1` must verify pinned versions and hashes and clearly identify every
+vendor download. In particular, a Visual Studio Build Tools offline layout is
+large and governed by Microsoft's license, so it must not be repackaged as a
+pimio release asset. The cache is prepared directly from vendor sources on the
+developer's machine. Freely redistributable dependencies still need their
+licenses and notices preserved before any future bundle is published.
+
+### Distribution on GitHub
+
+GitHub Releases can technically hold multiple kinds of releases, distinguished
+by tags and names, but using them for both the application and a mutable,
+multi-gigabyte toolchain would make the release history ambiguous and duplicate
+what registries and caches already do better.
+
+The planned split is:
+
+| Material | Distribution |
+|---|---|
+| Application binaries and source snapshot | Existing version-tagged GitHub pre-releases. |
+| Linux build environment | GHCR image, addressed by immutable digest and commit tag. |
+| Windows and Linux launchers/configuration | Source repository, versioned with the code they build. |
+| Windows vendor SDKs and installers | Developer-owned ignored cache, populated and verified by `prepare.ps1`. |
+| Logs and temporary validation bundles | GitHub Actions artifacts with limited retention, not Releases. |
+
+This keeps one understandable application release stream. A separate
+development release should only be introduced later if pimio starts publishing
+a small, independently versioned, legally redistributable SDK.
+
+### macOS
+
+No local isolation layer is planned for v1. Continue to use the pinned macOS
+GitHub Actions runner for clean builds. A future local design should use a
+licensed Apple-hosted virtual machine or a dedicated Mac/self-hosted runner;
+Linux-hosted macOS guests and redistributable macOS images are not a supported
+path.
+
+### Delivery sequence and acceptance
+
+1. **Linux definition and launcher:** a clean checkout builds with Docker and
+   Podman, Darkroom passes, and the staged application and logs remain after the
+   container exits.
+2. **Linux desktop tests:** Studio renders through X11 and Wayland forwarding,
+   results are archived, and Field Notes can run against the native exported
+   application.
+3. **Windows preparation:** prerequisite checks and a checksum-verified,
+   resumable host tool cache work on a supported Windows edition.
+4. **Windows Sandbox orchestration:** one command generates and opens the
+   sandbox; Darkroom and Studio run automatically; build, logs, screenshots, and
+   staged application survive sandbox closure; Field Notes open for the user.
+5. **Hosted distribution:** CI validates both script sets and publishes the
+   Linux image to GHCR by immutable digest. No proprietary installer is
+   uploaded.
+6. **Documentation rehearsal:** follow each platform README from a clean
+   supported host and record the exact versions and successful output.
+
+Implementation should proceed in these gates rather than combining all
+platforms into one change. The Windows gate requires testing on a real Windows
+Sandbox host and cannot be considered complete from Linux CI alone.
