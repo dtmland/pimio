@@ -404,16 +404,65 @@ jobs:
           Expand-Archive -Path "pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.zip" `
             -DestinationPath $target
           Set-Location $env:SystemDrive\
-          & powershell -ExecutionPolicy Bypass -File (Join-Path $target 'pimio-doctor.ps1')
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & (Join-Path $target 'pimio.bat') --self-check
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          function Invoke-CheckedProcess {
+            param(
+              [string]$FilePath,
+              [string]$Arguments = '',
+              [string]$WorkingDirectory = (Get-Location).Path,
+              [int]$TimeoutSeconds = 60,
+              [switch]$CaptureOutput
+            )
+
+            $process = New-Object System.Diagnostics.Process
+            try {
+              $process.StartInfo.FileName = $FilePath
+              $process.StartInfo.Arguments = $Arguments
+              $process.StartInfo.WorkingDirectory = $WorkingDirectory
+              $process.StartInfo.UseShellExecute = $false
+              $process.StartInfo.CreateNoWindow = $true
+              $process.StartInfo.RedirectStandardOutput = $CaptureOutput
+              $process.StartInfo.RedirectStandardError = $CaptureOutput
+              if (-not $process.Start()) {
+                throw "Failed to start: $FilePath $Arguments"
+              }
+              if ($CaptureOutput) {
+                $stdoutRead = $process.StandardOutput.ReadToEndAsync()
+                $stderrRead = $process.StandardError.ReadToEndAsync()
+              }
+              if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+                try { $process.Kill($true) } catch { }
+                [void]$process.WaitForExit(10000)
+                throw "Timed out after $TimeoutSeconds seconds: $FilePath $Arguments"
+              }
+              $output = @()
+              if ($CaptureOutput) {
+                foreach ($read in @($stdoutRead, $stderrRead)) {
+                  if ($read.Wait(10000) -and $read.Result) {
+                    $output += ($read.Result -split "`r?`n" |
+                      Where-Object { $_ -ne '' })
+                  }
+                }
+              }
+              if ($process.ExitCode -ne 0) {
+                if ($output) { $output | ForEach-Object { Write-Host $_ } }
+                throw "Command failed with exit code $($process.ExitCode): $FilePath $Arguments"
+              }
+              return ,$output
+            } finally {
+              $process.Dispose()
+            }
+          }
+          Invoke-CheckedProcess powershell.exe "-ExecutionPolicy Bypass -File `"$((Join-Path $target 'pimio-doctor.ps1'))`"" `
+            -WorkingDirectory $target -TimeoutSeconds 120
+          Invoke-CheckedProcess cmd.exe "/d /c call `"$((Join-Path $target 'pimio.bat'))`" --self-check" `
+            -WorkingDirectory $target -TimeoutSeconds 120
           # The binary must report the tag it was released under.
           $expected = $env:GITHUB_REF_NAME -replace '^v', ''
-          $reported = (& (Join-Path $target 'pimio.bat') --version) -join "`n"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Write-Host "reported version: $reported"
-          if ($reported -notmatch [regex]::Escape($expected)) {
+          $reported = Invoke-CheckedProcess (Join-Path $target 'bin\pimio.exe') '--version' `
+            -WorkingDirectory $target -TimeoutSeconds 60 -CaptureOutput
+          $reportedText = ($reported -join "`n").Trim()
+          Write-Host "reported version: $reportedText"
+          if ($reportedText -notmatch [regex]::Escape($expected)) {
             Write-Error "Version mismatch: expected $expected"
             exit 1
           }
