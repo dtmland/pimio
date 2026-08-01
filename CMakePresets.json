@@ -44,6 +44,11 @@
       "environment": {
         "QT_QPA_PLATFORM": "offscreen"
       },
+      "filter": {
+        "exclude": {
+          "label": "studio"
+        }
+      },
       "output": {
         "outputOnFailure": true
       },
@@ -57,6 +62,27 @@
       "displayName": "Default tests on X11",
       "environment": {
         "QT_QPA_PLATFORM": "xcb"
+      },
+      "filter": {
+        "exclude": {
+          "label": "label-that-matches-nothing"
+        }
+      }
+    },
+    {
+      "name": "studio",
+      "configurePreset": "default",
+      "displayName": "Studio GUI tests on the native display",
+      "filter": {
+        "include": {
+          "label": "studio"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error"
       }
     },
     {
@@ -64,6 +90,11 @@
       "configurePreset": "debug",
       "environment": {
         "QT_QPA_PLATFORM": "offscreen"
+      },
+      "filter": {
+        "exclude": {
+          "label": "studio"
+        }
       },
       "output": {
         "outputOnFailure": true

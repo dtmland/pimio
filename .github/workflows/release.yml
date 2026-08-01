@@ -80,9 +80,17 @@ jobs:
         if: matrix.name == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      - name: Derive release version from the tag
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "PIMIO_RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "Release version: $version"
+
       - name: Configure
         run: >-
           cmake --preset default
+          -DPIMIO_RELEASE_VERSION=${{ env.PIMIO_RELEASE_VERSION }}
           -DPIMIO_REQUIRE_LORE=ON
           -DPIMIO_BUILD_TESTS=OFF
 
@@ -336,6 +344,15 @@ jobs:
           cd /
           "$target/pimio-doctor"
           "$target/pimio" --self-check
+          # The binary must report the tag it was released under, so a v0.1.6
+          # download never shows an older baked-in default in the title bar.
+          expected="${GITHUB_REF_NAME#v}"
+          reported="$("$target/pimio" --version)"
+          echo "reported version: $reported"
+          case "$reported" in
+            *"$expected"*) ;;
+            *) echo "Version mismatch: expected $expected" >&2; exit 1 ;;
+          esac
 
       - name: Extract, run pimio-doctor, and launch offscreen (Windows)
         if: matrix.archive == 'zip'
@@ -352,6 +369,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $target 'pimio.bat') --self-check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The binary must report the tag it was released under.
+          $expected = $env:GITHUB_REF_NAME -replace '^v', ''
+          $reported = (& (Join-Path $target 'pimio.bat') --version) -join "`n"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "reported version: $reported"
+          if ($reported -notmatch [regex]::Escape($expected)) {
+            Write-Error "Version mismatch: expected $expected"
+            exit 1
+          }
 
   create-release:
     name: Create GitHub Release

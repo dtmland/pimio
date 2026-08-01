@@ -1,11 +1,13 @@
-# Manual Testing Plan
+# Manual Testing Plan (Field Notes — Tests C)
 
-This document lists the tests that cannot be automated in the current CI
-environment and records the conditions, steps, and acceptance criteria for
-each. Automated evidence is listed in
+This document is the **Field Notes** tier described in
+[../testing.md](../testing.md): the tests that cannot be automated in the
+current CI environment. It records the conditions, steps, and acceptance
+criteria for each. Automated evidence is listed in
 [pimio-v1-implementation.md](pimio-v1-implementation.md) alongside each
 increment. Items here are complementary, not replacements for automated
-checks.
+checks, and an entry stays here only as a last resort — see
+[../testing.md](../testing.md) for the tier rules and the reporting template.
 
 A test entry is complete only when a tester signs it off with the platform,
 OS version, Qt version, hardware, and result.
@@ -73,8 +75,10 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 **Acceptance**
 
-- A camera emoji and the text "No media — add a library folder to get
-  started." are centred in the window.
+- A drawn camera icon (not an emoji glyph, which is missing on some Linux
+  systems) and the text "No media yet — library folders can't be added in
+  this build. The library browser is still in development." are centred in
+  the window.
 - No grid rows, no thumbnail requests, no errors in the console.
 
 ---

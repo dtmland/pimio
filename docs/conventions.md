@@ -22,7 +22,9 @@ These conventions apply to all implementation increments described in
 | `tests/lore/` | LORE adapter, fault, and concurrency tests. Skip with a stated reason when LORE is absent. |
 | `tests/projection/` | Schema migration and projection rebuild tests. |
 | `tests/fixtures/` | Fixture manifest test. The media itself lives in `tests/fixtures/data/` with recorded provenance and hashes. See [tests/fixtures/README.md](../tests/fixtures/README.md). |
+| `tests/studio/` | Studio (Tests B) GUI tests: automated, but they need a real display. CTest label `studio`; excluded from the offscreen `default` preset, run by the `studio` preset and under Xvfb by `default-x11`. See [docs/testing.md](testing.md). |
 | `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |
+| `tools/field-tests/` | `run-studio.sh` / `run-studio.ps1`: run the Studio suite on a desktop machine and bundle logs and screenshots for reporting. |
 | `packaging/` | Files shipped at the root of each release archive: the launcher, the per-platform `README.txt`, and the `pimio-doctor` diagnostic script. Installed by `cmake --install`, so a local install matches a release. |
 | `cmake/` | Reusable CMake modules, such as the pinned, checksum-verified LORE acquisition. |
 | `docs/` | All project documentation. The repository root holds only files a project normally keeps there, such as `README.md` and build configuration. |
