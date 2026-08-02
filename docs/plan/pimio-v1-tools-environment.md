@@ -371,17 +371,19 @@ images, downloaded SDKs, caches, and build output do not.
 
 ### Linux
 
-The repository will contain:
+The repository contains (see
+[tools/local-build/linux/README.md](../../tools/local-build/linux/README.md)):
 
 | Path | Responsibility |
 |---|---|
 | `tools/local-build/linux/Containerfile` | Pinned Ubuntu x86-64 build environment with the compiler, CMake, Ninja, Qt, and native development packages. |
+| `tools/local-build/linux/pinned.sh` | Single source of the image, Qt, aqtinstall, and LORE pins, cross-checked against `ci.yml` and `PimioLore.cmake`. |
 | `tools/local-build/linux/build.sh` | Select Docker or Podman, build or pull the image, build a clean source copy, run Darkroom, stage the application, and export results to the host. |
 | `tools/local-build/linux/run-studio.sh` | Run Studio in the same image while forwarding the host's X11 or Wayland display. |
 | `tools/local-build/linux/README.md` | Docker/Podman installation notes for supported distributions, commands, output layout, display forwarding, and troubleshooting. |
 
-`build.sh` will accept a host output directory and use a separate container
-working tree so generated files never alter the checkout. It will run:
+`build.sh` accepts a host output directory and uses a separate container working
+tree so generated files never alter the checkout. It runs:
 
 1. `cmake --preset default -DPIMIO_REQUIRE_LORE=ON`;
 2. `cmake --build --preset default`;
@@ -403,7 +405,9 @@ the complete host build toolchain documented today. Field Notes should exercise
 the exported application natively on the host so they cover the actual host
 graphics stack, window manager, and integration behavior.
 
-The Linux image should be published to GitHub Container Registry (GHCR), not
+The Linux image may be built directly from the committed, digest-pinned
+`Containerfile`; the launchers also accept a prebuilt registry image. The image
+should be published to GitHub Container Registry (GHCR), not
 checked into Git and not wrapped in a release archive. A future
 `.github/workflows/build-environments.yml` will build it on changes to its
 definition and on manual dispatch, scan it, and publish immutable commit tags
@@ -484,9 +488,13 @@ path.
 1. **Linux definition and launcher:** a clean checkout builds with Docker and
    Podman, Darkroom passes, and the staged application and logs remain after the
    container exits.
+   *Implemented in `tools/local-build/linux/Containerfile`, `pinned.sh`, and
+   `build.sh`; awaiting rehearsal on clean Docker and Podman hosts.*
 2. **Linux desktop tests:** Studio renders through X11 and Wayland forwarding,
    results are archived, and Field Notes can run against the native exported
    application.
+   *Implemented in `tools/local-build/linux/run-studio.sh`; awaiting rehearsal
+   in real X11 and Wayland sessions.*
 3. **Windows preparation:** prerequisite checks and a checksum-verified,
    resumable host tool cache work on a supported Windows edition.
    *Implemented in `tools/local-build/windows/prepare.ps1`; awaiting a rehearsal
