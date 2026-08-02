@@ -76,7 +76,8 @@ jobs:
         with:
           version: ${{ env.PIMIO_QT_VERSION }}
           cache: true
-          cache-key-prefix: qt-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
+          cache-key-prefix: qt-multimedia-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
+          modules: qtmultimedia
           extra: --base https://download.qt.io
 
       - name: Cache LORE ${{ env.PIMIO_LORE_VERSION }}
