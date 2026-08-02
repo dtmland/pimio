@@ -55,10 +55,11 @@ distribution because they are tied to the graphics stack and the session:
 | --- | --- | --- |
 | `libxcb-cursor0` | `libxcb-cursor.so.0` | Required by the xcb platform plugin from Qt 6.5 onwards. Without it the plugin is found but cannot be loaded, and startup fails with `Could not load the Qt platform plugin "xcb" in "" even though it was found.` |
 | `libgl1`, `libegl1` | GL and EGL dispatch | Vendor-neutral entry points that must match the installed driver. |
+| `libpulse0` | `libpulse.so.0` | Qt Multimedia links against PulseAudio on Linux; without it the release archive fails at process start before `pimio --self-check` can run. |
 | `libxkbcommon-x11-0` | keymap handling | Loaded by the xcb platform plugin. |
 
 The equivalents on Fedora are `xcb-util-cursor`, `mesa-libGL`, `mesa-libEGL`,
-and `libxkbcommon-x11`.
+`pulseaudio-libs`, and `libxkbcommon-x11`.
 
 ### Wayland and X11
 
