@@ -35,14 +35,18 @@ System packages you still need
 The archive bundles Qt, but a few libraries must come from your distribution:
 
   Debian, Ubuntu:
-    sudo apt install libxcb-cursor0 libgl1 libegl1 libxkbcommon-x11-0
+    sudo apt install libxcb-cursor0 libgl1 libegl1 libxkbcommon-x11-0 libpulse0
 
   Fedora:
-    sudo dnf install xcb-util-cursor mesa-libGL mesa-libEGL libxkbcommon-x11
+    sudo dnf install xcb-util-cursor mesa-libGL mesa-libEGL libxkbcommon-x11 pipewire-libpulse
 
 libxcb-cursor0 is required by Qt 6.5 and later. Without it the xcb platform
 plugin is found but cannot be loaded, and startup fails with
 "Could not load the Qt platform plugin \"xcb\" in \"\" even though it was found."
+
+Qt Multimedia also links the PulseAudio client library for Linux video
+thumbnailing, so the archive needs libpulse.so.0 even when you are not playing
+audio.
 
 Wayland and X11
 ---------------
