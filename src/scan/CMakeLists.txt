@@ -1,8 +1,10 @@
 add_library(pimio_scan STATIC
     include/pimio/scan/library_root.h
     include/pimio/scan/media_hasher.h
+    include/pimio/scan/qt_file_system.h
     include/pimio/scan/scanner.h
     src/media_hasher.cpp
+    src/qt_file_system.cpp
     src/scanner.cpp
 )
 

@@ -1,5 +1,7 @@
 #include "pimio/browser/media_library_model.h"
 
+#include "pimio/browser/thumbnail_image_provider.h"
+
 #include "pimio/core/error.h"
 
 namespace pimio::browser {
@@ -23,6 +25,11 @@ void MediaLibraryModel::setDatabase(projection::ProjectionDatabase *db)
 void MediaLibraryModel::setRequestService(core::MediaRequestService *service)
 {
     m_service = service;
+}
+
+void MediaLibraryModel::setImageProvider(ThumbnailImageProvider *provider)
+{
+    m_imageProvider = provider;
 }
 
 void MediaLibraryModel::setThumbnailSize(const QSize &size)
@@ -266,6 +273,10 @@ void MediaLibraryModel::onThumbnailResult(const core::MediaRequest &request,
     item.thumbnailStatus = ThumbnailStatus::Ready;
     item.thumbnailHandle = {};
     item.thumbnailImage = QImage::fromData(result.bytes);
+
+    if (m_imageProvider && !item.thumbnailImage.isNull()) {
+        m_imageProvider->setImage(item.id.value(), item.thumbnailImage);
+    }
 
     const QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {ThumbnailStatusRole, ThumbnailImageRole});

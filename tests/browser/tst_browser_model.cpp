@@ -1,5 +1,7 @@
 #include "pimio/browser/media_library_model.h"
 
+#include "pimio/browser/thumbnail_image_provider.h"
+
 #include "pimio/projection/projection_database.h"
 #include "pimio/testing/fake_clock.h"
 #include "pimio/testing/memory_durable_store.h"
@@ -7,6 +9,7 @@
 #include "pimio/testing/recording_media_request_service.h"
 
 #include <QAbstractItemModelTester>
+#include <QBuffer>
 #include <QSignalSpy>
 #include <QSqlDatabase>
 #include <QTest>
@@ -71,6 +74,7 @@ private slots:
     void setVisibleRangeChangesCancelsPreviousRequests();
     void thumbnailResultTransitionsStatusToReady();
     void thumbnailErrorTransitionsStatusToError();
+    void thumbnailResultIsPushedToTheImageProvider();
     void cancelledThumbnailResetsStatusToPending();
     void reloadClearsExistingItems();
     void modelPassesGenericModelTest();
@@ -277,6 +281,41 @@ void TestBrowserModel::thumbnailResultTransitionsStatusToReady()
     QCOMPARE(spy.size(), 1);
     const int status = model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt();
     QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
+}
+
+void TestBrowserModel::thumbnailResultIsPushedToTheImageProvider()
+{
+    populate(1);
+    RecordingMediaRequestService service;
+    ThumbnailImageProvider provider;
+
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.setImageProvider(&provider);
+
+    model.setVisibleRange(0, 0);
+    QCOMPARE(service.pendingCacheKeys().size(), 1);
+
+    QImage source(8, 8, QImage::Format_RGB32);
+    source.fill(Qt::green);
+    QByteArray encoded;
+    QBuffer buffer(&encoded);
+    buffer.open(QIODevice::WriteOnly);
+    QVERIFY(source.save(&buffer, "png"));
+
+    MediaResult result;
+    result.bytes = encoded;
+    result.format = QStringLiteral("png");
+    result.actualSize = source.size();
+    QVERIFY(service.complete(MediaRequestHandle(1), result));
+
+    const QString mediaId = model.data(model.index(0), MediaLibraryModel::MediaIdRole).toString();
+    const QImage served = provider.requestImage(mediaId, nullptr, QSize());
+    QVERIFY2(!served.isNull(), "Expected the decoded thumbnail to be retrievable via the image "
+                              "provider under its mediaId");
+    QCOMPARE(served.size(), source.size());
 }
 
 void TestBrowserModel::thumbnailErrorTransitionsStatusToError()

@@ -10,3 +10,14 @@ target_link_libraries(tst_browser_model PRIVATE
 )
 
 add_test(NAME browser.model COMMAND tst_browser_model)
+
+qt_add_executable(tst_browser_thumbnail_image_provider
+    tst_browser_thumbnail_image_provider.cpp
+)
+
+target_link_libraries(tst_browser_thumbnail_image_provider PRIVATE
+    pimio::browser
+    Qt6::Test
+)
+
+add_test(NAME browser.thumbnail_image_provider COMMAND tst_browser_thumbnail_image_provider)
