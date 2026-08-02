@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QSet>
 #include <QString>
+#include <QTimer>
 
 #include <memory>
 
@@ -16,7 +17,9 @@ namespace pimio::watch {
 /// Directory notifications do not say which entry changed, so this adapter
 /// keeps a snapshot of each watched directory and diffs it whenever
 /// QFileSystemWatcher fires. Files are watched as well so in-place content
-/// changes produce Modified events.
+/// changes produce Modified events. A lightweight metadata poll backs up file
+/// watches because some QFileSystemWatcher backends can miss rapid in-place
+/// writes.
 ///
 /// New directories discovered by a diff are watched recursively so the whole
 /// subtree stays covered; directories that disappear are unwatched. Because
@@ -45,19 +48,31 @@ public:
 private slots:
     void onDirectoryChanged(const QString &path);
     void onFileChanged(const QString &path);
+    void pollFiles();
 
 private:
+    struct FileState {
+        bool exists = false;
+        qint64 size = 0;
+        qint64 lastModifiedMs = 0;
+
+        bool operator==(const FileState &other) const = default;
+    };
+
+    static FileState fileState(const QString &path);
     void watchFile(const QString &path);
     void watchRecursively(const QString &dirPath);
     void unwatchRecursively(const QString &dirPath);
     QSet<QString> snapshotEntries(const QString &dirPath) const;
 
     std::unique_ptr<QFileSystemWatcher> m_watcher;
+    QTimer m_pollTimer;
     QString m_root;
     bool m_watching = false;
 
     /// Direct-child entry names last observed for each watched directory.
     QHash<QString, QSet<QString>> m_knownEntries;
+    QHash<QString, FileState> m_fileStates;
 };
 
 } // namespace pimio::watch

@@ -9,6 +9,8 @@ namespace pimio::watch {
 QtDirectoryWatchAdapter::QtDirectoryWatchAdapter(QObject *parent)
     : WatchAdapter(parent)
 {
+    m_pollTimer.setInterval(2000);
+    connect(&m_pollTimer, &QTimer::timeout, this, &QtDirectoryWatchAdapter::pollFiles);
 }
 
 QtDirectoryWatchAdapter::~QtDirectoryWatchAdapter()
@@ -27,8 +29,15 @@ QSet<QString> QtDirectoryWatchAdapter::snapshotEntries(const QString &dirPath) c
     return entries;
 }
 
+QtDirectoryWatchAdapter::FileState QtDirectoryWatchAdapter::fileState(const QString &path)
+{
+    const QFileInfo info(path);
+    return {info.exists(), info.size(), info.lastModified().toMSecsSinceEpoch()};
+}
+
 void QtDirectoryWatchAdapter::watchFile(const QString &path)
 {
+    m_fileStates.insert(path, fileState(path));
     if (m_watcher->files().contains(path)) {
         return;
     }
@@ -86,6 +95,17 @@ void QtDirectoryWatchAdapter::unwatchRecursively(const QString &dirPath)
         m_watcher->removePath(path);
         m_knownEntries.remove(path);
     }
+
+    QStringList filesToRemove;
+    for (auto it = m_fileStates.constBegin(); it != m_fileStates.constEnd(); ++it) {
+        if (it.key() == dirPath || it.key().startsWith(prefix)) {
+            filesToRemove.append(it.key());
+        }
+    }
+    for (const QString &path : filesToRemove) {
+        m_watcher->removePath(path);
+        m_fileStates.remove(path);
+    }
 }
 
 bool QtDirectoryWatchAdapter::start(const QString &rootPath, core::Error *error)
@@ -111,16 +131,19 @@ bool QtDirectoryWatchAdapter::start(const QString &rootPath, core::Error *error)
     m_root = rootInfo.absoluteFilePath();
     watchRecursively(m_root);
     m_watching = true;
+    m_pollTimer.start();
     return true;
 }
 
 void QtDirectoryWatchAdapter::stop()
 {
+    m_pollTimer.stop();
     if (m_watcher) {
         m_watcher->disconnect(this);
         m_watcher.reset();
     }
     m_knownEntries.clear();
+    m_fileStates.clear();
     m_root.clear();
     m_watching = false;
 }
@@ -199,16 +222,57 @@ void QtDirectoryWatchAdapter::onFileChanged(const QString &path)
         return;
     }
 
+    const FileState state = fileState(path);
+    m_fileStates.insert(path, state);
+
     WatchEvent event;
-    event.kind = QFileInfo::exists(path) ? WatchEventKind::Modified : WatchEventKind::Removed;
+    event.kind = state.exists ? WatchEventKind::Modified : WatchEventKind::Removed;
     event.path = path;
     event.observedAt = QDateTime::currentDateTimeUtc();
     emit eventOccurred(event);
 
     // Some backends stop watching after an atomic replacement. If the path
     // still exists, restore the watch so subsequent edits are observed too.
-    if (QFileInfo::exists(path)) {
+    if (m_watcher && state.exists) {
         watchFile(path);
+    }
+}
+
+void QtDirectoryWatchAdapter::pollFiles()
+{
+    if (!m_watcher) {
+        return;
+    }
+
+    const QStringList paths = m_fileStates.keys();
+    for (const QString &path : paths) {
+        if (!m_fileStates.contains(path)) {
+            continue;
+        }
+
+        const FileState previous = m_fileStates.value(path);
+        const FileState current = fileState(path);
+        if (current == previous) {
+            continue;
+        }
+        m_fileStates.insert(path, current);
+
+        WatchEvent event;
+        if (previous.exists && current.exists) {
+            event.kind = WatchEventKind::Modified;
+        } else if (current.exists) {
+            event.kind = WatchEventKind::Created;
+            watchFile(path);
+        } else {
+            event.kind = WatchEventKind::Removed;
+        }
+        event.path = path;
+        event.observedAt = QDateTime::currentDateTimeUtc();
+        emit eventOccurred(event);
+
+        if (!m_watcher) {
+            return;
+        }
     }
 }
 
