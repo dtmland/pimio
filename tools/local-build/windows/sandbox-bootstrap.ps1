@@ -95,7 +95,7 @@ function Invoke-Step {
         [Parameter(Mandatory = $true)][string] $Name,
         [Parameter(Mandatory = $true)][scriptblock] $Action
     )
-    & $Action
+    & $Action | Out-Host
     $code = $LASTEXITCODE
     if ($code -eq 0) {
         Write-Host "${Name}: passed" -ForegroundColor Green
@@ -219,7 +219,11 @@ try {
     $status['error'] = $_.Exception.Message
 } finally {
     Write-Step 'Environment record'
-    $commit = (& git -C $Work rev-parse HEAD 2>$null)
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    $commit = $null
+    if ($git) {
+        $commit = (& git -C $Work rev-parse HEAD 2>$null)
+    }
     if (-not $commit) { $commit = 'unknown (no git in the sandbox)' }
     $record = @(
         'pimio local build (Windows Sandbox)'
