@@ -48,6 +48,10 @@ copy_runtime_libraries() {
                 libxcb-glx.so.0|libxcb-present.so.0|libxcb-dri2.so.0|\
                 libxcb-dri3.so.0|libxcb-xinerama.so.0|libxcb-xkb.so.1|\
                 libwayland-client.so.0|libwayland-cursor.so.0|libwayland-egl.so.1)
+                    local destination="$stage/lib/$(basename "$library")"
+                    if [[ -e "$destination" && "$library" -ef "$destination" ]]; then
+                        continue
+                    fi
                     cp -L "$library" "$stage/lib/"
                     ;;
             esac
