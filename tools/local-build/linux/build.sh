@@ -60,10 +60,14 @@ run_inside_container() (
     local work=/work/source
     local stage=$work/stage
     local darkroom='not run' staging='not run' outcome=1
+    local archive="$results/pimio-linux-x64.tar.gz"
     local started
     started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     mkdir -p "$results" "$work"
+    rm -rf "$results/Testing"
+    rm -f "$results/build.log" "$results/darkroom-junit.xml" \
+        "$results/environment.txt" "$archive" "$archive.tmp"
     exec > >(tee -a "$results/build.log") 2>&1
 
     # shellcheck disable=SC2317
@@ -135,14 +139,21 @@ run_inside_container() (
         staging='failed: acquired LORE library was not found'
         return 1
     fi
-    cp "$lore_library" "$stage/bin/"
+    if ! cp "$lore_library" "$stage/bin/"; then
+        staging='failed: could not copy the acquired LORE library'
+        return 1
+    fi
     if ! copy_runtime_libraries "$stage"; then
         staging='failed: runtime library collection'
         return 1
     fi
 
-    local archive="$results/pimio-linux-x64.tar.gz"
-    tar -C "$stage" -czf "$archive" .
+    if ! tar -C "$stage" -czf "$archive.tmp" . ||
+        ! mv "$archive.tmp" "$archive"; then
+        rm -f "$archive.tmp" "$archive"
+        staging='failed: could not create the application archive'
+        return 1
+    fi
     staging="staged: $archive"
     outcome=0
     echo "Build package: $archive"
@@ -193,8 +204,13 @@ image_id=$("$engine" image inspect --format '{{.Id}}' "$image")
 source_commit=$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || echo unknown)
 
 echo "== Build in clean container =="
+identity_args=(--user "$(id -u):$(id -g)")
+if [[ "$engine" == podman &&
+    $("$engine" info --format '{{.Host.Security.Rootless}}') == true ]]; then
+    identity_args+=(--userns=keep-id)
+fi
 "$engine" run --rm --platform linux/amd64 \
-    --user "$(id -u):$(id -g)" \
+    "${identity_args[@]}" \
     --tmpfs "/work:rw,exec,mode=1777" \
     -e HOME=/tmp \
     -e "PIMIO_SOURCE_COMMIT=$source_commit" \

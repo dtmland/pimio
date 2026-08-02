@@ -28,10 +28,15 @@ run_inside_container() (
     started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
     mkdir -p "$results/studio" "$work"
+    rm -rf "$results/Testing" "$results/studio"
+    mkdir -p "$results/studio"
+    rm -f "$results/studio-ctest.log" "$results/studio-junit.xml" \
+        "$results/environment.txt" "$results/pimio-studio-linux-x64.tar.gz" \
+        "$results/pimio-studio-linux-x64.tar.gz.tmp"
     exec > >(tee -a "$results/studio-ctest.log") 2>&1
 
     # shellcheck disable=SC2317
-    finish() {
+    write_environment() {
         {
             echo "pimio Studio (Tests B) Linux container run"
             echo "started : $started"
@@ -42,8 +47,21 @@ run_inside_container() (
             echo "display : ${QT_QPA_PLATFORM:-unknown} ${DISPLAY:-${WAYLAND_DISPLAY:-}}"
             echo "status  : $status"
         } > "$results/environment.txt"
-        tar --exclude=pimio-studio-linux-x64.tar.gz -C "$results" \
-            -czf "$results/pimio-studio-linux-x64.tar.gz" .
+    }
+
+    # shellcheck disable=SC2317
+    finish() {
+        write_environment
+        if tar --exclude=pimio-studio-linux-x64.tar.gz.tmp -C "$results" \
+            -czf "$results/pimio-studio-linux-x64.tar.gz.tmp" . &&
+            mv "$results/pimio-studio-linux-x64.tar.gz.tmp" \
+                "$results/pimio-studio-linux-x64.tar.gz"; then
+            return 0
+        fi
+        status=1
+        rm -f "$results/pimio-studio-linux-x64.tar.gz.tmp"
+        write_environment
+        return 1
     }
     trap finish EXIT
 
@@ -62,6 +80,11 @@ run_inside_container() (
         --output-junit "$results/studio-junit.xml"
     status=$?
     cp -a build/default/Testing "$results/" 2>/dev/null || true
+    trap - EXIT
+    if ! finish; then
+        echo 'Could not create the Studio results archive.' >&2
+        status=1
+    fi
     return "$status"
 )
 
@@ -120,6 +143,7 @@ source_commit=$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || echo unk
 container_args=(
     run --rm --platform linux/amd64
     --user "$(id -u):$(id -g)"
+    --hostname "$(hostname)"
     --tmpfs "/work:rw,exec,mode=1777"
     -e HOME=/tmp
     -e "PIMIO_SOURCE_COMMIT=$source_commit"
@@ -128,6 +152,10 @@ container_args=(
     --mount "type=bind,src=$repository_root,dst=/source,readonly"
     --mount "type=bind,src=$output,dst=/results"
 )
+if [[ "$engine" == podman &&
+    $("$engine" info --format '{{.Host.Security.Rootless}}') == true ]]; then
+    container_args+=(--userns=keep-id)
+fi
 
 case "$display_mode" in
     x11)
