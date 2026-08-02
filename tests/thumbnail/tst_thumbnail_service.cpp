@@ -86,6 +86,7 @@ class TestThumbnailService : public QObject
 private slots:
     void cacheMissRendersAndCaches();
     void cacheHitSkipsRender();
+    void completedRequestsAreReleased();
     void cancellationPreventsResultCallback();
     void cancelAllExceptLeavesNamedHandles();
     void renderErrorDeliversErrorCallback();
@@ -143,6 +144,24 @@ void TestThumbnailService::cacheHitSkipsRender()
 
     QTRY_VERIFY_WITH_TIMEOUT(gotResult, 5000);
     QCOMPARE(renderer.renderedKeys.size(), 0);
+}
+
+void TestThumbnailService::completedRequestsAreReleased()
+{
+    QTemporaryDir tmp;
+    QVERIFY(tmp.isValid());
+
+    ThumbnailDiskCache cache(tmp.path());
+    FakeRenderer renderer;
+    ThumbnailService service(&cache, &renderer);
+
+    service.request(
+            makeRequest(QStringLiteral("released")),
+            [](const MediaRequest &, const MediaResult &) {},
+            [](const MediaRequest &, const Error &) {});
+
+    QCOMPARE(service.pendingCount(), 1);
+    QTRY_COMPARE(service.pendingCount(), 0);
 }
 
 void TestThumbnailService::cancellationPreventsResultCallback()

@@ -1,6 +1,8 @@
 qt_add_library(pimio_app_lib STATIC
     include/pimio/app/application.h
+    include/pimio/app/library_session.h
     src/application.cpp
+    src/library_session.cpp
 )
 
 add_library(pimio::app_lib ALIAS pimio_app_lib)
@@ -10,10 +12,24 @@ target_include_directories(pimio_app_lib PUBLIC include)
 target_link_libraries(pimio_app_lib PUBLIC
     pimio::core
     pimio::browser
+    pimio::metadata
+    pimio::projection
+    pimio::scan
+    pimio::thumbnail
+    pimio::watch
     Qt6::Gui
     Qt6::Quick
     Qt6::QuickControls2
 )
+
+# LibrarySession only opens a real durable store when this build was
+# compiled with LORE; PIMIO_HAVE_LORE gates that code path so a build without
+# LORE (see docs/decisions/0001-lore-durable-store.md) still links and starts
+# with an empty library rather than failing to configure at all.
+if(PIMIO_LORE_FOUND)
+    target_link_libraries(pimio_app_lib PUBLIC pimio::lore)
+    target_compile_definitions(pimio_app_lib PUBLIC PIMIO_HAVE_LORE)
+endif()
 
 qt_add_qml_module(pimio_app_lib
     URI Pimio

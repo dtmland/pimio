@@ -253,14 +253,16 @@ std::optional<JobId> JobQueue::enqueue(const JobRecord &record, Error *error)
     }
     QSqlDatabase db = d->database();
 
-    // Coalescing: if a live job with the same key already exists, return it.
+    // Coalesce with pending work only. A running job may already have passed
+    // the state affected by a newly observed event, so that event must leave
+    // one follow-up job pending rather than being folded into work in flight.
     if (!record.coalescingKey.isEmpty()) {
         QSqlQuery check(db);
         if (!d->prepared(
                 check,
                 QStringLiteral("SELECT id FROM job "
                                 "WHERE coalescing_key = ? "
-                                "AND state NOT IN ('succeeded', 'failed', 'cancelled') "
+                                "AND state = 'pending' "
                                 "LIMIT 1"),
                 error)) {
             return std::nullopt;

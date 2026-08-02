@@ -27,6 +27,7 @@ Rectangle {
             bottomMargin: 96
         }
         asynchronous: true
+        cache: false
         fillMode: Image.PreserveAspectFit
         source: detail.mediaKind === 1 && detail.absolutePath !== ""
                 ? "file:" + detail.absolutePath

@@ -33,6 +33,19 @@ void setError(Error *error, ErrorCode code, const QString &message)
     }
 }
 
+/// Every TEXT column projected here is declared NOT NULL. A default-
+/// constructed QString (for example an unset MediaMetadata::cameraMake, or
+/// FileIdentity::volumeId on a platform that could not determine one) is a
+/// *null* QString rather than merely empty, and Qt's SQLite driver binds a
+/// null QString as SQL NULL, not as an empty string. Coalescing here keeps
+/// every optional-in-practice text field projectable without weakening the
+/// schema's NOT NULL columns, which exist so every other query on them can
+/// assume a real (if empty) string.
+QString notNull(const QString &value)
+{
+    return value.isNull() ? QString(QLatin1String("")) : value;
+}
+
 /// Turns what the user typed into an FTS5 MATCH expression.
 ///
 /// The text is never handed to FTS5 as-is. FTS5 reads its own operators in a
@@ -373,27 +386,27 @@ bool ProjectionDatabase::Private::insertRecord(QSqlDatabase &db, const MediaReco
     query.addBindValue(record.id.value());
     query.addBindValue(QString::fromUtf8(QJsonDocument(record.toJson()).toJson(
         QJsonDocument::Compact)));
-    query.addBindValue(record.fingerprint.algorithm());
-    query.addBindValue(record.fingerprint.digest());
-    query.addBindValue(record.identity.absolutePath);
-    query.addBindValue(record.identity.volumeId);
-    query.addBindValue(record.identity.fileId);
+    query.addBindValue(notNull(record.fingerprint.algorithm()));
+    query.addBindValue(notNull(record.fingerprint.digest()));
+    query.addBindValue(notNull(record.identity.absolutePath));
+    query.addBindValue(notNull(record.identity.volumeId));
+    query.addBindValue(notNull(record.identity.fileId));
     query.addBindValue(record.identity.sizeBytes);
     query.addBindValue(record.identity.lastModified.isValid()
                            ? QVariant(record.identity.lastModified.toMSecsSinceEpoch())
                            : QVariant(QMetaType(QMetaType::LongLong)));
     query.addBindValue(core::toString(metadata.kind));
-    query.addBindValue(metadata.fileName);
-    query.addBindValue(metadata.folderPath);
+    query.addBindValue(notNull(metadata.fileName));
+    query.addBindValue(notNull(metadata.folderPath));
     query.addBindValue(metadata.captureTime.sortKeyMSecs());
     query.addBindValue(metadata.captureTime.hasKnownOffset() ? 1 : 0);
-    query.addBindValue(metadata.cameraMake);
-    query.addBindValue(metadata.cameraModel);
+    query.addBindValue(notNull(metadata.cameraMake));
+    query.addBindValue(notNull(metadata.cameraModel));
     query.addBindValue(metadata.pixelWidth);
     query.addBindValue(metadata.pixelHeight);
     query.addBindValue(metadata.durationMs);
     query.addBindValue(metadata.rating);
-    query.addBindValue(metadata.caption);
+    query.addBindValue(notNull(metadata.caption));
     query.addBindValue(metadata.location.has_value()
                            ? QVariant(metadata.location->latitude())
                            : QVariant(QMetaType(QMetaType::Double)));

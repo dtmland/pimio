@@ -15,6 +15,8 @@
 
 namespace pimio::browser {
 
+class ThumbnailImageProvider;
+
 /// A QAbstractListModel that exposes a chronologically ordered library view.
 ///
 /// Each row represents one media item from a ProjectionDatabase. Thumbnails
@@ -62,6 +64,12 @@ public:
     /// in Pending state until a service is provided).
     void setRequestService(core::MediaRequestService *service);
 
+    /// Attaches a QQuickImageProvider so QML's `image://thumbnail/<mediaId>`
+    /// URLs can serve the same bytes this model already decoded, without the
+    /// provider needing its own copy of the request pipeline. May be null
+    /// (the default); not owned by the model.
+    void setImageProvider(ThumbnailImageProvider *provider);
+
     /// Size of requested thumbnails in device-independent pixels. Default: 160×160.
     void setThumbnailSize(const QSize &size);
     QSize thumbnailSize() const;
@@ -100,6 +108,7 @@ private:
         mutable ThumbnailStatus thumbnailStatus = ThumbnailStatus::Pending;
         mutable QImage thumbnailImage;
         mutable core::MediaRequestHandle thumbnailHandle;
+        mutable QString thumbnailRequestKey;
     };
 
     const core::MediaRecord *ensureRecord(int row) const;
@@ -109,6 +118,7 @@ private:
 
     projection::ProjectionDatabase *m_db = nullptr;
     core::MediaRequestService *m_service = nullptr;
+    ThumbnailImageProvider *m_imageProvider = nullptr;
     QSize m_thumbnailSize{160, 160};
     int m_prefetchMargin = 20;
 

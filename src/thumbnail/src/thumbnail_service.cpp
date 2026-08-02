@@ -6,6 +6,7 @@
 #include <QThreadPool>
 
 #include <atomic>
+#include <functional>
 #include <memory>
 
 namespace pimio::thumbnail {
@@ -39,6 +40,7 @@ struct PendingItem
     core::MediaRequest request;
     core::MediaRequestService::ResultCallback onResult;
     core::MediaRequestService::ErrorCallback onError;
+    std::function<void()> onFinished;
     std::atomic<bool> cancelled{false};
 };
 
@@ -106,6 +108,7 @@ private:
                 m_service,
                 [item, result]() {
                     if (!item->cancelled.load()) {
+                        item->onFinished();
                         item->onResult(item->request, result);
                     }
                 },
@@ -119,6 +122,7 @@ private:
                 m_service,
                 [item, error]() {
                     if (!item->cancelled.load()) {
+                        item->onFinished();
                         item->onError(item->request, error);
                     }
                 },
@@ -186,6 +190,7 @@ core::MediaRequestHandle ThumbnailService::request(const core::MediaRequest &req
     item->request = request;
     item->onResult = std::move(onResult);
     item->onError = std::move(onError);
+    item->onFinished = [this, handleValue]() { d->pending.remove(handleValue); };
 
     d->pending.insert(handleValue, item);
 
@@ -220,6 +225,11 @@ void ThumbnailService::cancelAllExcept(const QList<core::MediaRequestHandle> &ke
             cancel(core::MediaRequestHandle(h));
         }
     }
+}
+
+int ThumbnailService::pendingCount() const
+{
+    return d->pending.size();
 }
 
 } // namespace pimio::thumbnail

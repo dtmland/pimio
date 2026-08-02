@@ -54,7 +54,7 @@ option(PIMIO_REQUIRE_LORE
 # The supported Qt baseline is recorded in docs/supported-platforms.md.
 set(PIMIO_QT_MINIMUM_VERSION 6.4)
 
-find_package(Qt6 ${PIMIO_QT_MINIMUM_VERSION} REQUIRED COMPONENTS Core Gui Quick QuickControls2 Sql)
+find_package(Qt6 ${PIMIO_QT_MINIMUM_VERSION} REQUIRED COMPONENTS Core Gui Quick QuickControls2 Sql Multimedia)
 
 qt_standard_project_setup(REQUIRES ${PIMIO_QT_MINIMUM_VERSION})
 
@@ -88,6 +88,7 @@ endif()
 add_subdirectory(src/metadata)
 add_subdirectory(src/projection)
 add_subdirectory(src/scan)
+add_subdirectory(src/watch)
 add_subdirectory(src/thumbnail)
 add_subdirectory(src/browser)
 add_subdirectory(src/app)

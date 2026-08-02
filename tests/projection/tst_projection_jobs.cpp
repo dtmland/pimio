@@ -52,6 +52,7 @@ private slots:
 
     // ---- JobQueue: coalescing ------------------------------------------------
     void enqueuingWithTheSameCoalescingKeyDoesNotInsertADuplicate();
+    void runningJobAllowsOneCoalescedFollowUp();
     void terminalJobsDoNotBlockSubsequentCoalescing();
 
     // ---- JobQueue: priority ordering ----------------------------------------
@@ -188,6 +189,30 @@ void TestProjectionJobs::enqueuingWithTheSameCoalescingKeyDoesNotInsertADuplicat
     QCOMPARE(id2->value(), id1->value());
 
     // Only one job exists.
+    QCOMPARE(queue.pendingCount(&error), 1);
+}
+
+void TestProjectionJobs::runningJobAllowsOneCoalescedFollowUp()
+{
+    JobQueue queue;
+    Error error;
+    QVERIFY2(queue.openInMemory(&error), qPrintable(error.message()));
+
+    const QString key = QStringLiteral("scan:root-1");
+    const auto runningId =
+            queue.enqueue(makeRecord(JobKind::ScanRoot, JobPriority::Background, key), &error);
+    QVERIFY(runningId.has_value());
+    QCOMPARE(queue.claim(1, &error).size(), 1);
+
+    const auto followUpId =
+            queue.enqueue(makeRecord(JobKind::ScanRoot, JobPriority::Background, key), &error);
+    QVERIFY2(followUpId.has_value(), qPrintable(error.message()));
+    QVERIFY(followUpId->value() != runningId->value());
+
+    const auto duplicateId =
+            queue.enqueue(makeRecord(JobKind::ScanRoot, JobPriority::Background, key), &error);
+    QVERIFY2(duplicateId.has_value(), qPrintable(error.message()));
+    QCOMPARE(duplicateId->value(), followUpId->value());
     QCOMPARE(queue.pendingCount(&error), 1);
 }
 

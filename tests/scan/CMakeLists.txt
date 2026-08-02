@@ -9,3 +9,14 @@ target_link_libraries(tst_scan_incremental
 )
 
 add_test(NAME scan.incremental COMMAND tst_scan_incremental)
+
+qt_add_executable(tst_scan_qt_file_system tst_scan_qt_file_system.cpp)
+
+target_link_libraries(tst_scan_qt_file_system
+    PRIVATE
+        pimio::scan
+        pimio::core
+        Qt6::Test
+)
+
+add_test(NAME scan.qt_file_system COMMAND tst_scan_qt_file_system)

@@ -1,8 +1,17 @@
 #include "pimio/browser/media_library_model.h"
 
+#include "pimio/browser/thumbnail_image_provider.h"
+
 #include "pimio/core/error.h"
 
 namespace pimio::browser {
+
+namespace {
+QString requestIndexKey(const core::MediaRequest &request)
+{
+    return request.mediaId.value() + QLatin1Char(':') + request.cacheKey();
+}
+} // namespace
 
 MediaLibraryModel::MediaLibraryModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -23,6 +32,11 @@ void MediaLibraryModel::setDatabase(projection::ProjectionDatabase *db)
 void MediaLibraryModel::setRequestService(core::MediaRequestService *service)
 {
     m_service = service;
+}
+
+void MediaLibraryModel::setImageProvider(ThumbnailImageProvider *provider)
+{
+    m_imageProvider = provider;
 }
 
 void MediaLibraryModel::setThumbnailSize(const QSize &size)
@@ -50,6 +64,9 @@ void MediaLibraryModel::reload()
     // Cancel all in-flight requests before resetting the item list.
     if (m_service) {
         m_service->cancelAllExcept({});
+    }
+    if (m_imageProvider) {
+        m_imageProvider->clear();
     }
 
     beginResetModel();
@@ -108,7 +125,8 @@ void MediaLibraryModel::setVisibleRange(int first, int last)
         if (item.thumbnailStatus == ThumbnailStatus::Loading) {
             item.thumbnailStatus = ThumbnailStatus::Pending;
             item.thumbnailHandle = {};
-            m_requestIndex.remove(item.id.value());
+            m_requestIndex.remove(item.thumbnailRequestKey);
+            item.thumbnailRequestKey.clear();
         }
     }
 
@@ -237,6 +255,7 @@ void MediaLibraryModel::requestThumbnailIfNeeded(int row) const
     req.priority = core::JobPriority::Interactive;
 
     item.thumbnailStatus = ThumbnailStatus::Loading;
+    item.thumbnailRequestKey = requestIndexKey(req);
     item.thumbnailHandle = m_service->request(
             req,
             [this](const core::MediaRequest &r, const core::MediaResult &res) {
@@ -245,13 +264,13 @@ void MediaLibraryModel::requestThumbnailIfNeeded(int row) const
             [this](const core::MediaRequest &r, const core::Error &err) {
                 const_cast<MediaLibraryModel *>(this)->onThumbnailError(r, err);
             });
-    m_requestIndex.insert(req.cacheKey(), row);
+    m_requestIndex.insert(item.thumbnailRequestKey, row);
 }
 
 void MediaLibraryModel::onThumbnailResult(const core::MediaRequest &request,
                                            const core::MediaResult &result)
 {
-    const auto it = m_requestIndex.find(request.cacheKey());
+    const auto it = m_requestIndex.find(requestIndexKey(request));
     if (it == m_requestIndex.end()) {
         return;
     }
@@ -265,7 +284,12 @@ void MediaLibraryModel::onThumbnailResult(const core::MediaRequest &request,
     Item &item = m_items[row];
     item.thumbnailStatus = ThumbnailStatus::Ready;
     item.thumbnailHandle = {};
+    item.thumbnailRequestKey.clear();
     item.thumbnailImage = QImage::fromData(result.bytes);
+
+    if (m_imageProvider && !item.thumbnailImage.isNull()) {
+        m_imageProvider->setImage(item.id.value(), item.thumbnailImage);
+    }
 
     const QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {ThumbnailStatusRole, ThumbnailImageRole});
@@ -280,7 +304,7 @@ void MediaLibraryModel::onThumbnailError(const core::MediaRequest &request,
         return;
     }
 
-    const auto it = m_requestIndex.find(request.cacheKey());
+    const auto it = m_requestIndex.find(requestIndexKey(request));
     if (it == m_requestIndex.end()) {
         return;
     }
@@ -294,6 +318,7 @@ void MediaLibraryModel::onThumbnailError(const core::MediaRequest &request,
     Item &item = m_items[row];
     item.thumbnailStatus = ThumbnailStatus::Error;
     item.thumbnailHandle = {};
+    item.thumbnailRequestKey.clear();
 
     const QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {ThumbnailStatusRole});

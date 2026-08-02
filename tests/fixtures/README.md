@@ -50,6 +50,15 @@ committed rather than generated during the test run.
   pimio that holds a real JPEG preview at a recorded offset. It exercises
   embedded-preview extraction; it is not a substitute for testing a real RAW
   decoder.
+- `video/decodable-clip.mp4` is different from the two files above: it is a
+  real, decodable clip (baseline-profile H.264, 32×32, four frames of solid
+  red, no audio) used to prove `pimio::thumbnail::VideoFrameRenderer` actually
+  decodes video through Qt Multimedia rather than only parsing containers.
+  It was generated once with the `ffmpeg` command line tool (see
+  `manifest.json` for the exact invocation) as an offline fixture-generation
+  step, the same role `exiftool` plays for independent EXIF verification
+  below; `ffmpeg` is not a build or runtime dependency of pimio and is not
+  invoked by `tools/fixture_generator` or by any test.
 
 ## EXIF fixtures
 
