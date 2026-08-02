@@ -1,6 +1,8 @@
 #include "pimio/app/application.h"
+#include "pimio/browser/thumbnail_image_provider.h"
 
 #include <QAbstractListModel>
+#include <QImage>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
@@ -24,9 +26,10 @@ public:
         ThumbnailImageRole,
     };
 
-    explicit SyntheticMediaModel(int count, QObject *parent = nullptr)
+    explicit SyntheticMediaModel(int count, int thumbnailStatus = 0, QObject *parent = nullptr)
         : QAbstractListModel(parent)
         , m_count(count)
+        , m_thumbnailStatus(thumbnailStatus)
     {
     }
 
@@ -50,7 +53,7 @@ public:
         case MediaKindRole:
             return 1;
         case ThumbnailStatusRole:
-            return 0;
+            return m_thumbnailStatus;
         default:
             return {};
         }
@@ -89,6 +92,7 @@ signals:
 
 private:
     int m_count;
+    int m_thumbnailStatus;
 };
 
 } // namespace
@@ -101,6 +105,7 @@ private slots:
     void initTestCase();
     void mainQmlLoadsRootWindow();
     void gridTracksVisibleRangeAndOpensDetail();
+    void readyThumbnailUsesImageProvider();
 };
 
 void TestAppSmoke::initTestCase()
@@ -155,6 +160,27 @@ void TestAppSmoke::gridTracksVisibleRangeAndOpensDetail()
     QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-0"));
     QCOMPARE(detail->property("absolutePath").toString(),
              QStringLiteral("/library/item-0.jpg"));
+}
+
+void TestAppSmoke::readyThumbnailUsesImageProvider()
+{
+    SyntheticMediaModel model(1, 2);
+    QQmlApplicationEngine engine;
+    auto *provider = new pimio::browser::ThumbnailImageProvider;
+    QImage thumbnail(16, 16, QImage::Format_RGB32);
+    thumbnail.fill(Qt::green);
+    provider->setImage(QStringLiteral("item-0"), thumbnail);
+    engine.addImageProvider(QStringLiteral("thumbnail"), provider);
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *image = window->findChild<QQuickItem *>(QStringLiteral("gridThumbnail"));
+    QVERIFY(image != nullptr);
+    QTRY_COMPARE(image->property("status").toInt(), 1); // Image.Ready
+    QCOMPARE(image->property("source").toUrl(),
+             QUrl(QStringLiteral("image://thumbnail/item-0")));
 }
 
 QTEST_MAIN(TestAppSmoke)

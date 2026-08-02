@@ -5,6 +5,7 @@
 #include "pimio/scan/media_hasher.h"
 
 #include <QFileInfo>
+#include <QDir>
 #include <QHash>
 #include <QList>
 #include <QSet>
@@ -15,6 +16,28 @@
 namespace pimio::scan {
 
 namespace {
+
+QString pathKey(const QString &path)
+{
+    QString key = QDir::cleanPath(QDir::fromNativeSeparators(path));
+#ifdef Q_OS_WIN
+    key = key.toCaseFolded();
+#endif
+    return key;
+}
+
+bool isWithinRoot(const QString &path, const QString &root)
+{
+    const QString pathValue = pathKey(path);
+    QString rootValue = pathKey(root);
+    if (pathValue == rootValue) {
+        return true;
+    }
+    if (!rootValue.endsWith(QLatin1Char('/'))) {
+        rootValue.append(QLatin1Char('/'));
+    }
+    return pathValue.startsWith(rootValue);
+}
 
 /// Determines MediaKind from a file-name extension.
 core::MediaKind kindFromExtension(const QString &fileName)
@@ -119,9 +142,11 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
         return loadError;
     }
 
-    // byPath: absolutePath → record (for all records that live under this root).
+    // byPath: normalized absolutePath → records (for all records under this root).
+    // A list is intentional: older versions could persist multiple ids for one
+    // path, and reconciliation must retain one while removing the extras.
     // byDigest: fingerprint digest → list of records (for move detection).
-    QHash<QString, core::MediaRecord> byPath;
+    QHash<QString, QList<core::MediaRecord>> byPath;
     QHash<QString, QList<core::MediaRecord>> byDigest;
     byPath.reserve(existingIds.size());
 
@@ -133,10 +158,10 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
         }
         const QString path = rec->identity.absolutePath;
         // Only index records that belong to this root.
-        if (!path.startsWith(root.absolutePath)) {
+        if (!isWithinRoot(path, root.absolutePath)) {
             continue;
         }
-        byPath.insert(path, *rec);
+        byPath[pathKey(path)].append(*rec);
         if (rec->fingerprint.isValid()) {
             byDigest[rec->fingerprint.digest()].append(*rec);
         }
@@ -151,7 +176,7 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
     QSet<QString> foundPaths;
     foundPaths.reserve(foundEntries.size());
     for (const core::DirectoryEntry &entry : std::as_const(foundEntries)) {
-        foundPaths.insert(entry.absolutePath);
+        foundPaths.insert(pathKey(entry.absolutePath));
     }
 
     // ---- Reconcile each found file ----
@@ -167,9 +192,10 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
         const QString &path = entry.absolutePath;
         const core::FileIdentity &identity = entry.identity;
 
-        if (byPath.contains(path)) {
+        const QString currentPathKey = pathKey(path);
+        if (byPath.contains(currentPathKey)) {
             // File was known at this path.
-            core::MediaRecord existing = byPath.value(path);
+            core::MediaRecord existing = byPath.value(currentPathKey).constFirst();
 
             if (identity.looksUnchangedFrom(existing.identity)) {
                 // Cheap check says nothing changed; skip recomputing fingerprint.
@@ -237,7 +263,8 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
                 const QList<core::MediaRecord> &candidates = byDigest.value(fp.digest());
                 for (const core::MediaRecord &candidate : candidates) {
                     const QString &oldPath = candidate.identity.absolutePath;
-                    if (!foundPaths.contains(oldPath) && !seenIds.contains(candidate.id.value())) {
+                    if (!foundPaths.contains(pathKey(oldPath))
+                        && !seenIds.contains(candidate.id.value())) {
                         // The original path is gone: this is a move/rename.
                         newRecord = candidate;
                         isMoved = true;
@@ -285,16 +312,18 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
     // ---- Remove records no longer on disk ----
 
     for (auto it = byPath.constBegin(); it != byPath.constEnd(); ++it) {
-        if (isCancelled.load()) {
-            d->store->discardStaged(nullptr);
-            return core::Error::cancelled();
-        }
-        if (!seenIds.contains(it.value().id.value())) {
-            core::Error removeError;
-            if (!d->store->remove(it.value().id, &removeError)) {
-                return removeError;
+        for (const core::MediaRecord &record : it.value()) {
+            if (isCancelled.load()) {
+                d->store->discardStaged(nullptr);
+                return core::Error::cancelled();
             }
-            ++result->removed;
+            if (!seenIds.contains(record.id.value())) {
+                core::Error removeError;
+                if (!d->store->remove(record.id, &removeError)) {
+                    return removeError;
+                }
+                ++result->removed;
+            }
         }
     }
 

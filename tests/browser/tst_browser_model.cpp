@@ -193,6 +193,8 @@ void TestBrowserModel::itemAtReturnsDetailRoles()
              QStringLiteral("/library/item000.jpg"));
     QCOMPARE(item.value(QStringLiteral("mediaKind")).toInt(),
              static_cast<int>(MediaKind::Image));
+    QCOMPARE(item.value(QStringLiteral("thumbnailStatus")).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Pending));
     QVERIFY(model.itemAt(-1).isEmpty());
 }
 

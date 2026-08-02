@@ -152,6 +152,42 @@ private slots:
         QCOMPARE(loadAll(store).size(), 1);
     }
 
+    void scanRemovesHistoricalSamePathDuplicates()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+
+        fs.addDirectory(kRoot);
+        const QString path = addFile(fs, kRoot + "/photo.jpg");
+        core::Error identityError;
+        const core::FileIdentity identity = fs.identify(path, &identityError);
+        QVERIFY(!identityError.isError());
+
+        for (const QString &id : {QStringLiteral("duplicate-a"), QStringLiteral("duplicate-b")}) {
+            core::MediaRecord record;
+            record.id = core::MediaId(id);
+            record.identity = identity;
+            record.fingerprint = MediaHasher::computeFingerprint("test-content");
+            record.metadata.kind = core::MediaKind::Image;
+            QVERIFY(store.stage(record, nullptr));
+        }
+        QVERIFY(store.commit(QStringLiteral("historical duplicates"), nullptr).has_value());
+        QCOMPARE(loadAll(store).size(), 2);
+
+        Scanner scanner(&fs, &reader, &store);
+        std::atomic<bool> cancel{false};
+        Scanner::Result result;
+        const core::Error error = scanner.scan({kRoot}, cancel, &result);
+
+        QVERIFY(!error.isError());
+        QCOMPARE(result.unchanged, 1);
+        QCOMPARE(result.removed, 1);
+        QCOMPARE(loadAll(store).size(), 1);
+        QCOMPARE(loadAll(store).constFirst().identity.absolutePath, path);
+    }
+
     // ---- Scanner: update ----
 
     void scanUpdatesChangedFile()

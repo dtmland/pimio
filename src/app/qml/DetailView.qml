@@ -8,6 +8,7 @@ Rectangle {
     property string absolutePath
     property string captureTime
     property int mediaKind
+    property int thumbnailStatus
     property url thumbnailSource
     signal closeRequested()
 
@@ -31,13 +32,22 @@ Rectangle {
         fillMode: Image.PreserveAspectFit
         source: detail.mediaKind === 1 && detail.absolutePath !== ""
                 ? "file:" + detail.absolutePath
-                : detail.thumbnailSource
+                : detail.thumbnailStatus === 2 ? detail.thumbnailSource : ""
     }
 
     BusyIndicator {
         anchors.centerIn: preview
         running: preview.status === Image.Loading
         visible: running
+    }
+
+    Label {
+        anchors.centerIn: preview
+        color: "#aaaaaa"
+        visible: detail.mediaKind === 2 && preview.status !== Image.Ready
+        text: detail.thumbnailStatus === 3
+              ? qsTr("Video preview unavailable")
+              : qsTr("Loading video preview…")
     }
 
     Label {

@@ -148,6 +148,7 @@ QVariantMap MediaLibraryModel::itemAt(int row) const
         {QStringLiteral("absolutePath"), data(itemIndex, AbsolutePathRole)},
         {QStringLiteral("captureTimeString"), data(itemIndex, CaptureTimeStringRole)},
         {QStringLiteral("mediaKind"), data(itemIndex, MediaKindRole)},
+        {QStringLiteral("thumbnailStatus"), data(itemIndex, ThumbnailStatusRole)},
     };
 }
 

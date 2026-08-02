@@ -25,6 +25,7 @@ Window {
         detail.absolutePath = item.absolutePath
         detail.captureTime = item.captureTimeString
         detail.mediaKind = item.mediaKind
+        detail.thumbnailStatus = item.thumbnailStatus
         detail.thumbnailSource = "image://thumbnail/" + detail.mediaId
         detail.visible = true
         detail.forceActiveFocus()
@@ -76,12 +77,13 @@ Window {
 
             // Thumbnail or placeholder
             Image {
+                objectName: "gridThumbnail"
                 anchors.fill: parent
                 anchors.margins: 2
                 cache: false
                 fillMode: Image.PreserveAspectCrop
                 visible: model.thumbnailStatus === 2 // ThumbnailStatus::Ready
-                source: (model.thumbnailImage !== null && model.thumbnailStatus === 2)
+                source: model.thumbnailStatus === 2
                         ? "image://thumbnail/" + model.mediaId
                         : ""
             }
