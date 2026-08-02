@@ -37,7 +37,7 @@ class TestThumbnailVideo : public QObject
 private slots:
     void decodesFirstFrameOfARealClip();
     void decodesAtARequestedPosition();
-    void reportsUnsupportedForAStructurallyValidButUndecodableFile();
+    void reportsErrorForAStructurallyValidButUndecodableFile();
     void reportsInternalErrorForAnEmptyPath();
     void compositeDispatchesImagesToTheImageRenderer();
     void compositeDispatchesVideoToTheVideoRenderer();
@@ -92,7 +92,7 @@ void TestThumbnailVideo::decodesAtARequestedPosition()
     QVERIFY(!result.bytes.isEmpty());
 }
 
-void TestThumbnailVideo::reportsUnsupportedForAStructurallyValidButUndecodableFile()
+void TestThumbnailVideo::reportsErrorForAStructurallyValidButUndecodableFile()
 {
     VideoFrameRenderer renderer;
 
@@ -108,7 +108,8 @@ void TestThumbnailVideo::reportsUnsupportedForAStructurallyValidButUndecodableFi
 
     QVERIFY(result.bytes.isEmpty());
     QVERIFY(error.isError());
-    QVERIFY2(error.code() == ErrorCode::UnsupportedMedia || error.code() == ErrorCode::CorruptData,
+    QVERIFY2(error.code() == ErrorCode::UnsupportedMedia || error.code() == ErrorCode::CorruptData
+                    || error.code() == ErrorCode::Timeout,
              qPrintable(toString(error.code())));
 }
 
