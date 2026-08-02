@@ -27,6 +27,7 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
+#include <QFileInfo>
 #include <QLoggingCategory>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>

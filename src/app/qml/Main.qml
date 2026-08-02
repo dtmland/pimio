@@ -20,6 +20,7 @@ Window {
             return
 
         selectedIndex = index
+        mediaModel.requestThumbnail(index)
         const item = mediaModel.itemAt(index)
         detail.mediaId = item.mediaId
         detail.absolutePath = item.absolutePath
@@ -29,6 +30,21 @@ Window {
         detail.thumbnailSource = "image://thumbnail/" + detail.mediaId
         detail.visible = true
         detail.forceActiveFocus()
+    }
+
+    function refreshDetailThumbnail() {
+        if (!detail.visible || !mediaModel || selectedIndex < 0)
+            return
+
+        const item = mediaModel.itemAt(selectedIndex)
+        detail.thumbnailStatus = item.thumbnailStatus
+    }
+
+    Connections {
+        target: root.mediaModel
+        function onDataChanged() {
+            root.refreshDetailThumbnail()
+        }
     }
 
     // Top bar

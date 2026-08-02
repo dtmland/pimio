@@ -12,6 +12,19 @@
 
 namespace {
 
+QQuickItem *findVisualItem(QQuickItem *root, const QString &objectName)
+{
+    if (root->objectName() == objectName) {
+        return root;
+    }
+    for (QQuickItem *child : root->childItems()) {
+        if (QQuickItem *match = findVisualItem(child, objectName)) {
+            return match;
+        }
+    }
+    return nullptr;
+}
+
 class SyntheticMediaModel final : public QAbstractListModel
 {
     Q_OBJECT
@@ -76,6 +89,10 @@ public:
         emit visibleRangeChanged(first, last);
     }
 
+    Q_INVOKABLE void requestThumbnail(int)
+    {
+    }
+
     Q_INVOKABLE QVariantMap itemAt(int row) const
     {
         const QModelIndex itemIndex = index(row);
@@ -84,6 +101,7 @@ public:
             {QStringLiteral("absolutePath"), data(itemIndex, AbsolutePathRole)},
             {QStringLiteral("captureTimeString"), data(itemIndex, CaptureTimeStringRole)},
             {QStringLiteral("mediaKind"), data(itemIndex, MediaKindRole)},
+            {QStringLiteral("thumbnailStatus"), data(itemIndex, ThumbnailStatusRole)},
         };
     }
 
@@ -176,7 +194,8 @@ void TestAppSmoke::readyThumbnailUsesImageProvider()
 
     auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
     QVERIFY(window != nullptr);
-    auto *image = window->findChild<QQuickItem *>(QStringLiteral("gridThumbnail"));
+    QTRY_VERIFY(findVisualItem(window->contentItem(), QStringLiteral("gridThumbnail")) != nullptr);
+    auto *image = findVisualItem(window->contentItem(), QStringLiteral("gridThumbnail"));
     QVERIFY(image != nullptr);
     QTRY_COMPARE(image->property("status").toInt(), 1); // Image.Ready
     QCOMPARE(image->property("source").toUrl(),

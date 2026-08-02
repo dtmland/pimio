@@ -73,6 +73,7 @@ private slots:
     void setVisibleRangeWithPrefetchExpandsWindow();
     void setVisibleRangeChangesCancelsPreviousRequests();
     void thumbnailResultTransitionsStatusToReady();
+    void invalidThumbnailResultTransitionsStatusToError();
     void duplicateContentRequestsCompleteIndependently();
     void thumbnailErrorTransitionsStatusToError();
     void thumbnailResultIsPushedToTheImageProvider();
@@ -276,7 +277,11 @@ void TestBrowserModel::thumbnailResultTransitionsStatusToReady()
     // Simulate a successful result for row 0.
     // RecordingMediaRequestService assigns handles starting at 1.
     MediaResult result;
-    result.bytes = QByteArray("FAKE");
+    QImage source(8, 8, QImage::Format_RGB32);
+    source.fill(Qt::green);
+    QBuffer encoded(&result.bytes);
+    encoded.open(QIODevice::WriteOnly);
+    QVERIFY(source.save(&encoded, "png"));
     result.format = QStringLiteral("jpeg");
     result.actualSize = QSize(160, 160);
     QVERIFY(service.complete(MediaRequestHandle(1), result));
@@ -284,6 +289,24 @@ void TestBrowserModel::thumbnailResultTransitionsStatusToReady()
     QCOMPARE(spy.size(), 1);
     const int status = model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt();
     QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
+}
+
+void TestBrowserModel::invalidThumbnailResultTransitionsStatusToError()
+{
+    populate(1);
+    RecordingMediaRequestService service;
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.requestThumbnail(0);
+
+    MediaResult result;
+    result.bytes = QByteArrayLiteral("not an image");
+    QVERIFY(service.complete(MediaRequestHandle(1), result));
+
+    QCOMPARE(model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Error));
 }
 
 void TestBrowserModel::duplicateContentRequestsCompleteIndependently()
@@ -309,7 +332,11 @@ void TestBrowserModel::duplicateContentRequestsCompleteIndependently()
 
     QCOMPARE(service.requestedCacheKeys().size(), 2);
     MediaResult result;
-    result.bytes = QByteArrayLiteral("thumbnail");
+    QImage source(8, 8, QImage::Format_RGB32);
+    source.fill(Qt::green);
+    QBuffer encoded(&result.bytes);
+    encoded.open(QIODevice::WriteOnly);
+    QVERIFY(source.save(&encoded, "png"));
     QVERIFY(service.complete(MediaRequestHandle(1), result));
     QVERIFY(service.complete(MediaRequestHandle(2), result));
 

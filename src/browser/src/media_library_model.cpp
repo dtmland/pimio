@@ -152,6 +152,14 @@ QVariantMap MediaLibraryModel::itemAt(int row) const
     };
 }
 
+void MediaLibraryModel::requestThumbnail(int row)
+{
+    if (row < 0 || row >= m_items.size()) {
+        return;
+    }
+    requestThumbnailIfNeeded(row);
+}
+
 int MediaLibraryModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid()) {
@@ -283,12 +291,17 @@ void MediaLibraryModel::onThumbnailResult(const core::MediaRequest &request,
     }
 
     Item &item = m_items[row];
-    item.thumbnailStatus = ThumbnailStatus::Ready;
     item.thumbnailHandle = {};
     item.thumbnailRequestKey.clear();
     item.thumbnailImage = QImage::fromData(result.bytes);
 
-    if (m_imageProvider && !item.thumbnailImage.isNull()) {
+    if (item.thumbnailImage.isNull()) {
+        item.thumbnailStatus = ThumbnailStatus::Error;
+    } else {
+        item.thumbnailStatus = ThumbnailStatus::Ready;
+    }
+
+    if (m_imageProvider && item.thumbnailStatus == ThumbnailStatus::Ready) {
         m_imageProvider->setImage(item.id.value(), item.thumbnailImage);
     }
 
