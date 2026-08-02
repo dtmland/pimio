@@ -25,8 +25,8 @@ for the design this implements.
 
 ## Prepare the cache once
 
-```powershell
-pwsh -File tools\local-build\windows\prepare.ps1
+```bat
+tools\local-build\windows\prepare.bat
 ```
 
 This checks the host prerequisites, then downloads and checksum-verifies the
@@ -34,6 +34,16 @@ pinned Visual Studio Build Tools bootstrapper, CMake, Ninja, LORE, and Qt into
 `.cache\local-build\windows\` (git-ignored). Downloads resume, so re-running
 after an interruption is cheap, and re-running when nothing changed does
 nothing.
+
+If you prefer to launch the PowerShell scripts directly, either invoke them with
+`-ExecutionPolicy Bypass`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\local-build\windows\prepare.ps1
+```
+
+or relax PowerShell's policy for your own account/session before running the
+`.ps1` files.
 
 Useful flags:
 
@@ -49,8 +59,8 @@ license and are never repackaged or published by this repository.
 
 ## Run a build
 
-```powershell
-pwsh -File tools\local-build\windows\new-sandbox.ps1
+```bat
+tools\local-build\windows\new-sandbox.bat
 ```
 
 This writes a `.wsb` configuration into a timestamped results directory and
@@ -85,6 +95,10 @@ Flags:
 
 The first run is slow, mostly because of the Build Tools installation; later
 runs reuse the host cache but still reinstall inside the fresh sandbox.
+
+The sandbox bootstrap now opens through a visible PowerShell window on the
+sandbox desktop. If the sandbox window appears but the console does not, re-run
+from the latest checkout so the generated `.wsb` uses the current logon command.
 
 ## What you get
 
@@ -138,6 +152,12 @@ local build cannot drift from CI. Update `pinned.ps1` to match.
 corporate policy can block it. Nothing in the bootstrap needs the network once
 the cache is complete except the Build Tools installer, which downloads its
 payload; run `prepare.ps1` on a machine that can reach Microsoft's servers.
+
+**The sandbox opens but no bootstrap console appears** — Windows Sandbox can run
+`<LogonCommand>` processes without showing their original console window. The
+generated `.wsb` now launches the bootstrap through `cmd.exe start` so a visible
+PowerShell window opens on the sandbox desktop; regenerate the sandbox from a
+checkout that includes that change.
 
 ## Changing a pinned version
 
