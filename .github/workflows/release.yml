@@ -383,7 +383,7 @@ jobs:
           cd /
           "$target/pimio-doctor"
           "$target/pimio" --self-check
-          # The binary must report the tag it was released under, so a v0.1.6
+          # The binary must report the tag it was released under, so a release
           # download never shows an older baked-in default in the title bar.
           expected="${GITHUB_REF_NAME#v}"
           reported="$("$target/pimio" --version)"

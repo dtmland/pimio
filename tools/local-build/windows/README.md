@@ -124,6 +124,11 @@ opens in Notepad. Run the manual pass against the staged application in
 `C:\pimio\work\stage`, then close the sandbox window. Everything in
 `C:\pimio\results` survives; the tools and working copy do not.
 
+At the current Increment 6 state, the shipped app still launches into the
+empty-library shell, so only the empty-library Field Notes entry is runnable
+from a normal staged launch; the thumbnail/browser entries in the checklist are
+marked deferred until startup is wired to the real library pipeline.
+
 ## Cleaning up
 
 - Close the sandbox window to discard the guest.
