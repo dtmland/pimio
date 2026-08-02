@@ -78,6 +78,7 @@ Window {
             Image {
                 anchors.fill: parent
                 anchors.margins: 2
+                cache: false
                 fillMode: Image.PreserveAspectCrop
                 visible: model.thumbnailStatus === 2 // ThumbnailStatus::Ready
                 source: (model.thumbnailImage !== null && model.thumbnailStatus === 2)
@@ -188,7 +189,7 @@ Window {
             color: "#888888"
             font.pixelSize: 16
             horizontalAlignment: Text.AlignHCenter
-            text: qsTr("No media yet — library folders can't be added in this build.\nThe library browser is still in development.")
+            text: qsTr("No media yet\nLaunch with --library <folder> to scan and browse a library.")
         }
     }
 

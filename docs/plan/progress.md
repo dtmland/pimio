@@ -112,7 +112,7 @@ Update this file in the same change that moves an increment forward.
 
 ## Increment 6 — Thumbnails, Models, and Basic Browser
 
-**Status: In progress**
+**Status: Complete**
 
 ### Deliverables
 
@@ -121,6 +121,8 @@ Update this file in the same change that moves an increment forward.
 - `pimio::thumbnail::ThumbnailRenderer` — abstract renderer interface.
 - `pimio::thumbnail::ImageRenderer` — Qt `QImageReader`-based renderer with
   EXIF rotation, configurable target size, and JPEG output.
+- `pimio::thumbnail::VideoFrameRenderer` and `CompositeRenderer` — Qt
+  Multimedia video-frame decoding behind the same renderer interface.
 - `pimio::thumbnail::ThumbnailService` — `core::MediaRequestService`
   implementation backed by `QThreadPool`; per-request cancel flags;
   callbacks delivered via `QMetaObject::invokeMethod(Qt::QueuedConnection)`.
@@ -129,6 +131,10 @@ Update this file in the same change that moves an increment forward.
   configurable prefetch margin; `ThumbnailStatus` role per row.
 - Basic GridView QML UI in `src/app/qml/Main.qml`: toolbar, tile delegates
   with placeholder/thumbnail/video-badge states, empty-library splash.
+- `pimio::app::LibrarySession` — `--library` startup wiring for the durable
+  store, projection, scanner, thumbnail service, browser model, and watchers.
+- `pimio::browser::ThumbnailImageProvider` — serves completed model thumbnails
+  to QML through `image://thumbnail/<mediaId>`.
 - Selectable progressive detail view: the grid first has a thumbnail source
   available, then asynchronously loads the original image for full-size
   display; Escape and the Close button return to the grid.
@@ -139,26 +145,46 @@ Update this file in the same change that moves an increment forward.
 
 - `thumbnail.cache` (11 subtests) — round-trip, corrupt-entry detection,
   fingerprint invalidation, LRU trim by mtime, `totalSize`.
-- `thumbnail.service` (6 subtests) — cache hit/miss, delivery, cancellation,
-  `cancelAllExcept`, error delivery, priority ordering.
-- `browser.model` (16 subtests including `QAbstractItemModelTester`) — row
+- `thumbnail.service` (7 subtests) — cache hit/miss, delivery, completed-request
+  cleanup, cancellation, `cancelAllExcept`, error delivery, priority ordering.
+- `thumbnail.video` (7 subtests) — real-frame decoding, requested position,
+  unsupported/error behavior, and image/video composite dispatch.
+- `browser.model` (18 subtests including `QAbstractItemModelTester`) — row
   count, roles (MediaId, absolutePath, captureTimeString, MediaKind,
   ThumbnailStatus), detail-view lookup, visible-range request/cancel lifecycle,
   result/error callbacks, reload.
+- `browser.thumbnail_image_provider` (5 subtests) — lookup, scaling, clearing,
+  unknown IDs, and normalized IDs.
 - `app.smoke` — creates the grid and detail view, scrolls a 100-row synthetic
   model, verifies the visible range changes, and opens a selected item.
 
 ### Manual testing
 
-See `docs/plan/manual-testing.md` for Increment 6 manual coverage. Today only
-the empty-library launch check is runnable against the shipped app; the
-thumbnail/browser entries stay deferred until startup is wired to the real
-projection, scan, and thumbnail services.
+See `docs/plan/manual-testing.md` for Increment 6 manual coverage. The shipped
+app accepts repeatable `--library <path>` options, so the thumbnail and browser
+checks are now runnable against real library roots.
 
-### Remaining
+## Increment 7 — Watching and Reconciliation
 
-- Add video-frame thumbnail rendering and its portable platform evidence.
-- Wire the real projection, scan, and thumbnail service into application
-  startup so the shipped browser can open a configured library.
-- Promote the deferred Increment 6 Field Notes browser checks once that startup
-  wiring exists in the shipped app.
+**Status: Complete**
+
+### Deliverables
+
+- `pimio::watch::EventCoalescer` — deterministic debounce, rename pairing,
+  overflow tracking, and periodic missed-event fallback.
+- `pimio::watch::QtDirectoryWatchAdapter` — recursive portable watcher with
+  normalized create, modify, remove, and overflow events.
+- `pimio::watch::WatchService` — converts coalesced events and periodic
+  fallbacks into durable, low-priority `ReconcileRoot` jobs.
+- `pimio::watch::runReconcileJob` — full-scan reconciliation worker shared by
+  startup scans and watch jobs.
+
+### Automated evidence
+
+- `watch.contract` (13 subtests) — create, burst, duplicate, reordered rename,
+  unpaired rename, overflow, dropped-event fallback, and debounce behavior.
+- `watch.native` (7 subtests) — native create, modify, remove, rename, recursive
+  subdirectory, start failure, and stop behavior on each platform.
+- `watch.reconciliation` (5 subtests) — incremental and dropped-event paths
+  converge to the same durable store and projection as a clean scan, and
+  startup overflow is preserved.

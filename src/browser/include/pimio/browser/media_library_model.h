@@ -108,6 +108,7 @@ private:
         mutable ThumbnailStatus thumbnailStatus = ThumbnailStatus::Pending;
         mutable QImage thumbnailImage;
         mutable core::MediaRequestHandle thumbnailHandle;
+        mutable QString thumbnailRequestKey;
     };
 
     const core::MediaRecord *ensureRecord(int row) const;

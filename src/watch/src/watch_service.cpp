@@ -43,14 +43,17 @@ bool WatchService::start(const scan::LibraryRoot &root, core::Error *error)
 {
     stop();
 
-    if (!m_adapter->start(root.absolutePath, error)) {
-        return false;
-    }
-
     m_root = root;
     m_coalescer = EventCoalescer(m_debounceMs);
     m_lastReconcileAt = QDateTime::currentDateTimeUtc();
+    // Adapter startup can synchronously report an overflow when a path cannot
+    // be registered. Activate ingestion first so that signal is not lost.
     m_active = true;
+    if (!m_adapter->start(root.absolutePath, error)) {
+        m_active = false;
+        return false;
+    }
+
     m_timer.start(kTickIntervalMs);
     return true;
 }
@@ -100,8 +103,10 @@ void WatchService::onTimerTick()
 void WatchService::enqueueReconcile(bool overflow, bool periodic)
 {
     core::JobRecord record;
+    record.id = core::JobId::generate();
     record.kind = core::JobKind::ReconcileRoot;
     record.priority = core::JobPriority::Background;
+    record.createdAt = QDateTime::currentDateTimeUtc();
     record.coalescingKey = QStringLiteral("watch-reconcile:%1").arg(m_root.absolutePath);
     record.payload = makeRootJobPayload(m_root);
     record.payload.insert(QStringLiteral("triggeredByOverflow"), overflow);

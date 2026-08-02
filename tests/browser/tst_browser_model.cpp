@@ -73,6 +73,7 @@ private slots:
     void setVisibleRangeWithPrefetchExpandsWindow();
     void setVisibleRangeChangesCancelsPreviousRequests();
     void thumbnailResultTransitionsStatusToReady();
+    void duplicateContentRequestsCompleteIndependently();
     void thumbnailErrorTransitionsStatusToError();
     void thumbnailResultIsPushedToTheImageProvider();
     void cancelledThumbnailResetsStatusToPending();
@@ -281,6 +282,39 @@ void TestBrowserModel::thumbnailResultTransitionsStatusToReady()
     QCOMPARE(spy.size(), 1);
     const int status = model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt();
     QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
+}
+
+void TestBrowserModel::duplicateContentRequestsCompleteIndependently()
+{
+    MemoryDurableStore store(m_clock);
+    Error error;
+    QVERIFY(store.stage(makeRecord(QStringLiteral("first"), 1000, QStringLiteral("same")),
+                        &error));
+    QVERIFY(store.stage(makeRecord(QStringLiteral("second"), 2000, QStringLiteral("same")),
+                        &error));
+    QVERIFY(store.commit(QStringLiteral("test"), &error).has_value());
+
+    m_db = std::make_unique<ProjectionDatabase>();
+    QVERIFY(m_db->openInMemory(&error));
+    QVERIFY2(m_db->rebuildFrom(store, &error), qPrintable(error.message()));
+
+    RecordingMediaRequestService service;
+    MediaLibraryModel model;
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.setPrefetchMargin(0);
+    model.setVisibleRange(0, 1);
+
+    QCOMPARE(service.requestedCacheKeys().size(), 2);
+    MediaResult result;
+    result.bytes = QByteArrayLiteral("thumbnail");
+    QVERIFY(service.complete(MediaRequestHandle(1), result));
+    QVERIFY(service.complete(MediaRequestHandle(2), result));
+
+    for (int row = 0; row < 2; ++row) {
+        QCOMPARE(model.data(model.index(row), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+                 static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
+    }
 }
 
 void TestBrowserModel::thumbnailResultIsPushedToTheImageProvider()

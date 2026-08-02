@@ -51,9 +51,10 @@ public:
 
     /// Adds a job to the queue and returns its id.
     ///
-    /// If \a record has a non-empty coalescingKey and a non-terminal job with
-    /// that key already exists, returns the existing job's id without inserting
-    /// a duplicate. This enforces the "run once logically" contract.
+    /// If \a record has a non-empty coalescingKey and a Pending job with that
+    /// key already exists, returns the existing job's id without inserting a
+    /// duplicate. A Running job does not block one follow-up because it may
+    /// already have passed the state affected by newly observed work.
     std::optional<core::JobId> enqueue(const core::JobRecord &record, core::Error *error);
 
     /// Claims up to \a maxJobs pending, eligible jobs in priority order and

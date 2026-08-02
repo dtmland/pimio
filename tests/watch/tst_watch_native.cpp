@@ -32,6 +32,7 @@ private slots:
 
     void startFailsForAMissingDirectory();
     void creatingAFileIsObserved();
+    void modifyingAFileIsObserved();
     void removingAFileIsObserved();
     void renamingAFileIsObserved();
     void aNewSubdirectoryIsWatchedAutomatically();
@@ -86,6 +87,36 @@ void TestWatchNative::creatingAFileIsObserved()
         }
     }
     QVERIFY2(sawCreate, "Expected a Created event for the new file");
+}
+
+void TestWatchNative::modifyingAFileIsObserved()
+{
+    const QString filePath = m_dir->filePath(QStringLiteral("to-modify.jpg"));
+    QFile file(filePath);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("before");
+    file.close();
+
+    QtDirectoryWatchAdapter adapter;
+    QSignalSpy spy(&adapter, &WatchAdapter::eventOccurred);
+
+    Error error;
+    QVERIFY(adapter.start(m_dir->path(), &error));
+
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    file.write("after");
+    file.close();
+
+    QVERIFY2(spy.wait(15000), "No watch event observed for a modified file within the timeout");
+
+    bool sawModify = false;
+    for (const QList<QVariant> &call : spy) {
+        const WatchEvent event = call.at(0).value<WatchEvent>();
+        if (event.kind == WatchEventKind::Modified && event.path == filePath) {
+            sawModify = true;
+        }
+    }
+    QVERIFY2(sawModify, "Expected a Modified event for the changed file");
 }
 
 void TestWatchNative::removingAFileIsObserved()

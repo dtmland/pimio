@@ -13,13 +13,10 @@ namespace pimio::watch {
 
 /// Recursive directory watcher built on QFileSystemWatcher.
 ///
-/// QFileSystemWatcher only reports "something in this directory changed"; it
-/// does not say what. This adapter turns that into normalized WatchEvents by
-/// keeping a snapshot of each watched directory's entries and diffing the
-/// new listing against it whenever QFileSystemWatcher fires. This is exactly
-/// the technique a caller would otherwise need to apply on top of
-/// QFileSystemWatcher itself, so doing it once here is what makes the rest
-/// of pimio.watch usable without depending on any richer native API.
+/// Directory notifications do not say which entry changed, so this adapter
+/// keeps a snapshot of each watched directory and diffs it whenever
+/// QFileSystemWatcher fires. Files are watched as well so in-place content
+/// changes produce Modified events.
 ///
 /// New directories discovered by a diff are watched recursively so the whole
 /// subtree stays covered; directories that disappear are unwatched. Because
@@ -47,8 +44,10 @@ public:
 
 private slots:
     void onDirectoryChanged(const QString &path);
+    void onFileChanged(const QString &path);
 
 private:
+    void watchFile(const QString &path);
     void watchRecursively(const QString &dirPath);
     void unwatchRecursively(const QString &dirPath);
     QSet<QString> snapshotEntries(const QString &dirPath) const;

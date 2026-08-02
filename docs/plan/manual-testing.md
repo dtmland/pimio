@@ -16,18 +16,13 @@ OS version, Qt version, hardware, and result.
 
 ## Increment 6 — Thumbnails, Models, and Basic Browser
 
-The current shipped application still starts in the empty-library shell. Until
-application startup is wired to the real projection, scan, and thumbnail
-services, only MT-6.3 is runnable from a normal launch; the thumbnail/browser
-entries below stay deferred so the checklist matches what can actually be
-tested today.
+The shipped application accepts one or more `--library <path>` options and
+wires those roots to the real projection, scan, thumbnail, and watch services.
+All entries below are runnable from a normal launch.
 
 ### MT-6.1 — QML grid renders thumbnails on screen
 
-**Status**: Deferred until the shipped app can open a configured library root.
-
-**Why blocked**: A normal launch still stops at the empty-library placeholder,
-so there is not yet a supported path from startup into the real thumbnail grid.
+**Status**: Ready for sign-off.
 
 **Condition**: Real display server (not offscreen); Qt 6.4 or newer with
 QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
@@ -55,10 +50,7 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 ### MT-6.2 — Thumbnail requests respect the visible window
 
-**Status**: Deferred until MT-6.1 is runnable from the shipped app.
-
-**Why blocked**: The current startup path does not expose the real grid against
-which visible-range cancellation can be observed manually.
+**Status**: Ready for sign-off after MT-6.1.
 
 **Condition**: Same as MT-6.1.
 
@@ -94,9 +86,8 @@ which visible-range cancellation can be observed manually.
 - The toolbar banner shows the same `pimio <version>` string as `pimio --version`
   for the build being tested.
 - A drawn camera icon (not an emoji glyph, which is missing on some Linux
-  systems) and the text "No media yet — library folders can't be added in
-  this build. The library browser is still in development." are centred in
-  the window.
+  systems) and the text "No media yet. Launch with --library <folder> to scan
+  and browse a library." are centred in the window.
 - No grid rows, no thumbnail requests, no errors in the console.
 
 ---

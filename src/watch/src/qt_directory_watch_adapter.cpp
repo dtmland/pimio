@@ -27,6 +27,20 @@ QSet<QString> QtDirectoryWatchAdapter::snapshotEntries(const QString &dirPath) c
     return entries;
 }
 
+void QtDirectoryWatchAdapter::watchFile(const QString &path)
+{
+    if (m_watcher->files().contains(path)) {
+        return;
+    }
+    if (!m_watcher->addPath(path)) {
+        WatchEvent event;
+        event.kind = WatchEventKind::Overflow;
+        event.path = path;
+        event.observedAt = QDateTime::currentDateTimeUtc();
+        emit eventOccurred(event);
+    }
+}
+
 void QtDirectoryWatchAdapter::watchRecursively(const QString &dirPath)
 {
     if (m_knownEntries.contains(dirPath)) {
@@ -53,6 +67,8 @@ void QtDirectoryWatchAdapter::watchRecursively(const QString &dirPath)
         const QFileInfo info(childPath);
         if (info.isDir() && !info.isSymLink()) {
             watchRecursively(childPath);
+        } else {
+            watchFile(childPath);
         }
     }
 }
@@ -89,6 +105,8 @@ bool QtDirectoryWatchAdapter::start(const QString &rootPath, core::Error *error)
     m_watcher = std::make_unique<QFileSystemWatcher>();
     connect(m_watcher.get(), &QFileSystemWatcher::directoryChanged, this,
             &QtDirectoryWatchAdapter::onDirectoryChanged);
+    connect(m_watcher.get(), &QFileSystemWatcher::fileChanged, this,
+            &QtDirectoryWatchAdapter::onFileChanged);
 
     m_root = rootInfo.absoluteFilePath();
     watchRecursively(m_root);
@@ -169,7 +187,28 @@ void QtDirectoryWatchAdapter::onDirectoryChanged(const QString &path)
         const QFileInfo childInfo(childPath);
         if (childInfo.isDir() && !childInfo.isSymLink()) {
             watchRecursively(childPath);
+        } else {
+            watchFile(childPath);
         }
+    }
+}
+
+void QtDirectoryWatchAdapter::onFileChanged(const QString &path)
+{
+    if (!m_watcher) {
+        return;
+    }
+
+    WatchEvent event;
+    event.kind = QFileInfo::exists(path) ? WatchEventKind::Modified : WatchEventKind::Removed;
+    event.path = path;
+    event.observedAt = QDateTime::currentDateTimeUtc();
+    emit eventOccurred(event);
+
+    // Some backends stop watching after an atomic replacement. If the path
+    // still exists, restore the watch so subsequent edits are observed too.
+    if (QFileInfo::exists(path)) {
+        watchFile(path);
     }
 }
 

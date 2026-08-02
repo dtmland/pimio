@@ -51,6 +51,9 @@ public:
     void cancel(core::MediaRequestHandle handle) override;
     void cancelAllExcept(const QList<core::MediaRequestHandle> &keep) override;
 
+    /// Number of requests waiting or rendering.
+    int pendingCount() const;
+
 private:
     class Private;
     std::unique_ptr<Private> d;

@@ -12,7 +12,7 @@ ThumbnailImageProvider::ThumbnailImageProvider()
 void ThumbnailImageProvider::setImage(const QString &mediaId, const QImage &image)
 {
     QMutexLocker locker(&m_mutex);
-    m_images.insert(mediaId, image);
+    m_images.insert(mediaId, new QImage(image));
 }
 
 void ThumbnailImageProvider::clear()
@@ -32,7 +32,9 @@ QImage ThumbnailImageProvider::requestImage(const QString &id, QSize *size,
     QImage image;
     {
         QMutexLocker locker(&m_mutex);
-        image = m_images.value(key);
+        if (const QImage *cached = m_images.object(key)) {
+            image = *cached;
+        }
     }
 
     if (size) {

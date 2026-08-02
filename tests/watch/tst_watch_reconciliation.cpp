@@ -1,4 +1,5 @@
 #include "pimio/watch/reconcile_worker.h"
+#include "pimio/watch/watch_service.h"
 
 #include "pimio/core/types.h"
 #include "pimio/projection/projection_database.h"
@@ -13,6 +14,7 @@
 
 #include <QDateTime>
 #include <QMap>
+#include <QSignalSpy>
 #include <QTest>
 
 #include <atomic>
@@ -24,6 +26,26 @@ namespace {
 
 const QString kRoot = QStringLiteral("/library");
 const QDateTime kT0 = QDateTime(QDate(2024, 1, 1), QTime(0, 0, 0), Qt::UTC);
+
+class OverflowingAdapter final : public WatchAdapter
+{
+public:
+    bool start(const QString &rootPath, core::Error *) override
+    {
+        m_active = true;
+        WatchEvent event;
+        event.kind = WatchEventKind::Overflow;
+        event.path = rootPath;
+        emit eventOccurred(event);
+        return true;
+    }
+
+    void stop() override { m_active = false; }
+    bool isWatching() const override { return m_active; }
+
+private:
+    bool m_active = false;
+};
 
 /// One reconcile pass, exactly as WatchService's job worker would perform it:
 /// scan, then rebuild the projection from the store.
@@ -93,6 +115,7 @@ private slots:
     void renameKeepsTheSameMediaIdAcrossReconciles();
     void duplicateReconcileCallsAreIdempotent();
     void reconcilingOnlyAtTheEndStillConvergesAfterDroppedTriggers();
+    void startupOverflowEnqueuesAReconcile();
 };
 
 void TestWatchReconciliation::manyIncrementalReconcilesMatchOneCleanPass()
@@ -255,6 +278,25 @@ void TestWatchReconciliation::reconcilingOnlyAtTheEndStillConvergesAfterDroppedT
     VERIFY_RECONCILE_OK(reconcileOnce(scannerDirect, projectionDirect, storeDirect));
 
     QCOMPARE(contentView(storeDropped), contentView(storeDirect));
+}
+
+void TestWatchReconciliation::startupOverflowEnqueuesAReconcile()
+{
+    projection::JobQueue queue;
+    core::Error error;
+    QVERIFY2(queue.openInMemory(&error), qPrintable(error.message()));
+
+    OverflowingAdapter adapter;
+    WatchService service(&adapter, &queue);
+    service.setDebounceMs(0);
+    QSignalSpy spy(&service, &WatchService::reconcileEnqueued);
+
+    QVERIFY(service.start(scan::LibraryRoot{kRoot, false}, &error));
+    QTRY_COMPARE(spy.count(), 1);
+    QVERIFY(!spy.at(0).at(0).toString().isEmpty());
+    QVERIFY(spy.at(0).at(1).toBool());
+    QVERIFY(!spy.at(0).at(2).toBool());
+    QCOMPARE(queue.pendingCount(&error), 1);
 }
 
 QTEST_GUILESS_MAIN(TestWatchReconciliation)

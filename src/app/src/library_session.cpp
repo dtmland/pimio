@@ -25,6 +25,7 @@
 #endif
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QLoggingCategory>
 #include <QQmlApplicationEngine>
@@ -32,7 +33,6 @@
 #include <QStandardPaths>
 
 #include <algorithm>
-#include <cstdio>
 #include <vector>
 
 namespace pimio::app {
@@ -61,6 +61,13 @@ QString indexDirectoryFor(const QStringList &libraryPaths)
 class LibrarySession::Private
 {
 public:
+    ~Private()
+    {
+        if (dispatcher) {
+            dispatcher->stop();
+        }
+    }
+
     std::unique_ptr<scan::QtFileSystem> fileSystem;
     std::unique_ptr<metadata::BuiltinMetadataReader> metadataReader;
 
@@ -135,7 +142,6 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
         return;
     }
     d->store = d->loreStore.get();
-    fprintf(stderr, "DEBUG: store opened\n"); fflush(stderr);
 
     d->projectionDb = std::make_unique<projection::ProjectionDatabase>();
     core::Error projectionError;
@@ -154,7 +160,6 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
         return;
     }
     d->jobQueue->recoverInterruptedJobs(nullptr);
-    fprintf(stderr, "DEBUG: job queue opened\n"); fflush(stderr);
 
     d->fileSystem = std::make_unique<scan::QtFileSystem>();
     d->metadataReader = std::make_unique<metadata::BuiltinMetadataReader>(d->fileSystem.get());
@@ -193,7 +198,6 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     d->dispatcher->registerWorker(
             core::JobKind::ScanRoot,
             [scanner, store](const core::JobRecord &job, const std::atomic<bool> &isCancelled) {
-                fprintf(stderr, "DEBUG: ScanRoot worker running\n"); fflush(stderr);
                 return watch::runReconcileJob(job, isCancelled, *scanner, nullptr, *store);
             });
     d->dispatcher->registerWorker(
@@ -216,7 +220,6 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
                     qCWarning(lcLibrary) << "Projection rebuild failed:" << rebuildError.message();
                 }
             });
-    fprintf(stderr, "DEBUG: starting dispatcher\n"); fflush(stderr);
     d->dispatcher->start();
 
     for (const QString &path : libraryPaths) {
@@ -224,13 +227,17 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
         root.absolutePath = path;
 
         core::JobRecord scanJob;
+        scanJob.id = core::JobId::generate();
         scanJob.kind = core::JobKind::ScanRoot;
         scanJob.priority = core::JobPriority::Background;
+        scanJob.createdAt = QDateTime::currentDateTimeUtc();
         scanJob.coalescingKey = QStringLiteral("watch-reconcile:%1").arg(path);
         scanJob.payload = watch::makeRootJobPayload(root);
         core::Error enqueueError;
-        const auto enqueued = d->jobQueue->enqueue(scanJob, &enqueueError);
-        fprintf(stderr, "DEBUG: enqueue result valid=%d error=%s\n", enqueued.has_value(), qPrintable(enqueueError.message())); fflush(stderr);
+        if (!d->jobQueue->enqueue(scanJob, &enqueueError)) {
+            qCWarning(lcLibrary) << "Cannot enqueue initial scan for" << path << ":"
+                                  << enqueueError.message();
+        }
 
         auto adapter = std::make_unique<watch::QtDirectoryWatchAdapter>();
         auto service = std::make_unique<watch::WatchService>(adapter.get(), d->jobQueue.get());
@@ -242,7 +249,6 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
         d->watchServices.push_back(std::move(service));
     }
 
-    fprintf(stderr, "DEBUG: session ready\n"); fflush(stderr);
     d->ready = true;
 #endif
 }

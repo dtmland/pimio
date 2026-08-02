@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QHash>
+#include <QCache>
 #include <QImage>
 #include <QMutex>
 #include <QQuickImageProvider>
@@ -14,7 +14,9 @@ namespace pimio::browser {
 /// The provider itself holds no reference to MediaLibraryModel or to any
 /// filesystem path: MediaLibraryModel pushes each decoded thumbnail into it
 /// as soon as a request completes (see setImage()), and requestImage()
-/// simply looks the id back up. This keeps the provider safe to call from
+/// simply looks the id back up. The provider retains at most 512 recently used
+/// images, preventing a full-library scroll from growing memory without bound.
+/// This keeps the provider safe to call from
 /// whatever thread Qt Quick chooses for an asynchronous Image element
 /// (DetailView.qml sets `asynchronous: true`, which makes Qt Quick call
 /// image providers from a thread pool rather than the GUI thread) without
@@ -38,7 +40,7 @@ public:
 
 private:
     mutable QMutex m_mutex;
-    QHash<QString, QImage> m_images;
+    QCache<QString, QImage> m_images{512};
 };
 
 } // namespace pimio::browser
