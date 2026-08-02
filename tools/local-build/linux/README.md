@@ -115,8 +115,9 @@ Results default to `build/local-build/linux/studio-<UTC timestamp>/` and include
 JUnit XML, CTest logs, screenshots, an environment record, and
 `pimio-studio-linux-x64.tar.gz`.
 
-The container process uses your numeric user and group IDs. X11 forwards the
-display socket and, when present, `XAUTHORITY`; Wayland forwards the current
+The container process maps to your host identity (using keep-ID with rootless
+Podman and container root with rootless Docker). X11 forwards the display socket
+and, when present, `XAUTHORITY`; Wayland forwards the current
 `XDG_RUNTIME_DIR`. The scripts never disable access control with `xhost +`.
 
 ## Cleaning up
@@ -143,8 +144,10 @@ and CMake needs GitHub release downloads for LORE. Restore network/proxy access
 and rerun; both container engines reuse completed layers and downloads.
 
 **X11 says it cannot connect to the display** — verify `DISPLAY`, the
-`/tmp/.X11-unix` socket, and the current user's Xauthority file. Remote SSH
-sessions need trusted X forwarding configured by the host.
+`/tmp/.X11-unix` socket, and the current user's Xauthority file. Container
+Studio supports local Unix-socket displays (`:0`, for example), not TCP-style
+SSH forwarding such as `localhost:10.0`; use the native
+`tools/field-tests/run-studio.sh` path for an SSH-forwarded display.
 
 **Wayland says the platform plugin cannot initialize** — verify that
 `$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY` is a socket and that the container process
@@ -159,4 +162,3 @@ Update `pinned.sh`, the `Containerfile` defaults, `.github/workflows/ci.yml`, an
 `cmake/PimioLore.cmake` together. For a new Ubuntu base, resolve and review the
 amd64 image digest before changing it. Pins exist so local results remain
 comparable with CI.
-

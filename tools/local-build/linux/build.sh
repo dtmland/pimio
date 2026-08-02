@@ -208,6 +208,11 @@ identity_args=(--user "$(id -u):$(id -g)")
 if [[ "$engine" == podman &&
     $("$engine" info --format '{{.Host.Security.Rootless}}') == true ]]; then
     identity_args+=(--userns=keep-id)
+elif [[ "$engine" == docker ]] &&
+    "$engine" info --format '{{json .SecurityOptions}}' | grep -q rootless; then
+    # Container root maps to the invoking host user in Docker's rootless user
+    # namespace; a numeric host UID would map to a subordinate host UID.
+    identity_args=(--user 0:0)
 fi
 "$engine" run --rm --platform linux/amd64 \
     "${identity_args[@]}" \

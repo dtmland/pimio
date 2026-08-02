@@ -140,9 +140,19 @@ pimio_prepare_image "$engine" "$image" "$image_mode" "$repository_root" || exit 
 image_id=$("$engine" image inspect --format '{{.Id}}' "$image")
 source_commit=$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || echo unknown)
 
+identity_args=(--user "$(id -u):$(id -g)")
+if [[ "$engine" == podman &&
+    $("$engine" info --format '{{.Host.Security.Rootless}}') == true ]]; then
+    identity_args+=(--userns=keep-id)
+elif [[ "$engine" == docker ]] &&
+    "$engine" info --format '{{json .SecurityOptions}}' | grep -q rootless; then
+    # Docker's rootless namespace maps container root to the invoking host user.
+    identity_args=(--user 0:0)
+fi
+
 container_args=(
     run --rm --platform linux/amd64
-    --user "$(id -u):$(id -g)"
+    "${identity_args[@]}"
     --hostname "$(hostname)"
     --tmpfs "/work:rw,exec,mode=1777"
     -e HOME=/tmp
@@ -152,14 +162,15 @@ container_args=(
     --mount "type=bind,src=$repository_root,dst=/source,readonly"
     --mount "type=bind,src=$output,dst=/results"
 )
-if [[ "$engine" == podman &&
-    $("$engine" info --format '{{.Host.Security.Rootless}}') == true ]]; then
-    container_args+=(--userns=keep-id)
-fi
 
 case "$display_mode" in
     x11)
         [[ -n ${DISPLAY:-} ]] || { echo 'DISPLAY is not set.' >&2; exit 1; }
+        [[ "$DISPLAY" == :* || "$DISPLAY" == unix:* ]] || {
+            echo "Container Studio supports local Unix-socket X11 displays; '$DISPLAY' is a TCP/SSH display." >&2
+            echo "Use tools/field-tests/run-studio.sh with a native toolchain for SSH-forwarded X11." >&2
+            exit 1
+        }
         [[ -d /tmp/.X11-unix ]] || { echo '/tmp/.X11-unix is missing.' >&2; exit 1; }
         container_args+=(
             -e "DISPLAY=$DISPLAY"
