@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.24)
 
-# The version baked into every binary. The release workflow overrides this
-# from the pushed tag so a v0.1.6 archive reports 0.1.6, not whatever the
-# repository default happened to be. Local builds keep the -dev suffix so a
-# development build is never mistaken for a release.
-set(PIMIO_RELEASE_VERSION "0.1.6-dev" CACHE STRING
-    "Full pimio version string; set from the tag by .github/workflows/release.yml")
+# The checked-in development version baked into every local build. The release
+# workflow overrides this from the pushed tag so a release archive reports the
+# tag it was cut from, not whatever the repository default happened to be. A
+# normal local configure does not consult git metadata, which keeps source
+# archives, shallow clones, and sandboxes without git working the same way.
+set(PIMIO_RELEASE_VERSION "0.1.11-dev" CACHE STRING
+    "Full pimio version string; overridden from the tag by .github/workflows/release.yml")
 
 # project(VERSION) only accepts numeric components, so extract them and keep
 # the full string (minus any leading "v") for display.

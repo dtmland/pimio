@@ -150,12 +150,15 @@ Update this file in the same change that moves an increment forward.
 
 ### Manual testing
 
-See `docs/plan/manual-testing.md` items MT-6.1 through MT-6.7 for QML
-rendering, visible-window correctness, empty-library state, cache repair,
-large-library performance, GPU acceleration, and progressive detail loading.
+See `docs/plan/manual-testing.md` for Increment 6 manual coverage. Today only
+the empty-library launch check is runnable against the shipped app; the
+thumbnail/browser entries stay deferred until startup is wired to the real
+projection, scan, and thumbnail services.
 
 ### Remaining
 
 - Add video-frame thumbnail rendering and its portable platform evidence.
 - Wire the real projection, scan, and thumbnail service into application
   startup so the shipped browser can open a configured library.
+- Promote the deferred Increment 6 Field Notes browser checks once that startup
+  wiring exists in the shipped app.

@@ -16,7 +16,18 @@ OS version, Qt version, hardware, and result.
 
 ## Increment 6 — Thumbnails, Models, and Basic Browser
 
+The current shipped application still starts in the empty-library shell. Until
+application startup is wired to the real projection, scan, and thumbnail
+services, only MT-6.3 is runnable from a normal launch; the thumbnail/browser
+entries below stay deferred so the checklist matches what can actually be
+tested today.
+
 ### MT-6.1 — QML grid renders thumbnails on screen
+
+**Status**: Deferred until the shipped app can open a configured library root.
+
+**Why blocked**: A normal launch still stops at the empty-library placeholder,
+so there is not yet a supported path from startup into the real thumbnail grid.
 
 **Condition**: Real display server (not offscreen); Qt 6.4 or newer with
 QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
@@ -43,6 +54,11 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 ---
 
 ### MT-6.2 — Thumbnail requests respect the visible window
+
+**Status**: Deferred until MT-6.1 is runnable from the shipped app.
+
+**Why blocked**: The current startup path does not expose the real grid against
+which visible-range cancellation can be observed manually.
 
 **Condition**: Same as MT-6.1.
 
@@ -75,6 +91,8 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 **Acceptance**
 
+- The toolbar banner shows the same `pimio <version>` string as `pimio --version`
+  for the build being tested.
 - A drawn camera icon (not an emoji glyph, which is missing on some Linux
   systems) and the text "No media yet — library folders can't be added in
   this build. The library browser is still in development." are centred in
@@ -84,6 +102,11 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 ---
 
 ### MT-6.4 — Corrupt cache entry is silently replaced
+
+**Status**: Deferred until the shipped app can browse a configured library.
+
+**Why blocked**: There is no supported way to load cached thumbnails from a
+normal launch yet, so corrupt-cache replacement cannot be exercised manually.
 
 **Condition**: Real display server.
 
@@ -105,6 +128,11 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 ### MT-6.5 — Large library performance baseline
 
+**Status**: Deferred until the shipped app can browse a configured library.
+
+**Why blocked**: The current startup path cannot open a real indexed library,
+so the performance baseline would not be measuring shipped behavior.
+
 **Condition**: Library of ≥ 10 000 items; real display server.
 
 **Steps**
@@ -125,6 +153,11 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 ### MT-6.6 — Hardware-accelerated rendering (GPU)
 
+**Status**: Deferred until the shipped app can browse a configured library.
+
+**Why blocked**: GPU smoothness for the thumbnail grid cannot be judged until
+the real library browser is reachable from startup.
+
 **Condition**: Machine with a discrete GPU; real display server.
 
 **Steps**
@@ -142,6 +175,11 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 ---
 
 ### MT-6.7 — Progressive image detail
+
+**Status**: Deferred until the shipped app can browse a configured library.
+
+**Why blocked**: The current startup path does not let a tester select a real
+item and open the detail view from the shipped application.
 
 **Condition**: A real display server and a library containing a large image.
 
