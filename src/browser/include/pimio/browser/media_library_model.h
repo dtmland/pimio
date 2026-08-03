@@ -91,7 +91,7 @@ public:
     /// [first − prefetchMargin, last + prefetchMargin] and cancels all other
     /// in-flight requests. Views should call this whenever the visible window
     /// changes.
-    void setVisibleRange(int first, int last);
+    Q_INVOKABLE void setVisibleRange(int first, int last);
 
     /// Returns the roles used by the detail view for a row, or an empty map.
     Q_INVOKABLE QVariantMap itemAt(int row) const;
