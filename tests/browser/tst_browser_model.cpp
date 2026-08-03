@@ -70,6 +70,7 @@ private slots:
     void thumbnailStatusStartsAsPending();
     void itemAtReturnsDetailRoles();
     void setVisibleRangeRequestsThumbnailsForWindow();
+    void visibleRangeIsInvokableFromQml();
     void setVisibleRangeWithPrefetchExpandsWindow();
     void setVisibleRangeChangesCancelsPreviousRequests();
     void thumbnailResultTransitionsStatusToReady();
@@ -220,6 +221,20 @@ void TestBrowserModel::setVisibleRangeRequestsThumbnailsForWindow()
         const int status = model.data(model.index(row), MediaLibraryModel::ThumbnailStatusRole).toInt();
         QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Loading));
     }
+}
+
+void TestBrowserModel::visibleRangeIsInvokableFromQml()
+{
+    populate(10);
+    RecordingMediaRequestService service;
+
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+
+    QVERIFY(QMetaObject::invokeMethod(&model, "setVisibleRange", Q_ARG(int, 2), Q_ARG(int, 4)));
+    QCOMPARE(service.requestedCacheKeys().size(), 3);
 }
 
 void TestBrowserModel::setVisibleRangeWithPrefetchExpandsWindow()
