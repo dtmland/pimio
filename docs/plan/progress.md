@@ -16,8 +16,8 @@ Update this file in the same change that moves an increment forward.
 | 3 | SQLite projection, migrations, and jobs | Complete |
 | 4 | Incremental scan and media identity | Complete |
 | 5 | Metadata read, query, and search | Complete |
-| 6 | Thumbnails, models, and basic browser | In progress |
-| 7 | Watching and reconciliation | Not started |
+| 6 | Thumbnails, models, and basic browser | Complete |
+| 7 | Watching and reconciliation | Complete |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |

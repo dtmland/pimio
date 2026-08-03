@@ -94,10 +94,7 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 ### MT-6.4 — Corrupt cache entry is silently replaced
 
-**Status**: Deferred until the shipped app can browse a configured library.
-
-**Why blocked**: There is no supported way to load cached thumbnails from a
-normal launch yet, so corrupt-cache replacement cannot be exercised manually.
+**Status**: Ready for sign-off after MT-6.1.
 
 **Condition**: Real display server.
 
@@ -119,10 +116,7 @@ normal launch yet, so corrupt-cache replacement cannot be exercised manually.
 
 ### MT-6.5 — Large library performance baseline
 
-**Status**: Deferred until the shipped app can browse a configured library.
-
-**Why blocked**: The current startup path cannot open a real indexed library,
-so the performance baseline would not be measuring shipped behavior.
+**Status**: Ready for sign-off after MT-6.1.
 
 **Condition**: Library of ≥ 10 000 items; real display server.
 
@@ -144,10 +138,7 @@ so the performance baseline would not be measuring shipped behavior.
 
 ### MT-6.6 — Hardware-accelerated rendering (GPU)
 
-**Status**: Deferred until the shipped app can browse a configured library.
-
-**Why blocked**: GPU smoothness for the thumbnail grid cannot be judged until
-the real library browser is reachable from startup.
+**Status**: Ready for sign-off after MT-6.1.
 
 **Condition**: Machine with a discrete GPU; real display server.
 
@@ -167,10 +158,7 @@ the real library browser is reachable from startup.
 
 ### MT-6.7 — Progressive image detail
 
-**Status**: Deferred until the shipped app can browse a configured library.
-
-**Why blocked**: The current startup path does not let a tester select a real
-item and open the detail view from the shipped application.
+**Status**: Ready for sign-off after MT-6.1.
 
 **Condition**: A real display server and a library containing a large image.
 

@@ -20,14 +20,31 @@ Window {
             return
 
         selectedIndex = index
+        mediaModel.requestThumbnail(index)
         const item = mediaModel.itemAt(index)
         detail.mediaId = item.mediaId
         detail.absolutePath = item.absolutePath
         detail.captureTime = item.captureTimeString
         detail.mediaKind = item.mediaKind
+        detail.thumbnailStatus = item.thumbnailStatus
         detail.thumbnailSource = "image://thumbnail/" + detail.mediaId
         detail.visible = true
         detail.forceActiveFocus()
+    }
+
+    function refreshDetailThumbnail() {
+        if (!detail.visible || !mediaModel || selectedIndex < 0)
+            return
+
+        const item = mediaModel.itemAt(selectedIndex)
+        detail.thumbnailStatus = item.thumbnailStatus
+    }
+
+    Connections {
+        target: root.mediaModel
+        function onDataChanged() {
+            root.refreshDetailThumbnail()
+        }
     }
 
     // Top bar
@@ -76,12 +93,13 @@ Window {
 
             // Thumbnail or placeholder
             Image {
+                objectName: "gridThumbnail"
                 anchors.fill: parent
                 anchors.margins: 2
                 cache: false
                 fillMode: Image.PreserveAspectCrop
                 visible: model.thumbnailStatus === 2 // ThumbnailStatus::Ready
-                source: (model.thumbnailImage !== null && model.thumbnailStatus === 2)
+                source: model.thumbnailStatus === 2
                         ? "image://thumbnail/" + model.mediaId
                         : ""
             }

@@ -27,6 +27,7 @@
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDir>
+#include <QFileInfo>
 #include <QLoggingCategory>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -54,6 +55,29 @@ QString indexDirectoryFor(const QStringList &libraryPaths)
     const QString base =
             QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     return base + QStringLiteral("/libraries/") + digest;
+}
+
+QStringList normalizedLibraryPaths(const QStringList &libraryPaths)
+{
+    QStringList normalized;
+    for (const QString &path : libraryPaths) {
+        QFileInfo info(path);
+        QString absolutePath = info.canonicalFilePath();
+        if (absolutePath.isEmpty()) {
+            absolutePath = info.absoluteFilePath();
+        }
+        absolutePath = QDir::cleanPath(absolutePath);
+        if (!normalized.contains(absolutePath,
+#ifdef Q_OS_WIN
+                                 Qt::CaseInsensitive
+#else
+                                 Qt::CaseSensitive
+#endif
+                                 )) {
+            normalized.append(absolutePath);
+        }
+    }
+    return normalized;
 }
 
 } // namespace
@@ -120,7 +144,8 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     d->model->setImageProvider(d->imageProvider);
     engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), d->model.get());
 
-    if (libraryPaths.isEmpty()) {
+    const QStringList normalizedPaths = normalizedLibraryPaths(libraryPaths);
+    if (normalizedPaths.isEmpty()) {
         return;
     }
 
@@ -130,13 +155,13 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
                            "docs/decisions/0001-lore-durable-store.md.";
     return;
 #else
-    const QString indexDir = indexDirectoryFor(libraryPaths);
+    const QString indexDir = indexDirectoryFor(normalizedPaths);
     QDir().mkpath(indexDir);
 
     d->loreStore = std::make_unique<lore::LoreDurableStore>(indexDir + QStringLiteral("/store"));
     core::Error storeError;
     if (!d->loreStore->open(&storeError)) {
-        qCWarning(lcLibrary) << "Cannot open durable storage for" << libraryPaths << ":"
+        qCWarning(lcLibrary) << "Cannot open durable storage for" << normalizedPaths << ":"
                               << storeError.message();
         d->loreStore.reset();
         return;
@@ -222,7 +247,7 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
             });
     d->dispatcher->start();
 
-    for (const QString &path : libraryPaths) {
+    for (const QString &path : normalizedPaths) {
         scan::LibraryRoot root;
         root.absolutePath = path;
 
