@@ -71,6 +71,9 @@ jobs:
         if: matrix.name != 'Linux'
         uses: seanmiddleditch/gha-setup-ninja@v6
 
+      - name: Install NASM
+        uses: ilammy/setup-nasm@v1.5.2
+
       - name: Install Qt ${{ env.PIMIO_QT_VERSION }}
         uses: jurplel/install-qt-action@v4.3.1
         with:

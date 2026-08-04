@@ -4,10 +4,7 @@
 
 #include <QBuffer>
 #include <QImage>
-#include <QPluginLoader>
 #include <QImageReader>
-
-Q_IMPORT_PLUGIN(QAVIFPlugin)
 
 namespace pimio::thumbnail {
 

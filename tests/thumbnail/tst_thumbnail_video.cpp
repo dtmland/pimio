@@ -8,6 +8,7 @@
 
 #include <QDir>
 #include <QImage>
+#include <QImageReader>
 #include <QTest>
 
 #ifndef PIMIO_FIXTURES_DIR
@@ -37,6 +38,8 @@ class TestThumbnailVideo : public QObject
 private slots:
     void decodesFirstFrameOfARealClip();
     void decodesAtARequestedPosition();
+    void imageRendererDecodesModernFormats_data();
+    void imageRendererDecodesModernFormats();
     void reportsErrorForAStructurallyValidButUndecodableFile();
     void reportsInternalErrorForAnEmptyPath();
     void compositeDispatchesImagesToTheImageRenderer();
@@ -90,6 +93,39 @@ void TestThumbnailVideo::decodesAtARequestedPosition()
 
     QVERIFY2(!error.isError(), qPrintable(error.message()));
     QVERIFY(!result.bytes.isEmpty());
+}
+
+void TestThumbnailVideo::imageRendererDecodesModernFormats_data()
+{
+    QTest::addColumn<QString>("relativePath");
+    QTest::addColumn<QByteArray>("format");
+
+    QTest::newRow("WebP") << QStringLiteral("images/webp-solid.webp")
+                          << QByteArrayLiteral("webp");
+    QTest::newRow("AVIF") << QStringLiteral("images/avif-solid.avif")
+                          << QByteArrayLiteral("avif");
+}
+
+void TestThumbnailVideo::imageRendererDecodesModernFormats()
+{
+    QFETCH(QString, relativePath);
+    QFETCH(QByteArray, format);
+
+    const QString absolutePath = fixturePath(relativePath);
+    QCOMPARE(QImageReader::imageFormat(absolutePath), format);
+
+    ImageRenderer renderer;
+    MediaRequest request;
+    request.absolutePath = absolutePath;
+    request.targetSize = QSize(16, 16);
+
+    Error error;
+    const MediaResult result = renderer.render(request, &error);
+
+    QVERIFY2(!error.isError(), qPrintable(error.message()));
+    QCOMPARE(result.format, QStringLiteral("jpeg"));
+    QVERIFY(!QImage::fromData(result.bytes, "jpeg").isNull());
+    QCOMPARE(result.actualSize, QSize(16, 12));
 }
 
 void TestThumbnailVideo::reportsErrorForAStructurallyValidButUndecodableFile()

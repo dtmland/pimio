@@ -12,14 +12,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPainter>
-#include <QPluginLoader>
 #include <QtEndian>
 
 #include <cstdio>
 
 using namespace pimio::fixtures;
-
-Q_IMPORT_PLUGIN(QAVIFPlugin)
 
 namespace {
 
@@ -344,11 +341,6 @@ QList<Fixture> buildFixtures()
                      QStringLiteral("A real WebP image for thumbnail and detail-view decoding."),
                      QStringLiteral("Encoded through Qt ImageFormats' WebP plugin.")});
 
-    fixtures.append({QStringLiteral("images/avif-solid.avif"),
-                     encode(gradientImage(32, 24), "AVIF", 90),
-                     QStringLiteral("A real AVIF image for thumbnail and detail-view decoding."),
-                     QStringLiteral("Encoded through pimio's libavif-backed Qt image plugin.")});
-
     fixtures.append({QStringLiteral("raw/simulated-raw-with-preview.pimraw"), simulatedRaw(),
                      QStringLiteral("Embedded-preview extraction from a RAW-like container."),
                      QStringLiteral("Synthetic format owned by pimio. It is not a camera RAW "
@@ -419,7 +411,7 @@ QString sha256Of(const QByteArray &contents)
             QCryptographicHash::hash(contents, QCryptographicHash::Sha256).toHex());
 }
 
-bool appendDecodableVideoEntry(const QDir &outputDir, QJsonArray *entries)
+bool appendExternalFixtureEntries(const QDir &outputDir, QJsonArray *entries)
 {
     const QString relativePath = QStringLiteral("video/decodable-clip.mp4");
     QFile file(outputDir.absoluteFilePath(relativePath));
@@ -457,6 +449,36 @@ bool appendDecodableVideoEntry(const QDir &outputDir, QJsonArray *entries)
                            "VideoFrameRenderer decodes actual video through Qt Multimedia rather "
                            "than only handling structurally-valid-but-empty containers."));
     entries->append(entry);
+
+    const QString avifRelativePath = QStringLiteral("images/avif-solid.avif");
+    QFile avifFile(outputDir.absoluteFilePath(avifRelativePath));
+    if (!avifFile.open(QIODevice::ReadOnly)) {
+        std::fprintf(stderr,
+                     "The committed external fixture %s is missing; refusing to omit it from "
+                     "manifest.json.\n",
+                     qPrintable(avifRelativePath));
+        return false;
+    }
+    const QByteArray avifContents = avifFile.readAll();
+
+    QJsonObject avifEntry;
+    avifEntry.insert(QStringLiteral("path"), avifRelativePath);
+    avifEntry.insert(QStringLiteral("sizeBytes"), avifContents.size());
+    avifEntry.insert(QStringLiteral("sha256"), sha256Of(avifContents));
+    avifEntry.insert(
+            QStringLiteral("provenance"),
+            QStringLiteral("Generated once by tools/fixture_generator with "
+                           "qt-avif-image-plugin 0.10.3, libavif 1.4.2, and libaom 3.14.1. "
+                           "Synthetic gradient owned by the pimio project; no third-party media "
+                           "is included."));
+    avifEntry.insert(
+            QStringLiteral("covers"),
+            QStringLiteral("A real AVIF image for thumbnail and detail-view decoding."));
+    avifEntry.insert(
+            QStringLiteral("notes"),
+            QStringLiteral("Kept as an external fixture because pimio ships only the AV1 decoder; "
+                           "fixture regeneration verifies and preserves this committed file."));
+    entries->append(avifEntry);
     return true;
 }
 
@@ -521,7 +543,7 @@ int main(int argc, char *argv[])
         }
         entries.append(entry);
     }
-    if (!appendDecodableVideoEntry(outputDir, &entries)) {
+    if (!appendExternalFixtureEntries(outputDir, &entries)) {
         return 1;
     }
 

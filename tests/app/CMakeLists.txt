@@ -8,6 +8,10 @@ target_link_libraries(tst_app_smoke PRIVATE
     Qt6::Test
 )
 
+target_compile_definitions(tst_app_smoke PRIVATE
+    PIMIO_FIXTURES_DIR="${CMAKE_SOURCE_DIR}/tests/fixtures/data"
+)
+
 # The QPA platform is chosen by the CTest preset so the same test can run
 # offscreen everywhere and under Xvfb/X11 on Linux.
 add_test(NAME app.smoke COMMAND tst_app_smoke)
