@@ -64,6 +64,7 @@ core::MediaKind kindFor(MediaSignature signature)
     case MediaSignature::Jpeg:
     case MediaSignature::Png:
     case MediaSignature::Tiff:
+    case MediaSignature::HeifImage:
         return core::MediaKind::Image;
     case MediaSignature::IsoBmff:
         return core::MediaKind::Video;
@@ -181,6 +182,9 @@ BuiltinMetadataReader::read(const QString &absolutePath, core::Error *error) con
         break;
     case MediaSignature::IsoBmff:
         parsed = readIsoBmff(contents, &embedded, &warnings);
+        break;
+    case MediaSignature::HeifImage:
+        parsed = readHeifImage(contents, &embedded, &warnings);
         break;
     case MediaSignature::Unknown:
         break;

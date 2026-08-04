@@ -211,6 +211,38 @@ QByteArray simulatedRaw()
     return result;
 }
 
+/// A structurally valid HEIF-family still image: an ISO base media `ftyp` box
+/// with an image brand, plus a `meta` box carrying the image spatial extent so
+/// the reader can report dimensions. It is deliberately not decodable (no image
+/// samples), like the structural MP4 fixtures. \a majorBrand selects AVIF vs
+/// HEIC; \a compatibleBrands are appended after the minor version.
+QByteArray structuralHeifImage(const char *majorBrand, const QByteArray &compatibleBrands,
+                               quint32 width, quint32 height)
+{
+    QByteArray ftypPayload;
+    ftypPayload.append(majorBrand, 4);
+    appendU32Be(ftypPayload, 0); // minor version
+    ftypPayload.append(compatibleBrands);
+
+    // meta -> iprp -> ipco -> ispe. `meta` is a FullBox, so it carries a
+    // leading version/flags word before its child boxes.
+    QByteArray ispePayload;
+    appendU32Be(ispePayload, 0); // version and flags
+    appendU32Be(ispePayload, width);
+    appendU32Be(ispePayload, height);
+
+    QByteArray ipco = box("ispe", ispePayload);
+    QByteArray iprp = box("ipco", ipco);
+    QByteArray metaPayload;
+    appendU32Be(metaPayload, 0); // meta FullBox version and flags
+    metaPayload.append(box("iprp", iprp));
+
+    QByteArray result;
+    result.append(box("ftyp", ftypPayload));
+    result.append(box("meta", metaPayload));
+    return result;
+}
+
 QByteArray garbageExifJpeg()
 {
     QByteArray app1;
@@ -318,6 +350,20 @@ QList<Fixture> buildFixtures()
                      QStringLiteral("Structurally valid but deliberately not decodable: it "
                                     "declares a video and an audio track but holds no "
                                     "samples.")});
+
+    fixtures.append({QStringLiteral("images/avif-still.avif"),
+                     structuralHeifImage("avif", QByteArrayLiteral("avifmif1miaf"), 1440, 865),
+                     QStringLiteral("AVIF still image classified as an image, not a movie, "
+                                    "despite sharing the ISO base media container."),
+                     QStringLiteral("Structurally valid but deliberately not decodable: it "
+                                    "carries a ftyp image brand and an ispe extent but no image "
+                                    "samples.")});
+
+    fixtures.append({QStringLiteral("images/heic-still.heic"),
+                     structuralHeifImage("heic", QByteArrayLiteral("mif1heic"), 4032, 3024),
+                     QStringLiteral("HEIC still image classified as an image, not a movie."),
+                     QStringLiteral("Structurally valid but deliberately not decodable: a ftyp "
+                                    "image brand with an ispe extent and no image samples.")});
 
     fixtures.append({QStringLiteral("malformed/truncated.jpg"), baseJpeg().left(64),
                      QStringLiteral("A JPEG truncated mid-stream."),

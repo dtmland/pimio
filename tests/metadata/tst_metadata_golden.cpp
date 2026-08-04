@@ -100,6 +100,13 @@ private slots:
     void videoAudioTrackPresenceIsReported();
     void videoWithoutTracksReportsNoAudio();
 
+    // ---- HEIF-family still images (AVIF, HEIC) ----
+
+    void avifIsClassifiedAsAnImageNotAVideo();
+    void heicIsClassifiedAsAnImageNotAVideo();
+    void heifImageDimensionsAreReadFromTheContainer();
+    void heifImageCarriesNoDurationOrAudio();
+
     // ---- Failure policy ----
 
     void damagedExifIsAWarningAndTheImageIsStillRead();
@@ -371,6 +378,47 @@ void TestMetadataGolden::videoWithoutTracksReportsNoAudio()
     QVERIFY(result.has_value());
     QCOMPARE(result->metadata.durationMs, 2000);
     QVERIFY(!result->metadata.hasAudio);
+}
+
+// ---- HEIF-family still images (AVIF, HEIC) ----
+
+void TestMetadataGolden::avifIsClassifiedAsAnImageNotAVideo()
+{
+    const BuiltinMetadataReader reader;
+    const auto result = readFixture(reader, QStringLiteral("images/avif-still.avif"));
+    QVERIFY(result.has_value());
+    // AVIF is an AV1 still picture in an ISO base media container. It must be an
+    // image, not a video, or the app tries to "play" a photo.
+    PIMIO_COMPARE_ENUM(result->metadata.kind, core::MediaKind::Image);
+}
+
+void TestMetadataGolden::heicIsClassifiedAsAnImageNotAVideo()
+{
+    const BuiltinMetadataReader reader;
+    const auto result = readFixture(reader, QStringLiteral("images/heic-still.heic"));
+    QVERIFY(result.has_value());
+    PIMIO_COMPARE_ENUM(result->metadata.kind, core::MediaKind::Image);
+}
+
+void TestMetadataGolden::heifImageDimensionsAreReadFromTheContainer()
+{
+    const BuiltinMetadataReader reader;
+    const auto result = readFixture(reader, QStringLiteral("images/heic-still.heic"));
+    QVERIFY(result.has_value());
+    QCOMPARE(result->metadata.pixelWidth, 4032);
+    QCOMPARE(result->metadata.pixelHeight, 3024);
+}
+
+void TestMetadataGolden::heifImageCarriesNoDurationOrAudio()
+{
+    const BuiltinMetadataReader reader;
+    const auto result = readFixture(reader, QStringLiteral("images/avif-still.avif"));
+    QVERIFY(result.has_value());
+    // A still image has no timeline; claiming a duration or audio track would be
+    // a fact the file does not support, and it must not be warned about either.
+    QCOMPARE(result->metadata.durationMs, 0);
+    QVERIFY(!result->metadata.hasAudio);
+    QVERIFY(result->warnings.isEmpty());
 }
 
 // ---- Failure policy ----

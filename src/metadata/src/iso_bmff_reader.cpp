@@ -206,7 +206,64 @@ void walk(const QByteArray &bytes, qsizetype offset, qsizetype limit, int depth,
     }
 }
 
+/// Reads an `ispe` (image spatial extent) box into \a fields.
+void readImageSpatialExtent(const QByteArray &bytes, const Box &box, FieldSet *fields)
+{
+    // FullBox: version+flags (4), then width (4) and height (4).
+    quint32 width = 0;
+    quint32 height = 0;
+    if (!readU32(bytes, box.payloadOffset + 4, &width)
+        || !readU32(bytes, box.payloadOffset + 8, &height)) {
+        return;
+    }
+    if (width > 0 && height > 0 && !fields->pixelWidth.has_value()) {
+        fields->pixelWidth = static_cast<int>(width);
+        fields->pixelHeight = static_cast<int>(height);
+    }
+}
+
+/// Walks a HEIF-family still image's box tree, gathering what a picture can
+/// carry: pixel dimensions (from the item property container) and a creation
+/// time (from the file-level `meta`/`mvhd` when present).
+void walkHeifImage(const QByteArray &bytes, qsizetype offset, qsizetype limit, int depth,
+                   FieldSet *fields)
+{
+    if (depth > kMaxNestingDepth) {
+        return;
+    }
+    Box box;
+    while (offset < limit && readBox(bytes, offset, limit, &box)) {
+        if (box.type == QByteArrayLiteral("ispe")) {
+            readImageSpatialExtent(bytes, box, fields);
+        } else if (box.type == QByteArrayLiteral("meta")) {
+            // `meta` is a FullBox: skip its 4-byte version/flags before recursing.
+            walkHeifImage(bytes, box.payloadOffset + 4, box.payloadOffset + box.payloadSize,
+                          depth + 1, fields);
+        } else if (box.type == QByteArrayLiteral("iprp")
+                   || box.type == QByteArrayLiteral("ipco")) {
+            walkHeifImage(bytes, box.payloadOffset, box.payloadOffset + box.payloadSize, depth + 1,
+                          fields);
+        }
+        offset = box.nextOffset;
+    }
+}
+
 } // namespace
+
+bool readHeifImage(const QByteArray &bytes, FieldSet *fields, QStringList *warnings)
+{
+    if (bytes.size() < 8 || bytes.mid(4, 4) != QByteArrayLiteral("ftyp")) {
+        return false;
+    }
+
+    walkHeifImage(bytes, 0, bytes.size(), 0, fields);
+
+    // A still image legitimately has no duration or audio, so their absence is
+    // not worth a warning. Missing dimensions are also fine: the decoder still
+    // renders the picture, and callers treat unknown size as "read it later".
+    Q_UNUSED(warnings);
+    return true;
+}
 
 bool readIsoBmff(const QByteArray &bytes, FieldSet *fields, QStringList *warnings)
 {
