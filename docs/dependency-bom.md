@@ -58,6 +58,7 @@ bump is therefore contained to `cmake/PimioLore.cmake` and `src/lore/src/`.
 | LORE CLI (`lore`) | 0.8.5 | Independent verification that pimio's repositories are readable by the reference implementation | MIT | No |
 | CMake | >= 3.24 | Build system | BSD-3-Clause | No |
 | Ninja | any recent | Build backend | Apache-2.0 | No |
+| NASM | any recent | Assemble libaom's optimized AV1 routines | BSD-2-Clause | No |
 | Qt Test | 6.8.3 | Unit and smoke tests | LGPL-3.0 | No |
 | Xvfb | distribution version | Linux X11 test display | MIT | No |
 
@@ -69,7 +70,6 @@ bump is therefore contained to `cmake/PimioLore.cmake` and `src/lore/src/`.
 | `actions/upload-artifact` | v4 | Publish test results |
 | `jurplel/install-qt-action` | v4.3.1 | Install the pinned Qt release |
 | `seanmiddleditch/gha-setup-ninja` | v6 | Install Ninja on Windows and macOS |
-| `ilammy/setup-nasm` | v1.5.2 | Install the assembler used to build libaom |
 | `ilammy/msvc-dev-cmd` | v1 | MSVC developer environment on Windows |
 
 ## Anticipated dependencies (not yet integrated)
