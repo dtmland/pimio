@@ -2,6 +2,7 @@
 #include "pimio/browser/thumbnail_image_provider.h"
 
 #include <QAbstractListModel>
+#include <QDir>
 #include <QImage>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -9,6 +10,12 @@
 #include <QQuickWindow>
 #include <QSignalSpy>
 #include <QTest>
+
+#include <utility>
+
+#ifndef PIMIO_FIXTURES_DIR
+#error "PIMIO_FIXTURES_DIR must be defined by the build system"
+#endif
 
 namespace {
 
@@ -39,10 +46,12 @@ public:
         ThumbnailImageRole,
     };
 
-    explicit SyntheticMediaModel(int count, int thumbnailStatus = 0, QObject *parent = nullptr)
+    explicit SyntheticMediaModel(int count, int thumbnailStatus = 0, QString absolutePath = {},
+                                 QObject *parent = nullptr)
         : QAbstractListModel(parent)
         , m_count(count)
         , m_thumbnailStatus(thumbnailStatus)
+        , m_absolutePath(std::move(absolutePath))
     {
     }
 
@@ -60,7 +69,9 @@ public:
         case MediaIdRole:
             return QStringLiteral("item-%1").arg(index.row());
         case AbsolutePathRole:
-            return QStringLiteral("/library/item-%1.jpg").arg(index.row());
+            return m_absolutePath.isEmpty()
+                    ? QStringLiteral("/library/item-%1.jpg").arg(index.row())
+                    : m_absolutePath;
         case CaptureTimeStringRole:
             return QStringLiteral("2026-01-01T00:00:00");
         case MediaKindRole:
@@ -111,6 +122,7 @@ signals:
 private:
     int m_count;
     int m_thumbnailStatus;
+    QString m_absolutePath;
 };
 
 } // namespace
@@ -124,6 +136,8 @@ private slots:
     void mainQmlLoadsRootWindow();
     void gridTracksVisibleRangeAndOpensDetail();
     void readyThumbnailUsesImageProvider();
+    void detailLoadsModernImage_data();
+    void detailLoadsModernImage();
 };
 
 void TestAppSmoke::initTestCase()
@@ -200,6 +214,35 @@ void TestAppSmoke::readyThumbnailUsesImageProvider()
     QTRY_COMPARE(image->property("status").toInt(), 1); // Image.Ready
     QCOMPARE(image->property("source").toUrl(),
              QUrl(QStringLiteral("image://thumbnail/item-0")));
+}
+
+void TestAppSmoke::detailLoadsModernImage_data()
+{
+    QTest::addColumn<QString>("relativePath");
+
+    QTest::newRow("WebP") << QStringLiteral("images/webp-solid.webp");
+    QTest::newRow("AVIF") << QStringLiteral("images/avif-solid.avif");
+}
+
+void TestAppSmoke::detailLoadsModernImage()
+{
+    QFETCH(QString, relativePath);
+
+    const QString absolutePath =
+            QDir(QStringLiteral(PIMIO_FIXTURES_DIR)).absoluteFilePath(relativePath);
+    SyntheticMediaModel model(1, 0, absolutePath);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    QVERIFY(QMetaObject::invokeMethod(window, "showDetail", Q_ARG(QVariant, 0)));
+
+    auto *preview = window->findChild<QQuickItem *>(QStringLiteral("detailPreview"));
+    QVERIFY(preview != nullptr);
+    QTRY_COMPARE_WITH_TIMEOUT(preview->property("status").toInt(), 1, 10000); // Image.Ready
+    QCOMPARE(preview->property("source").toUrl(), QUrl::fromLocalFile(absolutePath));
 }
 
 QTEST_MAIN(TestAppSmoke)

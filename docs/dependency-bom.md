@@ -16,11 +16,20 @@ Legal review is a release gate. CI cannot certify it.
 | Qt Gui | 6.8.3 | default | Dynamically linked shared library | LGPL-3.0 | https://download.qt.io | No | Yes |
 | Qt Sql | 6.8.3 | QSQLITE driver | Dynamically linked shared library, SQLite bundled by Qt | LGPL-3.0 | https://download.qt.io | No | Yes |
 | Qt Qml / Qt Quick | 6.8.3 | default | Dynamically linked shared library | LGPL-3.0 | https://download.qt.io | No | Yes |
+| Qt Image Formats | 6.8.3 | WebP plugin with bundled libwebp | Dynamically loaded Qt image plugin | LGPL-3.0 | https://download.qt.io | No | Yes |
+| libavif | 1.4.2 | AVIF read with libaom | Statically linked through the AVIF Qt image plugin | BSD-2-Clause | https://github.com/AOMediaCodec/libavif/releases/tag/v1.4.2 | No | Yes |
+| libaom | 3.14.1 | AV1 decoder only | Statically linked into libavif | BSD-2-Clause | https://aomedia.googlesource.com/aom/+/refs/tags/v3.14.1 | No | Yes |
+| qt-avif-image-plugin | 0.10.3 | Qt 6 image I/O adapter, read capability enabled | Statically linked Qt image plugin | BSD-2-Clause | https://github.com/novomesk/qt-avif-image-plugin/releases/tag/v0.10.3 | No | Yes |
 | LORE (`liblore`) | 0.8.5 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.8.5 | No | Yes |
 
 Qt is used under the LGPL dynamic-linking path. The application must keep Qt
 replaceable by the user, ship the required license text and notices, and avoid
 static linking unless a commercial license is obtained.
+
+AVIF decoding uses the maintained libavif codec and qt-avif-image-plugin
+adapter rather than a project-specific decoder. They and libaom are pinned and
+fetched from their tagged upstream releases; all three use permissive
+BSD-2-Clause terms.
 
 Metadata is read by `pimio::metadata`, parsers written for this project, so the
 read path adds no row here. The reasoning and what would reverse it are in
@@ -60,6 +69,7 @@ bump is therefore contained to `cmake/PimioLore.cmake` and `src/lore/src/`.
 | `actions/upload-artifact` | v4 | Publish test results |
 | `jurplel/install-qt-action` | v4.3.1 | Install the pinned Qt release |
 | `seanmiddleditch/gha-setup-ninja` | v6 | Install Ninja on Windows and macOS |
+| `ilammy/setup-nasm` | v1.5.2 | Install the assembler used to build libaom |
 | `ilammy/msvc-dev-cmd` | v1 | MSVC developer environment on Windows |
 
 ## Anticipated dependencies (not yet integrated)
