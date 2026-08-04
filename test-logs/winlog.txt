@@ -1,0 +1,44 @@
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+[webp @ 0000021C9B3431C0] invalid TIFF header in Exif data
+Input #0, webp_pipe, from 'C:/Users/dtmland/Desktop/pimio-test/dogs/basset1-thumbnail.jpg.webp':
+  Duration: N/A, bitrate: N/A
+  Stream #0:0: Video: webp, yuv420p(tv, bt470bg/unknown/unknown), 2000x2319, 25 fps, 25 tbr, 25 tbn
+qt.multimedia.playbackengine.codec: "No HW decoder found"
+Input #0, webp_pipe, from 'C:/Users/dtmland/Desktop/pimio-test/dogs/basset2-thumbnail.jpg.webp':
+  Duration: N/A, bitrate: N/A
+  Stream #0:0: Video: webp, yuv420p(tv, bt470bg/unknown/unknown), 1800x1200, 25 fps, 25 tbr, 25 tbn
+qt.multimedia.playbackengine.codec: "No HW decoder found"
+[webp @ 0000021C9B342300] invalid TIFF header in Exif data
+qt.multimedia.ffmpeg.mediadataholder: Could not open media. FFmpeg error description: "Invalid data found when processing input"
+[av1 @ 0000021C9B340D00] No sequence header available.
+[av1 @ 0000021C9B342300] No sequence header available.
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:/Users/dtmland/Desktop/pimio-test/dogs/Basset Hound 3.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: avifmif1miaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:/Users/dtmland/Desktop/pimio-test/dogs/202105basset-hound-1.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: mif1avifmiaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0[0x1]: Video: av1 (Professional) (av01 / 0x31307661), yuv422p(pc), 4508x3000, 1 fps, 1 tbr, 1 tbn (default)  Stream #0:0[0x1]: Video: av1 (Main) (av01 / 0x31307661), yuv420p(pc, smpte170m/bt709/iec61966-2-1), 1440x865, 1 fps, 1 tbr, 1 tbn (default)
+
+      Metadata:
+        title           : Color
+[av1 @ 0000021C9B342300] No sequence header available.
+[av1 @ 0000021C9B343940] No sequence header available.
+[av1 @ 0000021C9B343940] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0000021C9B343940] Failed to get pixel format.
+[av1 @ 0000021C9B343940] Get current frame error
+[av1 @ 0000021C9B342E40] No sequence header available.
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:/Users/dtmland/Desktop/pimio-test/dogs/202105basset-hound-3.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: avifmif1miaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0[0x1]: Video: av1 (Main) (av01 / 0x31307661), yuv420p(pc, smpte170m/bt709/iec61966-2-1), 1440x865, 1 fps, 1 tbr, 1 tbn (default)
+[av1 @ 0000021C9B342300] No sequence header available.

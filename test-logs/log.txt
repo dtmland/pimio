@@ -1,0 +1,59 @@
+windows:
+
+Thumbnail and Full-Size Preview
+Basset-Hound.jpg
+
+Thumbnail and Low Res image in Full-Size preview 
+(for whatever reason it pulled thumbnail successfully on these two but not the other avif file below) 
+202105basset-hound-1.jpg.avif
+202105basset-hound-3.jpg.avif
+However because pimio thinks it is a video it used the thumbnail blown up for the Full-Size preview (kind of like I saw it does
+with valid video files like an mp4). So in a way this is sort of behaving better than on mac/linux at least because they didn't display anything here. 
+I think my my point of confusion is that is avif actually a video file? Or was it historically and there is a new modern format that is actually an 
+image because these sure the heck just look like images to me. Can you thoroughly research that topic?
+
+
+Thumbnail but no Full-Size Preview
+basset1-thumbnail.jpg.webp
+basset2-thumbnail.jpg.webp
+
+No thumbnail or Full-Size Preview
+Basset Hound 3.jpg.avif
+
+Also had a square from a .DS_Store file that I copied to windows by accident from the macos during its tests. 
+Note that the macos version of pimio did not display this file as a gray square likely because of the file listing
+calls returned by the macos I am not sure? Seems like windows should recognize this type and ignore it.
+
+
+macos:
+
+Thumbnail and Full-Size Preview
+Basset-Hound.jpg
+
+Thumbnail but no Full-Size Preview
+basset1-thumbnail.jpg.webp
+basset2-thumbnail.jpg.webp
+
+No thumbnail or Full-Size Preview
+202105basset-hound-1.jpg.avif
+202105basset-hound-3.jpg.avif
+Basset Hound 3.jpg.avif
+
+
+linux:
+
+Thumbnail and Full-Size Preview
+Basset-Hound.jpg
+
+Thumbnail but no Full-Size Preview
+basset1-thumbnail.jpg.webp
+basset2-thumbnail.jpg.webp
+
+No thumbnail or Full-Size Preview
+202105basset-hound-1.jpg.avif
+202105basset-hound-3.jpg.avif
+Basset Hound 3.jpg.avif
+
+Also had a square from a .DS_Store file that I copied to windows by accident from the macos during its tests. 
+Note that the macos version of pimio did not display this file as a gray square likely because of the file listing
+calls returned by the macos I am not sure? Seems like windows should recognize this type and ignore it.

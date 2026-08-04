@@ -1,0 +1,74 @@
+/Users/blue/Downloads/pimio-v0.1.16-macOS-binaries/pimio --library /Users/blue/Desktop/dogs
+qrc:/qt-project.org/imports/QtQuick/Controls/macOS/BusyIndicator.qml:27:18: QML AnimatedImage: Error Reading Animated Image File qrc:/qt-project.org/imports/QtQuick/Controls/macOS/images/busyindicator-light.webp
+qt.multimedia.ffmpeg: Using Qt multimedia with FFmpeg version 7.1 LGPL version 2.1 or later
+[av1 @ 0x7bd353100] No sequence header available.
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/blue/Desktop/dogs/Basset Hound 3.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: avifmif1miaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0[0x1]: Video: av1 (Professional) (av01 / 0x31307661), yuv422p(pc), 4508x3000, 1 fps, 1 tbr, 1 tbn (default)
+      Metadata:
+        title           : Color
+qt.multimedia.playbackengine.codec: "No HW decoder found"
+qt.multimedia.ffmpeg.mediadataholder: Could not open media. FFmpeg error description: "Invalid data found when processing input"
+[av1 @ 0x7bd353100] No sequence header available.
+[av1 @ 0x7bd353100] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7bd353100] Failed to get pixel format.
+[av1 @ 0x7bd353100] Get current frame error
+[av1 @ 0x7bd353800] No sequence header available.
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/blue/Desktop/dogs/202105basset-hound-1.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: mif1avifmiaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0[0x1]: Video: av1 (Main) (av01 / 0x31307661), yuv420p(pc, smpte170m/bt709/iec61966-2-1), 1440x865, 1 fps, 1 tbr, 1 tbn (default)
+qt.multimedia.playbackengine.codec: "No HW decoder found"
+[av1 @ 0x7bd353800] No sequence header available.
+[av1 @ 0x7bd353800] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7bd353800] Failed to get pixel format.
+[av1 @ 0x7bd353800] Get current frame error
+[av1 @ 0x7bd644380] No sequence header available.
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/blue/Desktop/dogs/Basset Hound 3.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: avifmif1miaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0[0x1]: Video: av1 (Professional) (av01 / 0x31307661), yuv422p(pc), 4508x3000, 1 fps, 1 tbr, 1 tbn (default)
+      Metadata:
+        title           : Color
+qt.multimedia.playbackengine.codec: "No HW decoder found"
+[av1 @ 0x7bd644380] No sequence header available.
+qt.multimedia.ffmpeg.mediadataholder: Could not open media. FFmpeg error description: "Invalid data found when processing input"
+[av1 @ 0x7bd644380] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7bd644380] Failed to get pixel format.
+[av1 @ 0x7bd644380] Get current frame error
+[av1 @ 0x7bd644a80] No sequence header available.
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/blue/Desktop/dogs/202105basset-hound-1.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: mif1avifmiaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0[0x1]: Video: av1 (Main) (av01 / 0x31307661), yuv420p(pc, smpte170m/bt709/iec61966-2-1), 1440x865, 1 fps, 1 tbr, 1 tbn (default)
+qt.multimedia.playbackengine.codec: "No HW decoder found"
+[av1 @ 0x7bd644a80] No sequence header available.
+[av1 @ 0x7bd644a80] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7bd644a80] Failed to get pixel format.
+[av1 @ 0x7bd644a80] Get current frame error
+[av1 @ 0x7bd644e00] No sequence header available.
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from '/Users/blue/Desktop/dogs/202105basset-hound-3.jpg.avif':
+  Metadata:
+    major_brand     : avif
+    minor_version   : 0
+    compatible_brands: avifmif1miaf
+  Duration: N/A, start: 0.000000, bitrate: N/A
+  Stream #0:0[0x1]: Video: av1 (Main) (av01 / 0x31307661), yuv420p(pc, smpte170m/bt709/iec61966-2-1), 1440x865, 1 fps, 1 tbr, 1 tbn (default)
+qt.multimedia.playbackengine.codec: "No HW decoder found"
+[av1 @ 0x7bd644e00] No sequence header available.
+[av1 @ 0x7bd644e00] Your platform doesn't support hardware accelerated AV1 decoding.
+[av1 @ 0x7bd644e00] Failed to get pixel format.
+[av1 @ 0x7bd644e00] Get current frame error
