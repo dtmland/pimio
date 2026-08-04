@@ -54,6 +54,7 @@ jobs:
             libwayland-client0 \
             libwayland-cursor0 \
             libwayland-egl1 \
+            nasm \
             ninja-build \
             patchelf   # needed by cmake --install to rewrite ELF RPATH for the Qt deployment
 
@@ -61,8 +62,13 @@ jobs:
         if: matrix.name != 'Linux'
         uses: seanmiddleditch/gha-setup-ninja@v6
 
-      - name: Install NASM
-        uses: ilammy/setup-nasm@v1.5.2
+      - name: Install NASM (Windows)
+        if: matrix.name == 'Windows'
+        run: choco install nasm --no-progress -y
+
+      - name: Install NASM (macOS)
+        if: matrix.name == 'macOS'
+        run: brew install nasm
 
       - name: Install Qt 6.8.3
         uses: jurplel/install-qt-action@v4.3.1
