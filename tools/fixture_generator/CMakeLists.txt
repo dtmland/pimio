@@ -5,6 +5,7 @@ qt_add_executable(pimio_fixture_generator
 )
 
 target_link_libraries(pimio_fixture_generator PRIVATE
+    pimio::avif_image_plugin
     Qt6::Core
     Qt6::Gui
 )

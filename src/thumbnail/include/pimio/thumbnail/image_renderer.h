@@ -6,10 +6,10 @@ namespace pimio::thumbnail {
 
 /// Renders image thumbnails using Qt's built-in image loading.
 ///
-/// Supports every format Qt can decode: JPEG, PNG, BMP, GIF, TIFF, WEBP,
-/// and any format provided by installed image plugins. Video frames and
-/// formats Qt cannot recognize are not handled here; a separate video
-/// renderer must be registered for those.
+/// Supports every format Qt can decode through QImageReader. WebP is provided
+/// by Qt ImageFormats, and AVIF by pimio's bundled libavif-backed Qt plugin.
+/// Video frames and formats Qt cannot recognize are not handled here; a
+/// separate video renderer must be registered for those.
 ///
 /// The rendered result is encoded as JPEG at 85 % quality. The image is
 /// scaled to fit within request.targetSize preserving the original aspect

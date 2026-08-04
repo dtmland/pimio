@@ -20,15 +20,15 @@ jobs:
           - name: Linux
             runner: ubuntu-24.04
             archive: tar.gz
-            qt_modules: qtmultimedia
+            qt_modules: qtmultimedia qtimageformats
           - name: Windows
             runner: windows-2025
             archive: zip
-            qt_modules: qtmultimedia
+            qt_modules: qtmultimedia qtimageformats
           - name: macOS
             runner: macos-15
             archive: tar.gz
-            qt_modules: qtmultimedia
+            qt_modules: qtmultimedia qtimageformats
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -66,7 +66,7 @@ jobs:
         with:
           version: 6.8.3
           cache: true
-          cache-key-prefix: qt-multimedia-${{ matrix.runner }}-6.8.3
+          cache-key-prefix: qt-multimedia-imageformats-${{ matrix.runner }}-6.8.3
           modules: ${{ matrix.qt_modules }}
           extra: --base https://download.qt.io
 
