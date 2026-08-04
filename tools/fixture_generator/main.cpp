@@ -12,11 +12,14 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPainter>
+#include <QPluginLoader>
 #include <QtEndian>
 
 #include <cstdio>
 
 using namespace pimio::fixtures;
+
+Q_IMPORT_PLUGIN(QAVIFPlugin)
 
 namespace {
 
@@ -46,7 +49,9 @@ QByteArray encode(const QImage &image, const char *format, int quality)
     QByteArray bytes;
     QBuffer buffer(&bytes);
     buffer.open(QIODevice::WriteOnly);
-    image.save(&buffer, format, quality);
+    if (!image.save(&buffer, format, quality)) {
+        qFatal("Cannot encode fixture as %s", format);
+    }
     return bytes;
 }
 
@@ -334,6 +339,16 @@ QList<Fixture> buildFixtures()
                      encode(gradientImage(16, 16), "PNG", 100),
                      QStringLiteral("A PNG, which carries no EXIF capture time."), QString()});
 
+    fixtures.append({QStringLiteral("images/webp-solid.webp"),
+                     encode(gradientImage(32, 24), "WEBP", 90),
+                     QStringLiteral("A real WebP image for thumbnail and detail-view decoding."),
+                     QStringLiteral("Encoded through Qt ImageFormats' WebP plugin.")});
+
+    fixtures.append({QStringLiteral("images/avif-solid.avif"),
+                     encode(gradientImage(32, 24), "AVIF", 90),
+                     QStringLiteral("A real AVIF image for thumbnail and detail-view decoding."),
+                     QStringLiteral("Encoded through pimio's libavif-backed Qt image plugin.")});
+
     fixtures.append({QStringLiteral("raw/simulated-raw-with-preview.pimraw"), simulatedRaw(),
                      QStringLiteral("Embedded-preview extraction from a RAW-like container."),
                      QStringLiteral("Synthetic format owned by pimio. It is not a camera RAW "
@@ -404,6 +419,47 @@ QString sha256Of(const QByteArray &contents)
             QCryptographicHash::hash(contents, QCryptographicHash::Sha256).toHex());
 }
 
+bool appendDecodableVideoEntry(const QDir &outputDir, QJsonArray *entries)
+{
+    const QString relativePath = QStringLiteral("video/decodable-clip.mp4");
+    QFile file(outputDir.absoluteFilePath(relativePath));
+    if (!file.open(QIODevice::ReadOnly)) {
+        std::fprintf(stderr,
+                     "The committed external fixture %s is missing; refusing to omit it from "
+                     "manifest.json.\n",
+                     qPrintable(relativePath));
+        return false;
+    }
+    const QByteArray contents = file.readAll();
+
+    QJsonObject entry;
+    entry.insert(QStringLiteral("path"), relativePath);
+    entry.insert(QStringLiteral("sizeBytes"), contents.size());
+    entry.insert(QStringLiteral("sha256"), sha256Of(contents));
+    entry.insert(
+            QStringLiteral("provenance"),
+            QStringLiteral("Generated once with `ffmpeg -f lavfi -i "
+                           "color=c=red:size=32x32:rate=4:duration=1 -frames:v 4 -pix_fmt "
+                           "yuv420p -c:v libx264 -profile:v baseline -movflags +faststart`. "
+                           "Synthetic test pattern owned by the pimio project; no third-party "
+                           "media is included."));
+    entry.insert(QStringLiteral("covers"),
+                 QStringLiteral("A single actually decodable video frame, for thumbnail "
+                                "rendering."));
+    entry.insert(
+            QStringLiteral("notes"),
+            QStringLiteral("Baseline-profile H.264 in an MP4 container, 32x32, 4 frames of "
+                           "solid red, no audio. Generated once with ffmpeg 6.1.1 (libx264), a "
+                           "widely available open-source encoder used here only as an offline "
+                           "fixture-generation tool; ffmpeg is not a build or runtime dependency "
+                           "of pimio. Unlike structural.mp4 and audio-video.mp4, this file is "
+                           "deliberately real: it is the corpus's evidence that "
+                           "VideoFrameRenderer decodes actual video through Qt Multimedia rather "
+                           "than only handling structurally-valid-but-empty containers."));
+    entries->append(entry);
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char *argv[])
@@ -464,6 +520,9 @@ int main(int argc, char *argv[])
             entry.insert(QStringLiteral("notes"), fixture.notes);
         }
         entries.append(entry);
+    }
+    if (!appendDecodableVideoEntry(outputDir, &entries)) {
+        return 1;
     }
 
     QJsonObject manifest;

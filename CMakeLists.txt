@@ -23,7 +23,7 @@ string(REGEX REPLACE "^v" "" PIMIO_VERSION_DISPLAY "${PIMIO_RELEASE_VERSION}")
 project(pimio
     VERSION ${PIMIO_VERSION_NUMERIC}
     DESCRIPTION "Local-first photo and video organizer"
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 set(CMAKE_CXX_STANDARD 20)
@@ -65,6 +65,9 @@ if(PIMIO_LORE_FOUND)
     if(PIMIO_LORE_CLI)
         message(STATUS "LORE CLI ${PIMIO_LORE_VERSION}: ${PIMIO_LORE_CLI}")
     endif()
+
+    include(PimioImageFormats)
+    pimio_enable_image_formats()
 elseif(PIMIO_REQUIRE_LORE)
     message(FATAL_ERROR "LORE is required but unavailable: ${PIMIO_LORE_UNAVAILABLE_REASON}")
 else()

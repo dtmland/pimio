@@ -22,6 +22,7 @@ target_include_directories(pimio_thumbnail PUBLIC include)
 # shipping any codec library itself. See docs/dependency-bom.md.
 target_link_libraries(pimio_thumbnail PUBLIC
     pimio::core
+    pimio::avif_image_plugin
     Qt6::Core
     Qt6::Gui
     Qt6::Multimedia
