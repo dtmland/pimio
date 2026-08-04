@@ -46,7 +46,8 @@ Rectangle {
         cache: false
         fillMode: Image.PreserveAspectFit
         source: fullResRequested
-                ? "file:" + detail.absolutePath
+                ? "file:" + (detail.absolutePath.startsWith("/") ? "" : "/")
+                  + detail.absolutePath
                 : detail.thumbnailStatus === 2 ? detail.thumbnailSource : ""
         onStatusChanged: {
             if (status === Image.Error && fullResRequested) {
