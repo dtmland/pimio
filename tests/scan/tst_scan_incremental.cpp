@@ -122,6 +122,61 @@ private slots:
         QCOMPARE(records[0].metadata.fileName, QStringLiteral("photo.jpg"));
     }
 
+    void scanSkipsNonMediaFilesLikeDsStore()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+
+        fs.addDirectory(kRoot);
+        addFile(fs, kRoot + "/photo.jpg");
+        // OS bookkeeping files have no media extension and no readable media
+        // signature; they must not become thumbnail-less "gray square" records.
+        fs.addFile(kRoot + "/.DS_Store", "\x00\x00\x00\x01Bud1");
+        fs.addFile(kRoot + "/Thumbs.db", "not media");
+        fs.addFile(kRoot + "/notes.txt", "just text");
+
+        Scanner scanner(&fs, &reader, &store);
+        std::atomic<bool> cancel{false};
+        Scanner::Result result;
+        const core::Error err = scanner.scan({kRoot}, cancel, &result);
+
+        QVERIFY(!err.isError());
+        QCOMPARE(result.added, 1); // only photo.jpg
+
+        const QList<core::MediaRecord> records = loadAll(store);
+        QCOMPARE(records.size(), 1);
+        QCOMPARE(records[0].identity.absolutePath, kRoot + "/photo.jpg");
+    }
+
+    void scanRemovesAPreviouslyIndexedFileThatIsNoLongerMedia()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+
+        fs.addDirectory(kRoot);
+        addFile(fs, kRoot + "/photo.jpg");
+
+        Scanner scanner(&fs, &reader, &store);
+        std::atomic<bool> cancel{false};
+        Scanner::Result first;
+        QVERIFY(!scanner.scan({kRoot}, cancel, &first).isError());
+        QCOMPARE(first.added, 1);
+
+        // The photo is replaced by a non-media file (e.g. the user renamed it
+        // to an unrecognised extension). It must drop out of the library.
+        QVERIFY(fs.remove(kRoot + "/photo.jpg", nullptr));
+        fs.addFile(kRoot + "/photo.bin", "no longer an image");
+
+        Scanner::Result second;
+        QVERIFY(!scanner.scan({kRoot}, cancel, &second).isError());
+        QCOMPARE(second.removed, 1);
+        QVERIFY(loadAll(store).isEmpty());
+    }
+
     // ---- Scanner: unchanged ----
 
     void repeatedUnchangedScanMakesNoUpdates()

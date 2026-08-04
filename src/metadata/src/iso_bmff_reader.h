@@ -19,4 +19,11 @@ namespace pimio::metadata {
 /// Returns false when the bytes are not an ISO base media file at all.
 bool readIsoBmff(const QByteArray &bytes, FieldSet *fields, QStringList *warnings);
 
+/// Reads a HEIF-family still image (AVIF, HEIC, HEIF). These share the ISO base
+/// media container with movies but hold a picture: no timed track, so duration
+/// and audio are absent by design. Pixel dimensions are taken from the item
+/// property container when present. Returns false when the bytes are not an ISO
+/// base media file at all.
+bool readHeifImage(const QByteArray &bytes, FieldSet *fields, QStringList *warnings);
+
 } // namespace pimio::metadata

@@ -192,6 +192,19 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
         const QString &path = entry.absolutePath;
         const core::FileIdentity &identity = entry.identity;
 
+        // Skip files that are not media: neither a recognised media extension
+        // nor a container the reader can parse. This keeps sidecar leftovers and
+        // OS bookkeeping files such as .DS_Store or Thumbs.db out of the library
+        // instead of indexing them as broken, thumbnail-less "gray square" items.
+        // Files already indexed under this path are left to the removal pass, so
+        // a file that stops being media is dropped rather than kept stale.
+        const bool isIndexableMedia =
+            kindFromExtension(QFileInfo(path).fileName()) != core::MediaKind::Unknown
+            || (d->reader != nullptr && d->reader->supports(path));
+        if (!isIndexableMedia) {
+            continue;
+        }
+
         const QString currentPathKey = pathKey(path);
         if (byPath.contains(currentPathKey)) {
             // File was known at this path.
