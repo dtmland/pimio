@@ -19,10 +19,12 @@ $PimioPinned = @{
     # directory name it installs into.
     QtArch     = 'win64_msvc2022_64'
     QtHostDir  = 'msvc2022_64'
-    # CI installs no add-on modules, so neither does this environment: the Qt
-    # base package already carries qtbase, qtdeclarative and qtshadertools,
-    # which is everything pimio links.
-    QtModules  = @()
+    # Must match the modules installed by .github/workflows/ci.yml. The Qt base
+    # package carries qtbase, qtdeclarative and qtshadertools, but pimio also
+    # links Qt6::Multimedia (see src/thumbnail/CMakeLists.txt) and decodes the
+    # extra image formats, so those add-on modules must be installed too or
+    # configuration fails with "Failed to find required Qt component Multimedia".
+    QtModules  = @('qtmultimedia', 'qtimageformats')
     # aqtinstall is part of the toolchain, so it is pinned like the rest of it.
     AqtInstall = 'aqtinstall==3.3.0'
 
@@ -116,6 +118,17 @@ function Assert-PimioPinsMatchRepository {
     $ciQt = $ciQtMatch.Matches[0].Groups[1].Value
     if ($ciQt -ne $PimioPinned.QtVersion) {
         throw "Qt pin drift: ci.yml pins Qt $ciQt, pinned.ps1 pins $($PimioPinned.QtVersion). Update pinned.ps1."
+    }
+
+    $ciModulesMatch = Select-String -LiteralPath $workflow -Pattern 'modules:\s*(.+)$' |
+        Select-Object -First 1
+    if (-not $ciModulesMatch) {
+        throw "Cannot find the Qt 'modules:' line in $workflow."
+    }
+    $ciModules = ($ciModulesMatch.Matches[0].Groups[1].Value.Trim() -split '\s+') | Sort-Object
+    $localModules = @($PimioPinned.QtModules) | Sort-Object
+    if (($ciModules -join ' ') -ne ($localModules -join ' ')) {
+        throw "Qt module pin drift: ci.yml installs '$($ciModules -join ' ')', pinned.ps1 installs '$($localModules -join ' ')'. Update pinned.ps1."
     }
 
     $loreMatch = Select-String -LiteralPath $loreModule -Pattern 'PIMIO_LORE_VERSION\s+"([0-9.]+)"' |

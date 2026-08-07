@@ -5,6 +5,11 @@ PIMIO_UBUNTU_VERSION=24.04
 PIMIO_UBUNTU_AMD64_DIGEST=sha256:52df9b1ee71626e0088f7d400d5c6b5f7bb916f8f0c82b474289a4ece6cf3faf
 PIMIO_QT_VERSION=6.8.3
 PIMIO_QT_ARCH=linux_gcc_64
+# Must match the modules installed by .github/workflows/ci.yml. pimio links
+# Qt6::Multimedia (see src/thumbnail/CMakeLists.txt), so the Qt base package is
+# not enough; without these add-ons configuration fails with "Failed to find
+# required Qt component Multimedia".
+PIMIO_QT_MODULES="qtmultimedia qtimageformats"
 PIMIO_AQTINSTALL_VERSION=3.3.0
 PIMIO_LORE_VERSION=0.8.5
 PIMIO_LOCAL_IMAGE=pimio-local-build-linux:ubuntu-24.04-qt-6.8.3
@@ -15,15 +20,24 @@ pimio_repository_root() {
 
 pimio_assert_pins_match_repository() {
     local repository_root=$1
-    local ci_qt lore_version
+    local ci_qt ci_modules lore_version
 
     ci_qt=$(sed -n 's/^[[:space:]]*PIMIO_QT_VERSION:[[:space:]]*\([0-9.]*\).*/\1/p' \
+        "$repository_root/.github/workflows/ci.yml" | head -n 1)
+    ci_modules=$(sed -n 's/^[[:space:]]*modules:[[:space:]]*\(.*\)/\1/p' \
         "$repository_root/.github/workflows/ci.yml" | head -n 1)
     lore_version=$(sed -n 's/^set(PIMIO_LORE_VERSION "\([0-9.]*\)".*/\1/p' \
         "$repository_root/cmake/PimioLore.cmake" | head -n 1)
 
     if [[ "$ci_qt" != "$PIMIO_QT_VERSION" ]]; then
         echo "Qt pin drift: ci.yml pins ${ci_qt:-unknown}, pinned.sh pins $PIMIO_QT_VERSION." >&2
+        return 1
+    fi
+    local ci_modules_sorted local_modules_sorted
+    ci_modules_sorted=$(printf '%s\n' $ci_modules | sort | tr '\n' ' ')
+    local_modules_sorted=$(printf '%s\n' $PIMIO_QT_MODULES | sort | tr '\n' ' ')
+    if [[ "$ci_modules_sorted" != "$local_modules_sorted" ]]; then
+        echo "Qt module pin drift: ci.yml installs '${ci_modules:-none}', pinned.sh pins '$PIMIO_QT_MODULES'." >&2
         return 1
     fi
     if [[ "$lore_version" != "$PIMIO_LORE_VERSION" ]]; then
@@ -65,6 +79,7 @@ pimio_prepare_image() {
                 --build-arg "UBUNTU_AMD64_DIGEST=$PIMIO_UBUNTU_AMD64_DIGEST" \
                 --build-arg "QT_VERSION=$PIMIO_QT_VERSION" \
                 --build-arg "QT_ARCH=$PIMIO_QT_ARCH" \
+                --build-arg "QT_MODULES=$PIMIO_QT_MODULES" \
                 --build-arg "AQTINSTALL_VERSION=$PIMIO_AQTINSTALL_VERSION" \
                 --label "org.opencontainers.image.revision=$(git -C "$repository_root" rev-parse HEAD 2>/dev/null || echo unknown)" \
                 -f "$repository_root/tools/local-build/linux/Containerfile" \

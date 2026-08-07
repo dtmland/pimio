@@ -4,6 +4,7 @@ FROM ubuntu:${UBUNTU_VERSION}@${UBUNTU_AMD64_DIGEST}
 
 ARG QT_VERSION=6.8.3
 ARG QT_ARCH=linux_gcc_64
+ARG QT_MODULES="qtmultimedia qtimageformats"
 ARG AQTINSTALL_VERSION=3.3.0
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -49,7 +50,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN python3 -m venv /opt/aqt \
     && /opt/aqt/bin/pip install --no-cache-dir "aqtinstall==${AQTINSTALL_VERSION}" \
     && /opt/aqt/bin/python -m aqt install-qt linux desktop \
-        "${QT_VERSION}" "${QT_ARCH}" --outputdir /opt/Qt
+        "${QT_VERSION}" "${QT_ARCH}" --outputdir /opt/Qt \
+        --modules ${QT_MODULES}
 
 ENV CMAKE_PREFIX_PATH=/opt/Qt/${QT_VERSION}/gcc_64
 ENV PATH=/opt/Qt/${QT_VERSION}/gcc_64/bin:/opt/aqt/bin:${PATH}
