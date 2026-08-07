@@ -33,6 +33,10 @@ pimio_assert_pins_match_repository() {
         echo "Qt pin drift: ci.yml pins ${ci_qt:-unknown}, pinned.sh pins $PIMIO_QT_VERSION." >&2
         return 1
     fi
+    if [[ -z "$ci_modules" ]]; then
+        echo "Cannot find the Qt 'modules:' line in ci.yml." >&2
+        return 1
+    fi
     local ci_modules_sorted local_modules_sorted
     ci_modules_sorted=$(printf '%s\n' $ci_modules | sort | tr '\n' ' ')
     local_modules_sorted=$(printf '%s\n' $PIMIO_QT_MODULES | sort | tr '\n' ' ')
