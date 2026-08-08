@@ -231,6 +231,14 @@ void QtDirectoryWatchAdapter::onFileChanged(const QString &path)
     event.observedAt = QDateTime::currentDateTimeUtc();
     emit eventOccurred(event);
 
+    if (!state.exists) {
+        const QString parentDir = QFileInfo(path).absolutePath();
+        const QFileInfo parentInfo(parentDir);
+        if (m_knownEntries.contains(parentDir) && parentInfo.exists() && parentInfo.isDir()) {
+            onDirectoryChanged(parentDir);
+        }
+    }
+
     // Some backends stop watching after an atomic replacement. If the path
     // still exists, restore the watch so subsequent edits are observed too.
     if (m_watcher && state.exists) {
