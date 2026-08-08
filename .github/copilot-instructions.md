@@ -1,5 +1,10 @@
 # Copilot instructions for pimio
 
+## General
+
+- Do not make claims without actually reading file contents - do not only look at file names and sizes, and do not speculate.
+- Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justificaiton.
+
 ## Build changes must be propagated across every context
 
 pimio is built in four contexts that share build commands but provision their
