@@ -119,7 +119,7 @@ A failed Darkroom run means no staged package: the logs are still exported, and
 ## Field Notes
 
 When the automated steps finish, the sandbox stays open and the Field Notes
-checklist opens in the default browser (`tools/local-build/windows/field-notes.html`).
+checklist opens in the default browser (`tools/manual-test/field-notes.html`).
 Run the manual pass against the staged application in
 `C:\pimio\work\stage`. For each test, press **Pass**, **Fail**, or **Skip** and
 add any notes. When done, click **Save results** to download a concise text

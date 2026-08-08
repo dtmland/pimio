@@ -232,4 +232,14 @@ status=$?
 
 cp "$repository_root/tools/local-build/linux/Containerfile" "$output/Containerfile"
 echo "Results: $output"
+
+# Open Field Notes when the build produced a staged archive.
+if [[ $status -eq 0 ]]; then
+    archive=$(ls "$output"/pimio-linux-x64.tar.gz 2>/dev/null || true)
+    if [[ -n "$archive" ]]; then
+        "$repository_root/tools/local-build/linux/open-field-notes.sh" \
+            --build-dir "$output"
+    fi
+fi
+
 exit "$status"

@@ -150,6 +150,40 @@ matrix and the macOS x86-64 exclusion are in
 CI never runs `studio`; a developer running `studio` exercises tests CI cannot.
 This is expected: see [testing.md](testing.md).
 
+## Manual-test assets — shared first
+
+The Field Notes checklist (`tools/manual-test/field-notes.html`) is a
+cross-context asset: a developer can use it after a local Linux build, a local
+Windows sandbox build, or after extracting a CI/Release-produced archive.
+
+| File | Context | Purpose |
+| --- | --- | --- |
+| `tools/manual-test/field-notes.html` | **Shared** | The checklist itself. Open from any context. |
+| `tools/manual-test/open-field-notes.sh` | **Shared (Unix)** | Opener with `xdg-open` and graceful headless fallback. |
+| `tools/local-build/linux/open-field-notes.sh` | Local Linux | Thin wrapper; delegates to the shared opener. |
+| `tools/local-build/windows/open-field-notes.ps1` | Local Windows | Windows wrapper; resolves the shared HTML and calls `Start-Process`. |
+
+**Shared-first rationale.** The HTML content and the opener logic (try
+`xdg-open`, fall back to printing the URL) have no platform-specific parts.
+Placing them under `tools/manual-test/` means they can be used regardless of
+which context produced the build artifact. The context-specific wrappers exist
+only to handle the platform difference in "how to open a file in a browser"
+(`Start-Process` on Windows vs. `xdg-open` on Linux); the rest is shared.
+
+**Pointing at arbitrary artifacts.** Pass `--build-dir <path>` to the opener
+scripts (or set `PIMIO_STAGE_DIR`) to tell the script where the staged
+application lives. The Field Notes HTML itself is not tied to any particular
+output directory; it works the same regardless of whether the artifacts came from
+a local build, a CI run, or an extracted release archive.
+
+**Auto-open behaviour.**
+
+| Context | Mechanism | Headless fallback |
+| --- | --- | --- |
+| Local Linux | `xdg-open` (via `open-field-notes.sh`) | Prints `file://` URL |
+| Local Windows (sandbox) | `Start-Process` (via `open-field-notes.ps1`) | n/a — sandbox always has a desktop |
+| CI / Release | Not automatically opened | Developer opens manually from `tools/manual-test/field-notes.html` |
+
 ## Summary: the blast radius
 
 Anything covered by a preset or a drift-assert stays in lockstep across contexts.
