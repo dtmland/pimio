@@ -247,10 +247,11 @@ $manifest = [ordered]@{
     loreVersion      = $PimioPinned.LoreVersion
     cmakeVersion     = $PimioPinned.CMakeVersion
     ninjaVersion     = $PimioPinned.NinjaVersion
+    nasmVersion      = $PimioPinned.NasmVersion
     artifacts        = [ordered]@{}
 }
 
-Write-Step 'CMake, Ninja, and MinGit'
+Write-Step 'CMake, Ninja, NASM, and MinGit'
 $cmakeZip = Join-Path $downloads "cmake-$($PimioPinned.CMakeVersion)-windows-x86_64.zip"
 $manifest.artifacts['cmake'] = @{
     url    = $PimioPinned.CMakeUrl
@@ -263,6 +264,13 @@ $manifest.artifacts['ninja'] = @{
     url    = $PimioPinned.NinjaUrl
     file   = $ninjaZip
     sha256 = (Save-VerifiedFile -Url $PimioPinned.NinjaUrl -Path $ninjaZip -ExpectedSha256 $PimioPinned.NinjaSha256)
+    pinned = $true
+}
+$nasmZip = Join-Path $downloads "nasm-$($PimioPinned.NasmVersion)-win64.zip"
+$manifest.artifacts['nasm'] = @{
+    url    = $PimioPinned.NasmUrl
+    file   = $nasmZip
+    sha256 = (Save-VerifiedFile -Url $PimioPinned.NasmUrl -Path $nasmZip -ExpectedSha256 $PimioPinned.NasmSha256)
     pinned = $true
 }
 $minGitZip = Join-Path $downloads "MinGit-$($PimioPinned.MinGitVersion)-64-bit.zip"
