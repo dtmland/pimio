@@ -94,6 +94,24 @@ Native launch is the Field Notes environment: it exercises the host graphics
 driver, desktop, and window manager. Follow
 [../../../docs/plan/manual-testing.md](../../../docs/plan/manual-testing.md).
 
+## Field Notes
+
+When the build produces a staged archive, `build.sh` automatically opens the
+Field Notes checklist in your default browser:
+
+```sh
+tools/local-build/linux/open-field-notes.sh --build-dir build/local-build/linux/<timestamp>
+```
+
+You can also run it directly at any time. Pass `--build-dir` to print the path
+to the staged application in the console. If no browser opener is available
+(headless / SSH session), the script prints the `file://` URL instead of
+failing.
+
+The shared HTML lives at `tools/manual-test/field-notes.html` and can be opened
+manually from any context (local Linux, local Windows, or a CI-produced
+artifact) by navigating to that file in a browser.
+
 ## Run Studio
 
 Studio executables are build-tree artifacts, so the minimum-host-tools path runs

@@ -252,11 +252,15 @@ try {
 
     # Field Notes are manual by definition, so the checklist is opened rather
     # than automated, and the sandbox is left running for them.
-    $fieldNotes = Join-Path $Work 'tools\local-build\windows\field-notes.html'
-    if (Test-Path -LiteralPath $fieldNotes) {
-        Start-Process $fieldNotes
+    $openScript = Join-Path $Work 'tools\local-build\windows\open-field-notes.ps1'
+    if (Test-Path -LiteralPath $openScript) {
+        & $openScript -BuildDir "$Work\stage"
+    } else {
+        $fieldNotes = Join-Path $Work 'tools\manual-test\field-notes.html'
+        if (Test-Path -LiteralPath $fieldNotes) { Start-Process $fieldNotes }
+        Write-Host "Field Notes: $fieldNotes"
     }
-    Write-Host 'Field Notes (Tests C) are open in the browser. The staged application is under'
+    Write-Host 'The staged application is under'
     Write-Host "$Work\stage. Close the sandbox when you are done; the results folder is kept."
     Stop-Transcript | Out-Null
 }
