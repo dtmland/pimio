@@ -48,6 +48,37 @@ pimio_assert_pins_match_repository() {
         echo "LORE pin drift: PimioLore.cmake pins ${lore_version:-unknown}, pinned.sh pins $PIMIO_LORE_VERSION." >&2
         return 1
     fi
+
+    # The release workflow provisions a fourth environment and must not drift
+    # from ci.yml: a release built against a different Qt, module set, or LORE
+    # than CI verified would ship untested bytes. See docs/build-architecture.md.
+    local release_yml="$repository_root/.github/workflows/release.yml"
+    local release_qt release_modules release_lore
+    release_qt=$(sed -n 's/^[[:space:]]*PIMIO_QT_VERSION:[[:space:]]*\([0-9.]*\).*/\1/p' \
+        "$release_yml" | head -n 1)
+    release_modules=$(sed -n 's/^[[:space:]]*qt_modules:[[:space:]]*\(.*\)/\1/p' \
+        "$release_yml" | head -n 1)
+    release_lore=$(sed -n 's/^[[:space:]]*PIMIO_LORE_VERSION:[[:space:]]*\([0-9.]*\).*/\1/p' \
+        "$release_yml" | head -n 1)
+
+    if [[ "$release_qt" != "$ci_qt" ]]; then
+        echo "Qt pin drift: release.yml pins ${release_qt:-unknown}, ci.yml pins $ci_qt." >&2
+        return 1
+    fi
+    if [[ -z "$release_modules" ]]; then
+        echo "Cannot find the Qt 'qt_modules:' line in release.yml." >&2
+        return 1
+    fi
+    local release_modules_sorted
+    release_modules_sorted=$(printf '%s\n' $release_modules | sort | tr '\n' ' ')
+    if [[ "$release_modules_sorted" != "$ci_modules_sorted" ]]; then
+        echo "Qt module pin drift: release.yml installs '${release_modules:-none}', ci.yml installs '${ci_modules:-none}'." >&2
+        return 1
+    fi
+    if [[ "$release_lore" != "$lore_version" ]]; then
+        echo "LORE pin drift: release.yml pins ${release_lore:-unknown}, PimioLore.cmake pins $lore_version." >&2
+        return 1
+    fi
 }
 
 pimio_select_container_engine() {
