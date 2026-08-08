@@ -9,6 +9,16 @@ on:
 permissions:
   contents: write
 
+env:
+  # Pinned Qt release for the product. Must match PIMIO_QT_VERSION in
+  # .github/workflows/ci.yml; the local drift-asserts re-read both workflows and
+  # refuse to run if they disagree. See docs/build-architecture.md.
+  PIMIO_QT_VERSION: 6.8.3
+  # Pinned LORE release. Must match PIMIO_LORE_VERSION in cmake/PimioLore.cmake
+  # and .github/workflows/ci.yml; repeated here only so the download cache can be
+  # keyed by it.
+  PIMIO_LORE_VERSION: 0.8.5
+
 jobs:
   build-binaries:
     name: Build binaries (${{ matrix.name }})
@@ -70,20 +80,20 @@ jobs:
         if: matrix.name == 'macOS'
         run: brew install nasm
 
-      - name: Install Qt 6.8.3
+      - name: Install Qt ${{ env.PIMIO_QT_VERSION }}
         uses: jurplel/install-qt-action@v4.3.1
         with:
-          version: 6.8.3
+          version: ${{ env.PIMIO_QT_VERSION }}
           cache: true
-          cache-key-prefix: qt-multimedia-imageformats-${{ matrix.runner }}-6.8.3
+          cache-key-prefix: qt-multimedia-imageformats-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
           modules: ${{ matrix.qt_modules }}
           extra: --base https://download.qt.io
 
-      - name: Cache LORE 0.8.5
+      - name: Cache LORE ${{ env.PIMIO_LORE_VERSION }}
         uses: actions/cache@v4
         with:
           path: .cache/lore
-          key: lore-${{ matrix.runner }}-0.8.5
+          key: lore-${{ matrix.runner }}-${{ env.PIMIO_LORE_VERSION }}
 
       - name: Enable MSVC developer environment
         if: matrix.name == 'Windows'

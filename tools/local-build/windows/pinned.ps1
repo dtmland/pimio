@@ -148,6 +148,44 @@ function Assert-PimioPinsMatchRepository {
             throw "LORE checksum drift for $($bundle.Bundle): PimioLore.cmake does not record $($bundle.Sha256). Update pinned.ps1."
         }
     }
+
+    # The release workflow provisions a fourth environment and must not drift
+    # from ci.yml: a release built against a different Qt, module set, or LORE
+    # than CI verified would ship untested bytes. See docs/build-architecture.md.
+    $release = Join-Path $RepositoryRoot '.github\workflows\release.yml'
+    if (-not (Test-Path -LiteralPath $release)) {
+        throw "Cannot verify the pinned versions: $release is missing. Run this from a pimio checkout."
+    }
+
+    $releaseQtMatch = Select-String -LiteralPath $release -Pattern 'PIMIO_QT_VERSION:\s*([0-9.]+)' |
+        Select-Object -First 1
+    if (-not $releaseQtMatch) {
+        throw "Cannot find PIMIO_QT_VERSION in $release."
+    }
+    $releaseQt = $releaseQtMatch.Matches[0].Groups[1].Value
+    if ($releaseQt -ne $ciQt) {
+        throw "Qt pin drift: release.yml pins Qt $releaseQt, ci.yml pins $ciQt. Reconcile the workflows."
+    }
+
+    $releaseModulesMatch = Select-String -LiteralPath $release -Pattern 'qt_modules:\s*(.+)$' |
+        Select-Object -First 1
+    if (-not $releaseModulesMatch) {
+        throw "Cannot find the Qt 'qt_modules:' line in $release."
+    }
+    $releaseModules = ($releaseModulesMatch.Matches[0].Groups[1].Value.Trim() -split '\s+') | Sort-Object
+    if (($releaseModules -join ' ') -ne ($ciModules -join ' ')) {
+        throw "Qt module pin drift: release.yml installs '$($releaseModules -join ' ')', ci.yml installs '$($ciModules -join ' ')'. Reconcile the workflows."
+    }
+
+    $releaseLoreMatch = Select-String -LiteralPath $release -Pattern 'PIMIO_LORE_VERSION:\s*([0-9.]+)' |
+        Select-Object -First 1
+    if (-not $releaseLoreMatch) {
+        throw "Cannot find PIMIO_LORE_VERSION in $release."
+    }
+    $releaseLore = $releaseLoreMatch.Matches[0].Groups[1].Value
+    if ($releaseLore -ne $loreVersion) {
+        throw "LORE pin drift: release.yml pins LORE $releaseLore, PimioLore.cmake pins $loreVersion. Reconcile the workflows."
+    }
 }
 
 function Get-PimioLoreArchiveName {

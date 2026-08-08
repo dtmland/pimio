@@ -111,6 +111,7 @@ Planning:
 Policy and reference:
 
 - [Repository conventions](docs/conventions.md)
+- [Build architecture: shared vs per-context builds](docs/build-architecture.md)
 - [Testing tiers: Darkroom, Studio, Field Notes](docs/testing.md)
 - [Manual testing plan (Field Notes)](docs/plan/manual-testing.md)
 - [Supported platform policy](docs/supported-platforms.md)
