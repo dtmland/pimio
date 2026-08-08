@@ -38,3 +38,49 @@ in:
   `docs/build-architecture.md`.
 - **Consult and update `docs/build-architecture.md`** — it records what is shared
   vs. per-context and why. Keep it current when the build layout changes.
+
+## Required completion gate for build-related changes
+
+For any build-related change, Copilot **must not finalize** until the following
+sections are present in the final response.
+
+### 1) Cross-context impact matrix (required)
+
+Include all rows below, each marked **Changed** or **Reviewed-no-change**, plus a
+one-line reason:
+
+- CI — `.github/workflows/ci.yml`
+- Release — `.github/workflows/release.yml`
+- Local Linux — `tools/local-build/linux/pinned.sh`, `tools/local-build/linux/Containerfile`
+- Local Windows — `tools/local-build/windows/pinned.ps1`
+- Shared build defs — `CMakePresets.json`, `CMakeLists.txt`, `cmake/PimioLore.cmake`
+- Build architecture docs — `docs/build-architecture.md`
+
+### 2) Placement review for new files/tools (required)
+
+For any new script, helper, manual-test asset, or build/test tool:
+
+- State whether it is **context-specific** or **cross-context**.
+- If cross-context, place it in a shared location (for example `tools/` or
+  `docs/`), not under a local-context directory.
+- If placed in a context directory, include a one-line justification for why it
+  is truly context-specific.
+
+### 3) Pin/version drift check (required when pins change)
+
+When changing a pinned version/module/checksum, explicitly confirm all relevant
+pins were updated and drift asserts remain consistent across:
+
+- `.github/workflows/ci.yml`
+- `.github/workflows/release.yml`
+- `cmake/PimioLore.cmake`
+- local pinned scripts (`tools/local-build/linux/pinned.sh`, `tools/local-build/windows/pinned.ps1`)
+
+### 4) Shared-first decision (required)
+
+If logic is duplicated across workflows/scripts, either:
+
+- move it to shared CMake/config/modules, or
+- explain why duplication remains necessary.
+
+Missing any required section above means the task is incomplete.
