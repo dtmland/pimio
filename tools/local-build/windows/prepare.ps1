@@ -250,7 +250,7 @@ $manifest = [ordered]@{
     artifacts        = [ordered]@{}
 }
 
-Write-Step 'CMake and Ninja'
+Write-Step 'CMake, Ninja, and MinGit'
 $cmakeZip = Join-Path $downloads "cmake-$($PimioPinned.CMakeVersion)-windows-x86_64.zip"
 $manifest.artifacts['cmake'] = @{
     url    = $PimioPinned.CMakeUrl
@@ -263,6 +263,13 @@ $manifest.artifacts['ninja'] = @{
     url    = $PimioPinned.NinjaUrl
     file   = $ninjaZip
     sha256 = (Save-VerifiedFile -Url $PimioPinned.NinjaUrl -Path $ninjaZip -ExpectedSha256 $PimioPinned.NinjaSha256)
+    pinned = $true
+}
+$minGitZip = Join-Path $downloads "MinGit-$($PimioPinned.MinGitVersion)-64-bit.zip"
+$manifest.artifacts['mingit'] = @{
+    url    = $PimioPinned.MinGitUrl
+    file   = $minGitZip
+    sha256 = (Save-VerifiedFile -Url $PimioPinned.MinGitUrl -Path $minGitZip -ExpectedSha256 $PimioPinned.MinGitSha256)
     pinned = $true
 }
 
