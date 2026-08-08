@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pimio Field Notes — Tests C</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.5; }
+  header { background: #1a1a1a; color: #fff; padding: 1rem 1.5rem; display: flex; align-items: baseline; gap: 1rem; }
+  header h1 { font-size: 1.25rem; font-weight: 600; }
+  header span { font-size: 0.85rem; color: #aaa; }
+  .container { max-width: 860px; margin: 0 auto; padding: 1.5rem 1rem; }
+  section.card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 1rem; overflow: hidden; }
+  .card-header { padding: 0.75rem 1rem; background: #fafafa; border-bottom: 1px solid #e0e0e0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #666; font-weight: 600; }
+  .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0.75rem 1rem; }
+  .env-grid label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.8rem; color: #555; }
+  .env-grid input { border: 1px solid #ccc; border-radius: 4px; padding: 0.35rem 0.5rem; font-size: 0.85rem; font-family: inherit; }
+  .env-grid input:focus { outline: 2px solid #0066cc; outline-offset: 1px; }
+  h2.section-heading { font-size: 0.9rem; font-weight: 700; color: #444; margin: 1.5rem 0 0.5rem; }
+  .test-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; margin-bottom: 0.75rem; overflow: hidden; }
+  .test-card.pass { border-left: 4px solid #22c55e; }
+  .test-card.fail { border-left: 4px solid #ef4444; }
+  .test-card.skip { border-left: 4px solid #94a3b8; }
+  .test-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1rem; cursor: pointer; user-select: none; }
+  .test-id { font-size: 0.75rem; font-weight: 700; color: #888; min-width: 4.5rem; }
+  .test-title { flex: 1; font-size: 0.9rem; font-weight: 600; }
+  .verdict-btns { display: flex; gap: 0.35rem; }
+  .verdict-btn { border: 1px solid #ccc; border-radius: 4px; padding: 0.2rem 0.55rem; font-size: 0.75rem; cursor: pointer; background: #fff; }
+  .verdict-btn.pass-btn.active { background: #22c55e; border-color: #16a34a; color: #fff; }
+  .verdict-btn.fail-btn.active { background: #ef4444; border-color: #dc2626; color: #fff; }
+  .verdict-btn.skip-btn.active { background: #94a3b8; border-color: #64748b; color: #fff; }
+  .verdict-btn:hover { background: #f0f0f0; }
+  .verdict-btn.pass-btn.active:hover { background: #16a34a; }
+  .verdict-btn.fail-btn.active:hover { background: #dc2626; }
+  .verdict-btn.skip-btn.active:hover { background: #64748b; }
+  .toggle-icon { font-size: 0.7rem; color: #aaa; }
+  .test-body { padding: 0.75rem 1rem 0.85rem; border-top: 1px solid #f0f0f0; display: none; }
+  .test-body.open { display: block; }
+  .test-body h4 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #888; margin-bottom: 0.3rem; margin-top: 0.75rem; }
+  .test-body h4:first-child { margin-top: 0; }
+  .test-body p, .test-body li { font-size: 0.85rem; color: #333; }
+  .test-body ol, .test-body ul { padding-left: 1.2rem; }
+  .test-body li { margin-bottom: 0.15rem; }
+  .notes-field { width: 100%; margin-top: 0.6rem; border: 1px solid #ccc; border-radius: 4px; padding: 0.4rem 0.5rem; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 2.5rem; }
+  .notes-field:focus { outline: 2px solid #0066cc; outline-offset: 1px; }
+  .general-notes { padding: 0.75rem 1rem; }
+  .general-notes textarea { width: 100%; border: 1px solid #ccc; border-radius: 4px; padding: 0.4rem 0.5rem; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 5rem; }
+  .general-notes textarea:focus { outline: 2px solid #0066cc; outline-offset: 1px; }
+  .actions { display: flex; gap: 0.75rem; align-items: center; padding: 1.25rem 0 0.5rem; }
+  .btn-primary { background: #0066cc; color: #fff; border: none; border-radius: 5px; padding: 0.55rem 1.2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+  .btn-primary:hover { background: #0055aa; }
+  .btn-secondary { background: #fff; color: #333; border: 1px solid #ccc; border-radius: 5px; padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer; }
+  .btn-secondary:hover { background: #f0f0f0; }
+  .status-bar { font-size: 0.8rem; color: #666; margin-left: auto; }
+  .summary-counts { display: flex; gap: 1rem; padding: 0.6rem 1rem; font-size: 0.8rem; }
+  .count-pass { color: #16a34a; font-weight: 600; }
+  .count-fail { color: #dc2626; font-weight: 600; }
+  .count-skip { color: #64748b; font-weight: 600; }
+  .count-open { color: #888; }
+</style>
+</head>
+<body>
+<header>
+  <h1>pimio &mdash; Field Notes</h1>
+  <span>Tests C: manual sign-off</span>
+</header>
+<div class="container">
+
+  <!-- Environment -->
+  <section class="card">
+    <div class="card-header">Environment</div>
+    <div class="env-grid">
+      <label>Commit / build
+        <input id="env-commit" type="text" placeholder="e.g. abc1234 or unknown">
+      </label>
+      <label>Date
+        <input id="env-date" type="text" placeholder="e.g. 2026-08-08">
+      </label>
+      <label>Windows build
+        <input id="env-windows" type="text" placeholder="e.g. 22621">
+      </label>
+      <label>Qt version
+        <input id="env-qt" type="text" placeholder="e.g. 6.8.3">
+      </label>
+      <label>Hardware
+        <input id="env-hw" type="text" placeholder="e.g. Intel i7, NVIDIA RTX 3070">
+      </label>
+      <label>Tester
+        <input id="env-tester" type="text" placeholder="optional">
+      </label>
+    </div>
+  </section>
+
+  <div id="test-sections"></div>
+
+  <!-- General notes -->
+  <section class="card">
+    <div class="card-header">General notes</div>
+    <div class="general-notes">
+      <textarea id="general-notes" placeholder="Anything that doesn't belong to a specific test…"></textarea>
+    </div>
+  </section>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-primary" onclick="saveResults()">Save results</button>
+    <button class="btn-secondary" onclick="clearAll()">Clear all</button>
+    <span class="status-bar" id="status-bar">Auto-saves to browser storage.</span>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Test data (sourced from docs/plan/manual-testing.md)
+// ---------------------------------------------------------------------------
+const SECTIONS = [
+  {
+    title: 'Increment 6 — Thumbnails, Models, and Basic Browser',
+    tests: [
+      {
+        id: 'MT-6.1',
+        title: 'QML grid renders thumbnails on screen',
+        condition: 'Real display server (not offscreen); Qt 6.4 or newer with QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.',
+        steps: [
+          'Build and launch <code>pimio</code>.',
+          'Open a library root containing JPEG and PNG images.',
+          'Let the application scan and index the library.',
+          'Observe the main grid view.',
+        ],
+        acceptance: [
+          'The grid shows a tile for every indexed item.',
+          'Each tile transitions from a placeholder ("…") to the rendered thumbnail as the ThumbnailService completes requests.',
+          'The placeholder is visible and correctly sized before the thumbnail arrives.',
+          'Items that fail to render show "Error" text rather than crashing or showing a broken tile.',
+          'Scrolling does not produce visible lag or flicker.',
+        ],
+      },
+      {
+        id: 'MT-6.2',
+        title: 'Thumbnail requests respect the visible window',
+        condition: 'Same as MT-6.1. At least 200 items in the library.',
+        steps: [
+          'Open a library with at least 200 items.',
+          'Observe the network/CPU activity while the grid is at rest.',
+          'Scroll quickly to the middle of the library.',
+          'Observe the thumbnail request activity.',
+        ],
+        acceptance: [
+          'While the view is at rest, only visible tiles and the prefetch margin (±20 rows by default) have in-flight requests.',
+          'After a fast scroll, requests for the previous window are cancelled promptly; new requests begin for the new visible range.',
+          'The activity log from the process shows <code>cancelAllExcept</code> being called on scroll, not just new requests being added.',
+        ],
+      },
+      {
+        id: 'MT-6.3',
+        title: 'Empty-library placeholder',
+        condition: 'Launch the application without any library configured.',
+        steps: [
+          'Start <code>pimio</code> with a fresh profile (no library roots).',
+          'Observe the main window.',
+        ],
+        acceptance: [
+          'The toolbar banner shows the same <code>pimio &lt;version&gt;</code> string as <code>pimio --version</code> for the build being tested.',
+          'A drawn camera icon (not an emoji glyph) and the text "No media yet. Launch with --library &lt;folder&gt; to scan and browse a library." are centred in the window.',
+          'No grid rows, no thumbnail requests, no errors in the console.',
+        ],
+      },
+      {
+        id: 'MT-6.4',
+        title: 'Corrupt cache entry is silently replaced',
+        condition: 'Real display server. Open library, find the cache directory.',
+        steps: [
+          'Open a library and wait for thumbnails to appear.',
+          'Locate the cache directory (typically <code>~/.cache/pimio/thumbnails/</code> or the platform equivalent).',
+          'Replace one entry with a zero-byte file.',
+          'Scroll that item out of view and back in (to trigger a fresh request).',
+        ],
+        acceptance: [
+          'The item transitions back through "Loading" and eventually shows the correct thumbnail.',
+          'No crash or error dialog.',
+        ],
+      },
+      {
+        id: 'MT-6.5',
+        title: 'Large library performance baseline',
+        condition: 'Library of ≥ 10 000 items; real display server.',
+        steps: [
+          'Import a library of at least 10 000 images.',
+          'Time how long until the grid is interactive (not frozen).',
+          'Scroll through the entire library at a moderate pace.',
+        ],
+        acceptance: [
+          'The grid becomes interactive within 2 seconds of the application launching (IDs are loaded from the projection; thumbnails are loaded lazily).',
+          'Scrolling does not drop below 30 fps on a mid-range machine.',
+          'Peak memory growth during scrolling stabilises rather than growing without bound.',
+        ],
+      },
+      {
+        id: 'MT-6.6',
+        title: 'Hardware-accelerated rendering (GPU)',
+        condition: 'Machine with a discrete GPU; real display server.',
+        steps: [
+          'Launch <code>pimio</code> with a library.',
+          'Monitor GPU utilisation during grid scrolling.',
+        ],
+        acceptance: [
+          'Qt Scene Graph uses the GPU for compositing the grid.',
+          'No OpenGL errors appear in the console.',
+          'Rendering is visually smooth and does not fall back to software rendering unexpectedly.',
+        ],
+      },
+      {
+        id: 'MT-6.7',
+        title: 'Progressive image detail',
+        condition: 'A real display server and a library containing a large image.',
+        steps: [
+          'Wait for the image\'s grid thumbnail to appear.',
+          'Select the image tile.',
+          'Observe the detail view while the original image loads.',
+          'Press Escape, then reopen the item and use the Close button.',
+        ],
+        acceptance: [
+          'The detail view opens immediately with a loading indicator while the original image is decoded asynchronously.',
+          'The full image is fitted without changing its aspect ratio.',
+          'The path and capture time remain readable below the preview.',
+          'Escape and the Close button both return focus to the grid.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'General / Cross-increment',
+    tests: [
+      {
+        id: 'MT-G.1',
+        title: 'Application does not modify originals during scan',
+        condition: 'Any library with real media files; verify file modification times before and after a scan.',
+        steps: [
+          'Record <code>mtime</code> values for a representative selection of source files (<code>stat</code> or equivalent).',
+          'Run a full scan via the application.',
+          'Record <code>mtime</code> values again.',
+        ],
+        acceptance: [
+          'No source file\'s <code>mtime</code> has changed.',
+          'No new files have been created alongside the source files (no hidden sidecars, no <code>.pimio</code> files in the library directory).',
+        ],
+      },
+      {
+        id: 'MT-G.2',
+        title: 'Real-GPU, signing, and installer UX (Release gate)',
+        condition: 'Requires self-hosted runners with real GPU, OS signing credentials, and representative installer scenarios on each supported platform.',
+        steps: [
+          'See pimio-v1-implementation.md Increment 12 for the full procedure.',
+        ],
+        acceptance: [
+          'Covered per the release gate criteria in pimio-v1-implementation.md.',
+        ],
+      },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// State (persisted to localStorage)
+// ---------------------------------------------------------------------------
+// Shape: { _env: {commit,date,windows,qt,hw,tester}, _general: string,
+//          [testId]: {verdict: 'pass'|'fail'|'skip'|null, notes: string} }
+// Key is versioned so a schema change in a future increment gets a clean start.
+const STORAGE_KEY = 'pimio-field-notes-v1';
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveState(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+let state = loadState();
+
+function getTestState(id) {
+  return state[id] || { verdict: null, notes: '' };
+}
+
+function setTestState(id, patch) {
+  state[id] = { ...getTestState(id), ...patch };
+  saveState(state);
+  updateSummary();
+  updateStatus();
+}
+
+function getEnv() {
+  return {
+    commit:  document.getElementById('env-commit').value,
+    date:    document.getElementById('env-date').value,
+    windows: document.getElementById('env-windows').value,
+    qt:      document.getElementById('env-qt').value,
+    hw:      document.getElementById('env-hw').value,
+    tester:  document.getElementById('env-tester').value,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+function buildTestCard(test) {
+  const ts = getTestState(test.id);
+  const verdict = ts.verdict || '';
+  const notesVal = ts.notes || '';
+
+  const stepsHtml = test.steps.map(s => `<li>${s}</li>`).join('');
+  const acceptHtml = test.acceptance.map(a => `<li>${a}</li>`).join('');
+
+  const card = document.createElement('div');
+  card.className = `test-card${verdict ? ' ' + verdict : ''}`;
+  card.id = `card-${test.id}`;
+  card.innerHTML = `
+    <div class="test-header" onclick="toggleBody('${test.id}')">
+      <span class="test-id">${test.id}</span>
+      <span class="test-title">${test.title}</span>
+      <span class="verdict-btns" onclick="event.stopPropagation()">
+        <button class="verdict-btn pass-btn${verdict === 'pass' ? ' active' : ''}"
+          onclick="setVerdict('${test.id}','pass')">Pass</button>
+        <button class="verdict-btn fail-btn${verdict === 'fail' ? ' active' : ''}"
+          onclick="setVerdict('${test.id}','fail')">Fail</button>
+        <button class="verdict-btn skip-btn${verdict === 'skip' ? ' active' : ''}"
+          onclick="setVerdict('${test.id}','skip')">Skip</button>
+      </span>
+      <span class="toggle-icon" id="toggle-${test.id}">&#9660;</span>
+    </div>
+    <div class="test-body" id="body-${test.id}">
+      <h4>Condition</h4>
+      <p>${test.condition}</p>
+      <h4>Steps</h4>
+      <ol>${stepsHtml}</ol>
+      <h4>Acceptance</h4>
+      <ul>${acceptHtml}</ul>
+      <h4>Notes</h4>
+      <textarea class="notes-field" placeholder="Optional notes for this test…"
+        onchange="setNotes('${test.id}', this.value)"
+        oninput="setNotes('${test.id}', this.value)">${escapeHtml(notesVal)}</textarea>
+    </div>`;
+  return card;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function render() {
+  const container = document.getElementById('test-sections');
+  container.innerHTML = '';
+  for (const section of SECTIONS) {
+    const h2 = document.createElement('h2');
+    h2.className = 'section-heading';
+    h2.textContent = section.title;
+    container.appendChild(h2);
+    for (const test of section.tests) {
+      container.appendChild(buildTestCard(test));
+    }
+  }
+
+  // restore env fields
+  const env = state._env || {};
+  document.getElementById('env-commit').value  = env.commit  || '';
+  document.getElementById('env-date').value    = env.date    || new Date().toISOString().slice(0,10);
+  document.getElementById('env-windows').value = env.windows || '';
+  document.getElementById('env-qt').value      = env.qt      || '';
+  document.getElementById('env-hw').value      = env.hw      || '';
+  document.getElementById('env-tester').value  = env.tester  || '';
+  document.getElementById('general-notes').value = state._general || '';
+
+  updateSummary();
+}
+
+function updateSummary() {
+  // Update card classes
+  for (const section of SECTIONS) {
+    for (const test of section.tests) {
+      const card = document.getElementById(`card-${test.id}`);
+      if (!card) continue;
+      const verdict = getTestState(test.id).verdict || '';
+      card.className = `test-card${verdict ? ' ' + verdict : ''}`;
+      // Update button active state
+      card.querySelectorAll('.verdict-btn').forEach(btn => {
+        if (btn.classList.contains('pass-btn')) btn.classList.toggle('active', verdict === 'pass');
+        if (btn.classList.contains('fail-btn')) btn.classList.toggle('active', verdict === 'fail');
+        if (btn.classList.contains('skip-btn')) btn.classList.toggle('active', verdict === 'skip');
+      });
+    }
+  }
+}
+
+function updateStatus() {
+  document.getElementById('status-bar').textContent =
+    'Saved ' + new Date().toLocaleTimeString();
+}
+
+// ---------------------------------------------------------------------------
+// Interactions
+// ---------------------------------------------------------------------------
+function toggleBody(id) {
+  const body = document.getElementById(`body-${id}`);
+  const icon = document.getElementById(`toggle-${id}`);
+  const open = body.classList.toggle('open');
+  icon.innerHTML = open ? '&#9650;' : '&#9660;';
+}
+
+function setVerdict(id, verdict) {
+  const ts = getTestState(id);
+  setTestState(id, { verdict: ts.verdict === verdict ? null : verdict });
+  updateSummary();
+}
+
+function setNotes(id, notes) {
+  setTestState(id, { notes });
+}
+
+// Persist env + general notes on change
+document.addEventListener('input', function(e) {
+  if (e.target.id && e.target.id.startsWith('env-')) {
+    state._env = getEnv();
+    saveState(state);
+  }
+  if (e.target.id === 'general-notes') {
+    state._general = e.target.value;
+    saveState(state);
+  }
+});
+
+function clearAll() {
+  if (!confirm('Clear all verdicts, notes, and environment fields?')) return;
+  state = {};
+  saveState(state);
+  render();
+  updateStatus();
+}
+
+// ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
+function saveResults() {
+  const env = getEnv();
+  const lines = [];
+  lines.push('pimio Field Notes — Tests C');
+  lines.push('='.repeat(50));
+  lines.push('');
+  lines.push(`date    : ${env.date}`);
+  lines.push(`commit  : ${env.commit || '(not set)'}`);
+  lines.push(`windows : ${env.windows || '(not set)'}`);
+  lines.push(`qt      : ${env.qt || '(not set)'}`);
+  lines.push(`hardware: ${env.hw || '(not set)'}`);
+  if (env.tester) lines.push(`tester  : ${env.tester}`);
+  lines.push('');
+
+  const failLines = [];
+  const noteLines = [];
+  const passLines = [];
+  let openCount = 0;
+
+  for (const section of SECTIONS) {
+    for (const test of section.tests) {
+      const ts = getTestState(test.id);
+      const verdict = ts.verdict || 'open';
+      const notes = (ts.notes || '').trim();
+
+      if (verdict === 'fail') {
+        failLines.push(`${test.id} FAIL — ${test.title}`);
+        if (notes) failLines.push(`  notes: ${notes}`);
+      } else if (verdict === 'pass' && notes) {
+        noteLines.push(`${test.id} PASS — ${test.title}`);
+        noteLines.push(`  notes: ${notes}`);
+      } else if (verdict === 'skip') {
+        // skip without notes: omitted from output (brief)
+        if (notes) {
+          noteLines.push(`${test.id} SKIP — ${test.title}`);
+          noteLines.push(`  notes: ${notes}`);
+        }
+      } else if (verdict === 'pass') {
+        passLines.push(test.id);
+      } else {
+        openCount++;
+      }
+    }
+  }
+
+  if (failLines.length > 0) {
+    lines.push('FAILURES');
+    lines.push('-'.repeat(40));
+    lines.push(...failLines);
+    lines.push('');
+  }
+
+  if (noteLines.length > 0) {
+    lines.push('WITH NOTES');
+    lines.push('-'.repeat(40));
+    lines.push(...noteLines);
+    lines.push('');
+  }
+
+  if (passLines.length > 0) {
+    lines.push('passed (no notes): ' + passLines.join(', '));
+    lines.push('');
+  }
+
+  if (openCount > 0) {
+    lines.push(`open (not yet run): ${openCount} test(s)`);
+    lines.push('');
+  }
+
+  const general = (state._general || '').trim();
+  if (general) {
+    lines.push('GENERAL NOTES');
+    lines.push('-'.repeat(40));
+    lines.push(general);
+    lines.push('');
+  }
+
+  const text = lines.join('\n');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `field-notes-${env.date || 'results'}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  updateStatus();
+}
+
+// ---------------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------------
+render();
+</script>
+</body>
+</html>

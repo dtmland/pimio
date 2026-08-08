@@ -47,6 +47,12 @@ $PimioPinned = @{
     NinjaUrl     = 'https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip'
     NinjaSha256  = 'f550fec705b6d6ff58f2db3c374c2277a37691678d6aba463adcbb129108467a'
 
+    # MinGit: the minimal Git for Windows distribution, needed in the sandbox
+    # because libavif's aom codec is fetched via git during cmake configure.
+    MinGitVersion = '2.47.0.2'
+    MinGitUrl     = 'https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.2/MinGit-2.47.0.2-64-bit.zip'
+    MinGitSha256  = 'c4a5d3a2adda98b25fe59349733fca56b3843360b962dba5535282a9d8120b31'
+
     # The Visual Studio Build Tools bootstrapper is deliberately not hash-pinned:
     # Microsoft republishes this one URL for every servicing update, so a
     # recorded hash would fail within weeks. prepare.ps1 records the hash it

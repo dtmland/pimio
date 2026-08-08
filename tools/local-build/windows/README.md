@@ -30,7 +30,7 @@ tools\local-build\windows\prepare.bat
 ```
 
 This checks the host prerequisites, then downloads and checksum-verifies the
-pinned Visual Studio Build Tools bootstrapper, CMake, Ninja, LORE, and Qt into
+pinned Visual Studio Build Tools bootstrapper, CMake, Ninja, MinGit, LORE, and Qt into
 `.cache\local-build\windows\` (git-ignored). Downloads resume, so re-running
 after an interruption is cheap, and re-running when nothing changed does
 nothing.
@@ -119,15 +119,13 @@ A failed Darkroom run means no staged package: the logs are still exported, and
 ## Field Notes
 
 When the automated steps finish, the sandbox stays open and the Field Notes
-checklist ([../../../docs/plan/manual-testing.md](../../../docs/plan/manual-testing.md))
-opens in Notepad. Run the manual pass against the staged application in
-`C:\pimio\work\stage`, then close the sandbox window. Everything in
+checklist opens in the default browser (`tools/local-build/windows/field-notes.html`).
+Run the manual pass against the staged application in
+`C:\pimio\work\stage`. For each test, press **Pass**, **Fail**, or **Skip** and
+add any notes. When done, click **Save results** to download a concise text
+summary (failing tests and annotated tests only — clean passes are omitted to
+keep the output brief). Close the sandbox window when finished. Everything in
 `C:\pimio\results` survives; the tools and working copy do not.
-
-At the current Increment 6 state, the shipped app still launches into the
-empty-library shell, so only the empty-library Field Notes entry is runnable
-from a normal staged launch; the thumbnail/browser entries in the checklist are
-marked deferred until startup is wired to the real library pipeline.
 
 ## Cleaning up
 

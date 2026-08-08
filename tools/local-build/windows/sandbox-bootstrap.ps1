@@ -113,15 +113,18 @@ try {
     $cmakeBin = Join-Path (Get-ChildItem -LiteralPath $cmakeRoot -Directory | Select-Object -First 1).FullName 'bin'
     $ninjaBin = Expand-Tool -Archive (Join-Path $downloads "ninja-$($PimioPinned.NinjaVersion)-win.zip") `
         -Destination (Join-Path $Tools 'ninja')
+    $minGitBin = Join-Path (Expand-Tool -Archive (Join-Path $downloads "MinGit-$($PimioPinned.MinGitVersion)-64-bit.zip") `
+        -Destination (Join-Path $Tools 'mingit')) 'cmd'
 
     $qtPrefix = Join-Path $Cache "qt\$($PimioPinned.QtVersion)\$($PimioPinned.QtHostDir)"
     if (-not (Test-Path -LiteralPath (Join-Path $qtPrefix 'bin\qmake.exe'))) {
         throw "Qt $($PimioPinned.QtVersion) is not in the cache at $qtPrefix. Re-run prepare.ps1 without -SkipQt."
     }
 
-    $env:PATH = "$cmakeBin;$ninjaBin;$(Join-Path $qtPrefix 'bin');$env:PATH"
+    $env:PATH = "$cmakeBin;$ninjaBin;$minGitBin;$(Join-Path $qtPrefix 'bin');$env:PATH"
     Write-Host "cmake : $((Get-Command cmake).Source)"
     Write-Host "ninja : $((Get-Command ninja).Source)"
+    Write-Host "git   : $((Get-Command git).Source)"
     Write-Host "qt    : $qtPrefix"
 
     Write-Step 'Visual Studio Build Tools'
@@ -249,11 +252,11 @@ try {
 
     # Field Notes are manual by definition, so the checklist is opened rather
     # than automated, and the sandbox is left running for them.
-    $fieldNotes = Join-Path $Work 'docs\plan\manual-testing.md'
+    $fieldNotes = Join-Path $Work 'tools\local-build\windows\field-notes.html'
     if (Test-Path -LiteralPath $fieldNotes) {
-        Start-Process notepad.exe $fieldNotes
+        Start-Process $fieldNotes
     }
-    Write-Host 'Field Notes (Tests C) are open in Notepad. The staged application is under'
+    Write-Host 'Field Notes (Tests C) are open in the browser. The staged application is under'
     Write-Host "$Work\stage. Close the sandbox when you are done; the results folder is kept."
     Stop-Transcript | Out-Null
 }
