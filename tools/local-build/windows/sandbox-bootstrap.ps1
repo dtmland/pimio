@@ -115,7 +115,7 @@ try {
         -Destination (Join-Path $Tools 'ninja')
     $nasmRoot = Expand-Tool -Archive (Join-Path $downloads "nasm-$($PimioPinned.NasmVersion)-win64.zip") `
         -Destination (Join-Path $Tools 'nasm')
-    $nasmBin = Join-Path (Get-ChildItem -LiteralPath $nasmRoot -Directory | Select-Object -First 1).FullName
+    $nasmBin = (Get-ChildItem -LiteralPath $nasmRoot -Directory | Select-Object -First 1).FullName
     $minGitBin = Join-Path (Expand-Tool -Archive (Join-Path $downloads "MinGit-$($PimioPinned.MinGitVersion)-64-bit.zip") `
         -Destination (Join-Path $Tools 'mingit')) 'cmd'
 
