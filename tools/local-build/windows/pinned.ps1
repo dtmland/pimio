@@ -56,6 +56,15 @@ $PimioPinned = @{
     MinGitUrl     = 'https://github.com/git-for-windows/git/releases/download/v2.47.0.windows.2/MinGit-2.47.0.2-64-bit.zip'
     MinGitSha256  = 'c4a5d3a2adda98b25fe59349733fca56b3843360b962dba5535282a9d8120b31'
 
+    # Strawberry Perl portable: required by libaom (the AV1 codec used by libavif)
+    # at CMake configure time to generate its assembly sources. GitHub-hosted CI
+    # runners come with Strawberry Perl pre-installed; the sandbox image does not.
+    # Hosted at https://github.com/shogo82148/strawberry-perl-releases; SHA-256
+    # verified against the shogo82148/actions-setup-perl versions manifest.
+    PerlVersion = '5.38.2.2'
+    PerlUrl     = 'https://github.com/shogo82148/strawberry-perl-releases/releases/download/5.38.2.2/strawberry-perl-5.38.2.2-64bit-portable.zip'
+    PerlSha256  = 'ea451686065d6338d7e4d4a04c9af49f17951d15aa4c2e19ab8cb56fa2373440'
+
     # The Visual Studio Build Tools bootstrapper is deliberately not hash-pinned:
     # Microsoft republishes this one URL for every servicing update, so a
     # recorded hash would fail within weeks. prepare.ps1 records the hash it

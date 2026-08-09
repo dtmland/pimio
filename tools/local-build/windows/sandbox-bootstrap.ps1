@@ -118,17 +118,25 @@ try {
     $nasmBin = (Get-ChildItem -LiteralPath $nasmRoot -Directory | Select-Object -First 1).FullName
     $minGitBin = Join-Path (Expand-Tool -Archive (Join-Path $downloads "MinGit-$($PimioPinned.MinGitVersion)-64-bit.zip") `
         -Destination (Join-Path $Tools 'mingit')) 'cmd'
+    $perlRoot = Expand-Tool -Archive (Join-Path $downloads "strawberry-perl-$($PimioPinned.PerlVersion)-64bit-portable.zip") `
+        -Destination (Join-Path $Tools 'perl')
+    # Strawberry Perl portable extracts flat (perl\, c\, etc. directly under
+    # $perlRoot — no versioned subfolder like nasm-2.16.03\ or cmake-3.31.6-...\).
+    # Adding only perl\bin is enough for cmake's Perl check; c\bin (the bundled
+    # MinGW runtime) is not needed for a build-tool-only Perl use.
+    $perlBin = Join-Path $perlRoot 'perl\bin'
 
     $qtPrefix = Join-Path $Cache "qt\$($PimioPinned.QtVersion)\$($PimioPinned.QtHostDir)"
     if (-not (Test-Path -LiteralPath (Join-Path $qtPrefix 'bin\qmake.exe'))) {
         throw "Qt $($PimioPinned.QtVersion) is not in the cache at $qtPrefix. Re-run prepare.ps1 without -SkipQt."
     }
 
-    $env:PATH = "$cmakeBin;$ninjaBin;$nasmBin;$minGitBin;$(Join-Path $qtPrefix 'bin');$env:PATH"
+    $env:PATH = "$cmakeBin;$ninjaBin;$nasmBin;$minGitBin;$perlBin;$(Join-Path $qtPrefix 'bin');$env:PATH"
     Write-Host "cmake : $((Get-Command cmake).Source)"
     Write-Host "ninja : $((Get-Command ninja).Source)"
     Write-Host "nasm  : $((Get-Command nasm).Source)"
     Write-Host "git   : $((Get-Command git).Source)"
+    Write-Host "perl  : $((Get-Command perl).Source)"
     Write-Host "qt    : $qtPrefix"
 
     Write-Step 'Visual Studio Build Tools'
@@ -243,6 +251,7 @@ try {
         "cmake   : $($PimioPinned.CMakeVersion)"
         "ninja   : $($PimioPinned.NinjaVersion)"
         "nasm    : $($PimioPinned.NasmVersion)"
+        "perl    : $($PimioPinned.PerlVersion)"
         'commands: cmake --preset default -DPIMIO_REQUIRE_LORE=ON; cmake --build --preset default; ctest --preset default; ctest --preset studio; cmake --install build\default'
     )
     foreach ($key in $status.Keys) {
