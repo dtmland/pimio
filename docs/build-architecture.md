@@ -109,6 +109,16 @@ belongs to.
 | Release archive verify | `release.yml` | `libgl1`, `libegl1`, `libxcb-cursor0`, `libxkbcommon-x11-0`, `libpulse0` | Deliberately minimal: proves the archive is self-contained on a machine that never built pimio. Mirrors the runtime packages the README asks users to install. |
 | Local Linux | `Containerfile` | superset: build-essential, cmake, git, xcb + wayland libs, `patchelf`, `xvfb`, python venv for aqt, 7zip, xz | A from-scratch container image that must build, test *and* deploy, so it is the union of the CI and Release needs plus its own toolchain. |
 
+**Perl on Windows.** `libavif` builds its AV1 codec (libaom) from source via CMake
+FetchContent. libaom's CMake configuration requires Perl to generate assembly
+sources. GitHub-hosted Windows runners (`windows-2025`) come with Strawberry
+Perl pre-installed, so CI passes silently; the Windows Sandbox starts from a
+bare image and has no Perl. The sandbox toolchain therefore downloads a
+[Strawberry Perl portable zip](https://github.com/shogo82148/strawberry-perl-releases)
+as a pinned, checksum-verified artifact alongside CMake, Ninja, NASM, and MinGit.
+Linux CI and the Linux container image both inherit Perl from the Ubuntu base image,
+so no explicit Perl install is needed on those paths.
+
 The Linux runtime prerequisites a user must supply (not bundled in the archive)
 are documented separately in
 [supported-platforms.md](supported-platforms.md#linux-runtime-prerequisites).
@@ -117,7 +127,7 @@ are documented separately in
 
 CI and Release get CMake and Ninja from the runner image or a marketplace action
 (`gha-setup-ninja`). The local harnesses pin them explicitly (`Containerfile`
-installs distro CMake/Ninja; Windows `pinned.ps1` pins exact CMake/Ninja/NASM
+installs distro CMake/Ninja; Windows `pinned.ps1` pins exact CMake/Ninja/NASM/Perl
 URLs and checksums, plus `aqtinstall`). These tool versions are **not**
 cross-checked between CI and local; they are a smaller, lower-risk duplicated
 surface than the Qt/LORE pins.

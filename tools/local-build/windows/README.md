@@ -30,10 +30,10 @@ tools\local-build\windows\prepare.bat
 ```
 
 This checks the host prerequisites, then downloads and checksum-verifies the
-pinned Visual Studio Build Tools bootstrapper, CMake, Ninja, MinGit, LORE, and Qt into
-`.cache\local-build\windows\` (git-ignored). Downloads resume, so re-running
-after an interruption is cheap, and re-running when nothing changed does
-nothing.
+pinned Visual Studio Build Tools bootstrapper, CMake, Ninja, NASM, MinGit, Perl,
+LORE, and Qt into `.cache\local-build\windows\` (git-ignored). Downloads resume,
+so re-running after an interruption is cheap, and re-running when nothing changed
+does nothing.
 
 If you prefer to launch the PowerShell scripts directly, either invoke them with
 `-ExecutionPolicy Bypass`:

@@ -248,10 +248,11 @@ $manifest = [ordered]@{
     cmakeVersion     = $PimioPinned.CMakeVersion
     ninjaVersion     = $PimioPinned.NinjaVersion
     nasmVersion      = $PimioPinned.NasmVersion
+    perlVersion      = $PimioPinned.PerlVersion
     artifacts        = [ordered]@{}
 }
 
-Write-Step 'CMake, Ninja, NASM, and MinGit'
+Write-Step 'CMake, Ninja, NASM, MinGit, and Perl'
 $cmakeZip = Join-Path $downloads "cmake-$($PimioPinned.CMakeVersion)-windows-x86_64.zip"
 $manifest.artifacts['cmake'] = @{
     url    = $PimioPinned.CMakeUrl
@@ -278,6 +279,13 @@ $manifest.artifacts['mingit'] = @{
     url    = $PimioPinned.MinGitUrl
     file   = $minGitZip
     sha256 = (Save-VerifiedFile -Url $PimioPinned.MinGitUrl -Path $minGitZip -ExpectedSha256 $PimioPinned.MinGitSha256)
+    pinned = $true
+}
+$perlZip = Join-Path $downloads "strawberry-perl-$($PimioPinned.PerlVersion)-64bit-portable.zip"
+$manifest.artifacts['perl'] = @{
+    url    = $PimioPinned.PerlUrl
+    file   = $perlZip
+    sha256 = (Save-VerifiedFile -Url $PimioPinned.PerlUrl -Path $perlZip -ExpectedSha256 $PimioPinned.PerlSha256)
     pinned = $true
 }
 
