@@ -117,10 +117,10 @@ are documented separately in
 
 CI and Release get CMake and Ninja from the runner image or a marketplace action
 (`gha-setup-ninja`). The local harnesses pin them explicitly (`Containerfile`
-installs distro CMake/Ninja; Windows `pinned.ps1` pins exact CMake/Ninja URLs and
-checksums, plus `aqtinstall`). These tool versions are **not** cross-checked
-between CI and local; they are a smaller, lower-risk duplicated surface than the
-Qt/LORE pins.
+installs distro CMake/Ninja; Windows `pinned.ps1` pins exact CMake/Ninja/NASM
+URLs and checksums, plus `aqtinstall`). These tool versions are **not**
+cross-checked between CI and local; they are a smaller, lower-risk duplicated
+surface than the Qt/LORE pins.
 
 ## What differs across platforms
 
@@ -130,7 +130,7 @@ expected to differ:
 | Concern | Linux | Windows | macOS |
 | --- | --- | --- | --- |
 | Compiler / env | GCC | MSVC (`ilammy/msvc-dev-cmd`) | Apple Clang |
-| NASM | apt | `choco` | `brew` |
+| NASM | apt | `choco` (CI/Release), pinned portable zip in local Windows sandbox | `brew` |
 | Qt arch id | `linux_gcc_64` | `win64_msvc2022_64` | (default) |
 | LORE triple | `x86_64-unknown-linux-gnu` | `x86_64-pc-windows-msvc` | `aarch64-apple-darwin` (no x86-64 build) |
 | Deploy runtime | copy Qt + graphics libs, `patchelf` RPATH | Qt deploy tool | `.app` bundle, codesign verify |

@@ -38,7 +38,7 @@ $PimioPinned = @{
         @{ Bundle = 'lore';    Sha256 = 'c213169d251b73feb3fdf1655b9b5e6717a6a862762825918cc318a570018ded' }
     )
 
-    # Portable tools. Both are extracted, never installed, so the sandbox needs
+    # Portable tools. These are extracted, never installed, so the sandbox needs
     # no installer for them and their versions cannot drift with the host.
     CMakeVersion = '3.31.6'
     CMakeUrl     = 'https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-windows-x86_64.zip'
@@ -46,6 +46,9 @@ $PimioPinned = @{
     NinjaVersion = '1.12.1'
     NinjaUrl     = 'https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip'
     NinjaSha256  = 'f550fec705b6d6ff58f2db3c374c2277a37691678d6aba463adcbb129108467a'
+    NasmVersion  = '2.16.03'
+    NasmUrl      = 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/win64/nasm-2.16.03-win64.zip'
+    NasmSha256   = 'bbd2751c5ce6cf65e998a2167d497e7eff6e6e68a3982bd5899e82b04d2455ea'
 
     # MinGit: the minimal Git for Windows distribution, needed in the sandbox
     # because libavif's aom codec is fetched via git during cmake configure.

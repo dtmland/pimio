@@ -113,6 +113,9 @@ try {
     $cmakeBin = Join-Path (Get-ChildItem -LiteralPath $cmakeRoot -Directory | Select-Object -First 1).FullName 'bin'
     $ninjaBin = Expand-Tool -Archive (Join-Path $downloads "ninja-$($PimioPinned.NinjaVersion)-win.zip") `
         -Destination (Join-Path $Tools 'ninja')
+    $nasmRoot = Expand-Tool -Archive (Join-Path $downloads "nasm-$($PimioPinned.NasmVersion)-win64.zip") `
+        -Destination (Join-Path $Tools 'nasm')
+    $nasmBin = (Get-ChildItem -LiteralPath $nasmRoot -Directory | Select-Object -First 1).FullName
     $minGitBin = Join-Path (Expand-Tool -Archive (Join-Path $downloads "MinGit-$($PimioPinned.MinGitVersion)-64-bit.zip") `
         -Destination (Join-Path $Tools 'mingit')) 'cmd'
 
@@ -121,9 +124,10 @@ try {
         throw "Qt $($PimioPinned.QtVersion) is not in the cache at $qtPrefix. Re-run prepare.ps1 without -SkipQt."
     }
 
-    $env:PATH = "$cmakeBin;$ninjaBin;$minGitBin;$(Join-Path $qtPrefix 'bin');$env:PATH"
+    $env:PATH = "$cmakeBin;$ninjaBin;$nasmBin;$minGitBin;$(Join-Path $qtPrefix 'bin');$env:PATH"
     Write-Host "cmake : $((Get-Command cmake).Source)"
     Write-Host "ninja : $((Get-Command ninja).Source)"
+    Write-Host "nasm  : $((Get-Command nasm).Source)"
     Write-Host "git   : $((Get-Command git).Source)"
     Write-Host "qt    : $qtPrefix"
 
@@ -238,6 +242,7 @@ try {
         "lore    : $($PimioPinned.LoreVersion)"
         "cmake   : $($PimioPinned.CMakeVersion)"
         "ninja   : $($PimioPinned.NinjaVersion)"
+        "nasm    : $($PimioPinned.NasmVersion)"
         'commands: cmake --preset default -DPIMIO_REQUIRE_LORE=ON; cmake --build --preset default; ctest --preset default; ctest --preset studio; cmake --install build\default'
     )
     foreach ($key in $status.Keys) {
