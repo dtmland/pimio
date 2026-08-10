@@ -48,7 +48,7 @@ $PimioPinned = @{
     NinjaSha256  = 'f550fec705b6d6ff58f2db3c374c2277a37691678d6aba463adcbb129108467a'
     NasmVersion  = '2.16.03'
     NasmUrl      = 'https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/win64/nasm-2.16.03-win64.zip'
-    NasmSha256   = 'bbd2751c5ce6cf65e998a2167d497e7eff6e6e68a3982bd5899e82b04d2455ea'
+    NasmSha256   = '3ee4782247bcb874378d02f7eab4e294a84d3d15f3f6ee2de2f47a46aa7226e6'
 
     # MinGit: the minimal Git for Windows distribution, needed in the sandbox
     # because libavif's aom codec is fetched via git during cmake configure.
