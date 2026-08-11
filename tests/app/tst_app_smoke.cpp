@@ -8,6 +8,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
+#include <QQuickStyle>
 #include <QQuickWindow>
 #include <QSignalSpy>
 #include <QStandardPaths>
@@ -150,6 +151,15 @@ private slots:
 
 void TestAppSmoke::initTestCase()
 {
+    // Qt Quick Controls picks a native style on macOS and Windows. The macOS
+    // one draws ComboBox and Slider through AppKit (QtQuick.NativeStyle),
+    // which needs a real window from the Cocoa platform plugin; under the
+    // offscreen plugin this test runs on there is none, and the first frame
+    // that paints one of those controls crashes the process. The style a
+    // headless test draws with is not what it is testing, so it asks for a
+    // Qt-drawn one, which also makes the three platforms behave alike.
+    QQuickStyle::setStyle(QStringLiteral("Fusion"));
+
     // Keeps the settings this test writes out of the developer's real
     // configuration directory.
     QStandardPaths::setTestModeEnabled(true);
@@ -268,6 +278,14 @@ void TestAppSmoke::arrowKeysMoveTheSelectionByRowsAndColumns()
     auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
     QVERIFY(grid != nullptr);
     QTRY_VERIFY(grid->width() > 0 && grid->height() > 0);
+
+    // A running application is handed keyboard focus by the window manager;
+    // a headless test window (Xvfb has no window manager, and the offscreen
+    // platform has no windows at all) is never activated, so nothing holds
+    // active focus and key events are dropped. Asking for it explicitly is
+    // what the window manager would have done.
+    grid->forceActiveFocus();
+    QTRY_VERIFY(grid->hasActiveFocus());
 
     const int columns = grid->property("columns").toInt();
     QVERIFY(columns > 0);
@@ -477,6 +495,10 @@ void TestAppSmoke::previewArrowKeysFollowTheGridOrder()
     QVERIFY(detail != nullptr);
     QTRY_VERIFY(detail->property("visible").toBool());
     QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-5"));
+
+    // showDetail() moves keyboard focus to the preview; the keys below only
+    // arrive once it holds it.
+    QTRY_VERIFY(detail->hasActiveFocus());
 
     // Right and left step one item along the order the grid is showing.
     QTest::keyClick(window, Qt::Key_Right);
