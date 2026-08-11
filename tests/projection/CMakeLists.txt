@@ -60,3 +60,16 @@ target_link_libraries(tst_projection_metadata PRIVATE
 )
 
 add_test(NAME projection.metadata COMMAND tst_projection_metadata)
+
+qt_add_executable(tst_projection_sort
+    tst_projection_sort.cpp
+)
+
+target_link_libraries(tst_projection_sort PRIVATE
+    pimio::projection
+    pimio::test_support
+    Qt6::Sql
+    Qt6::Test
+)
+
+add_test(NAME projection.sort COMMAND tst_projection_sort)

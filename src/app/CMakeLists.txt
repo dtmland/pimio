@@ -40,6 +40,7 @@ qt_add_qml_module(pimio_app_lib
     QML_FILES
         qml/DetailView.qml
         qml/Main.qml
+        qml/SettingsDialog.qml
 )
 
 qt_add_executable(pimio_app

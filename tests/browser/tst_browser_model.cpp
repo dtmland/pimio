@@ -80,6 +80,10 @@ private slots:
     void thumbnailResultIsPushedToTheImageProvider();
     void cancelledThumbnailResetsStatusToPending();
     void reloadClearsExistingItems();
+    void setSortingReordersRows();
+    void unknownSortKeyKeepsTheCurrentOrder();
+    void tilePixelSizeSelectsAThumbnailTier();
+    void changingTheThumbnailSizeReRequestsTheVisibleWindow();
     void modelPassesGenericModelTest();
 
 private:
@@ -456,6 +460,87 @@ void TestBrowserModel::reloadClearsExistingItems()
 
     model.reload();
     QCOMPARE(model.rowCount(), 1);
+}
+
+void TestBrowserModel::setSortingReordersRows()
+{
+    populate(3);
+    MediaLibraryModel model;
+    model.setDatabase(m_db.get());
+
+    const auto idAt = [&model](int row) {
+        return model.data(model.index(row), MediaLibraryModel::MediaIdRole).toString();
+    };
+    QCOMPARE(idAt(0), QStringLiteral("item000"));
+
+    // Descending by file name reverses item000..item002.
+    model.setSorting(static_cast<int>(ProjectionDatabase::SortKey::FileName), true);
+    QCOMPARE(model.sortKey(), ProjectionDatabase::SortKey::FileName);
+    QCOMPARE(model.sortOrder(), Qt::DescendingOrder);
+    QCOMPARE(model.rowCount(), 3);
+    QCOMPARE(idAt(0), QStringLiteral("item002"));
+    QCOMPARE(idAt(2), QStringLiteral("item000"));
+
+    model.setSorting(static_cast<int>(ProjectionDatabase::SortKey::FileName), false);
+    QCOMPARE(idAt(0), QStringLiteral("item000"));
+}
+
+void TestBrowserModel::unknownSortKeyKeepsTheCurrentOrder()
+{
+    populate(3);
+    MediaLibraryModel model;
+    model.setDatabase(m_db.get());
+    model.setSorting(static_cast<int>(ProjectionDatabase::SortKey::FileSize), false);
+
+    // A value no build of pimio knows: the view keeps working.
+    model.setSorting(9999, false);
+    QCOMPARE(model.sortKey(), ProjectionDatabase::SortKey::FileSize);
+    QCOMPARE(model.rowCount(), 3);
+}
+
+void TestBrowserModel::tilePixelSizeSelectsAThumbnailTier()
+{
+    const QList<int> tiers = MediaLibraryModel::thumbnailTiers();
+    QVERIFY(!tiers.isEmpty());
+
+    MediaLibraryModel model;
+    // The smallest tier that still covers the tile, so a thumbnail is never
+    // upscaled into the grid.
+    model.setTilePixelSize(96);
+    QCOMPARE(model.thumbnailSize(), QSize(tiers.constFirst(), tiers.constFirst()));
+    model.setTilePixelSize(tiers.constFirst() + 1);
+    QCOMPARE(model.thumbnailSize(), QSize(tiers.at(1), tiers.at(1)));
+    // Beyond the largest tier the largest is used rather than an unbounded
+    // decode; the tile slider is capped so this cannot happen from the UI.
+    model.setTilePixelSize(4096);
+    QCOMPARE(model.thumbnailSize(), QSize(tiers.constLast(), tiers.constLast()));
+}
+
+void TestBrowserModel::changingTheThumbnailSizeReRequestsTheVisibleWindow()
+{
+    populate(10);
+    RecordingMediaRequestService service;
+
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.setTilePixelSize(96);
+    model.setVisibleRange(2, 4);
+    QCOMPARE(service.requestedCacheKeys().size(), 3);
+
+    // A bigger tile needs bigger thumbnails: the rows on screen go back to
+    // Pending and are requested again at the new size.
+    model.setTilePixelSize(512);
+    QCOMPARE(service.requestedCacheKeys().size(), 6);
+    for (int row = 2; row <= 4; ++row) {
+        const int status =
+                model.data(model.index(row), MediaLibraryModel::ThumbnailStatusRole).toInt();
+        QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Loading));
+    }
+    // The second batch asks for different cache keys than the first.
+    const QStringList keys = service.requestedCacheKeys();
+    QVERIFY(keys.mid(0, 3) != keys.mid(3, 3));
 }
 
 void TestBrowserModel::modelPassesGenericModelTest()

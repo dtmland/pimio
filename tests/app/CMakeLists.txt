@@ -5,6 +5,7 @@ qt_add_executable(tst_app_smoke
 target_link_libraries(tst_app_smoke PRIVATE
     pimio::app_lib
     pimio_app_libplugin
+    pimio::settings
     Qt6::Test
 )
 
