@@ -20,6 +20,10 @@ void LibraryActivity::setScanning(bool scanning)
         return;
     }
     m_scanning = scanning;
+    if (scanning) {
+        // The count describes the scan being shown, not the one before it.
+        setIndexedCount(0);
+    }
     emit scanningChanged();
 }
 

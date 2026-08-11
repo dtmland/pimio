@@ -643,7 +643,8 @@ bool ProjectionDatabase::applyRecords(const QList<MediaRecord> &records, Error *
     return true;
 }
 
-qsizetype ProjectionDatabase::recordCount(Error *error) const{
+qsizetype ProjectionDatabase::recordCount(Error *error) const
+{
     if (!d->open) {
         setError(error, ErrorCode::StorageUnavailable,
                  QStringLiteral("The projection is not open."));
