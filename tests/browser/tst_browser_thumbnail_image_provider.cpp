@@ -18,6 +18,8 @@ private slots:
     void requestedSizeScalesTheResult();
     void clearForgetsEveryRecordedImage();
     void aLeadingSlashInTheIdIsTolerated();
+    void removeImageForgetsOneId();
+    void capacityBoundsHowManyImagesAreKept();
 };
 
 void TestBrowserThumbnailImageProvider::unknownIdReturnsANullImage()
@@ -76,6 +78,36 @@ void TestBrowserThumbnailImageProvider::aLeadingSlashInTheIdIsTolerated()
 
     const QImage result = provider.requestImage(QStringLiteral("/media-4"), nullptr, QSize());
     QVERIFY(!result.isNull());
+}
+
+void TestBrowserThumbnailImageProvider::removeImageForgetsOneId()
+{
+    ThumbnailImageProvider provider;
+    QImage source(2, 2, QImage::Format_RGB32);
+    provider.setImage(QStringLiteral("media-5"), source);
+    provider.setImage(QStringLiteral("media-6"), source);
+
+    provider.removeImage(QStringLiteral("media-5"));
+
+    QVERIFY(!provider.contains(QStringLiteral("media-5")));
+    QVERIFY(provider.contains(QStringLiteral("media-6")));
+    QVERIFY(provider.requestImage(QStringLiteral("media-5"), nullptr, QSize()).isNull());
+    QVERIFY(!provider.requestImage(QStringLiteral("media-6"), nullptr, QSize()).isNull());
+}
+
+void TestBrowserThumbnailImageProvider::capacityBoundsHowManyImagesAreKept()
+{
+    ThumbnailImageProvider provider;
+    provider.setCapacity(2);
+    QCOMPARE(provider.capacity(), 2);
+
+    QImage source(2, 2, QImage::Format_RGB32);
+    provider.setImage(QStringLiteral("a"), source);
+    provider.setImage(QStringLiteral("b"), source);
+    provider.setImage(QStringLiteral("c"), source);
+
+    QCOMPARE(provider.count(), 2);
+    QVERIFY(provider.contains(QStringLiteral("c")));
 }
 
 QTEST_MAIN(TestBrowserThumbnailImageProvider)

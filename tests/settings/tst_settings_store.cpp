@@ -36,6 +36,7 @@ private slots:
     void settingTheSameValueEmitsNothing();
     void resetToDefaultsRestoresAndRewritesEveryValue();
     void sortKeyLabelsExistForEveryKey();
+    void theScanBatchSizeIsStoredClampedAndResettable();
 
 private:
     QString configPath() const;
@@ -252,6 +253,36 @@ void TestSettingsStore::sortKeyLabelsExistForEveryKey()
     QCOMPARE(stored.size(), keys.size());
     QCOMPARE(Settings::sortKeyValues().size(), keys.size());
     QVERIFY(!pimio::settings::sortKeyFromString(QStringLiteral("nope")).has_value());
+}
+
+void TestSettingsStore::theScanBatchSizeIsStoredClampedAndResettable()
+{
+    {
+        Settings settings(configPath());
+        QCOMPARE(settings.scanBatchSize(), 64);
+
+        settings.setScanBatchSize(Settings::minimumScanBatchSize() - 1);
+        QCOMPARE(settings.scanBatchSize(), Settings::minimumScanBatchSize());
+        settings.setScanBatchSize(Settings::maximumScanBatchSize() + 1);
+        QCOMPARE(settings.scanBatchSize(), Settings::maximumScanBatchSize());
+
+        QSignalSpy spy(&settings, &Settings::scanBatchSizeChanged);
+        settings.setScanBatchSize(128);
+        QCOMPARE(spy.size(), 1);
+        settings.setScanBatchSize(128);
+        QCOMPARE(spy.size(), 1);
+        settings.flush();
+    }
+
+    {
+        Settings reloaded(configPath());
+        QCOMPARE(reloaded.scanBatchSize(), 128);
+        reloaded.resetToDefaults();
+        QCOMPARE(reloaded.scanBatchSize(), 64);
+    }
+
+    Settings again(configPath());
+    QCOMPARE(again.scanBatchSize(), 64);
 }
 
 QTEST_MAIN(TestSettingsStore)

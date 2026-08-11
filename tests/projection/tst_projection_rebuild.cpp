@@ -72,6 +72,7 @@ private slots:
     void aFailedRebuildLeavesThePreviousContentsIntact();
     void aCorruptProjectionIsReportedAndIsRecoverableByDeletingIt();
     void queriesMatchTheDurableStore();
+    void applyRecordsAddsAndReplacesRowsWithoutClaimingToBeUpToDate();
 
 private:
     void populate(MemoryDurableStore &store);
@@ -332,6 +333,45 @@ void TestProjectionRebuild::queriesMatchTheDurableStore()
     Error missing;
     QVERIFY(!projection.load(MediaId(QStringLiteral("nope")), &missing).has_value());
     PIMIO_COMPARE_ENUM(missing.code(), ErrorCode::NotFound);
+}
+
+void TestProjectionRebuild::applyRecordsAddsAndReplacesRowsWithoutClaimingToBeUpToDate()
+{
+    // A scan in progress projects each committed batch so the grid can show
+    // it, without pretending the projection covers the whole store yet.
+    FakeClock clock(QDateTime::fromMSecsSinceEpoch(1'700'000'000'000, Qt::UTC));
+    MemoryDurableStore store(clock);
+    populate(store);
+
+    ProjectionDatabase projection;
+    Error error;
+    QVERIFY2(projection.openInMemory(&error), qPrintable(error.message()));
+    QVERIFY2(projection.rebuildFrom(store, &error), qPrintable(error.message()));
+    QCOMPARE(projection.recordCount(&error), 3);
+    const QString tokenBefore = projection.projectedStateToken(&error);
+
+    const MediaRecord fresh = makeRecord(QStringLiteral("delta"), QStringLiteral("fourth"),
+                                         QStringLiteral("ddd"), 4'000,
+                                         {QStringLiteral("new-tag")});
+    const MediaRecord replacement = makeRecord(QStringLiteral("alpha"),
+                                               QStringLiteral("rewritten"),
+                                               QStringLiteral("aaa"), 1'000);
+    QVERIFY2(projection.applyRecords({fresh, replacement}, &error), qPrintable(error.message()));
+
+    QCOMPARE(projection.recordCount(&error), 4);
+    QCOMPARE(projection.load(MediaId(QStringLiteral("alpha")), &error)->metadata.caption,
+             QStringLiteral("rewritten"));
+    QCOMPARE(projection.load(MediaId(QStringLiteral("delta")), &error)->metadata.caption,
+             QStringLiteral("fourth"));
+    QCOMPARE(idValues(projection.idsWithTag(QStringLiteral("new-tag"), &error)),
+             QList<QString>({QStringLiteral("delta")}));
+    // No duplicate rows for a record applied twice.
+    QVERIFY2(projection.applyRecords({replacement}, &error), qPrintable(error.message()));
+    QCOMPARE(projection.recordCount(&error), 4);
+
+    // The state token is untouched, so isStale() still tells the truth: only a
+    // full rebuild can vouch for the projection matching the store.
+    QCOMPARE(projection.projectedStateToken(&error), tokenBefore);
 }
 
 QTEST_MAIN(TestProjectionRebuild)

@@ -1,4 +1,5 @@
 #include "pimio/app/application.h"
+#include "pimio/app/library_activity.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/settings/settings.h"
 
@@ -107,6 +108,16 @@ public:
     {
     }
 
+    Q_INVOKABLE void refreshThumbnail(int row)
+    {
+        m_refreshedRows.append(row);
+    }
+
+    QList<int> refreshedRows() const
+    {
+        return m_refreshedRows;
+    }
+
     Q_INVOKABLE QVariantMap itemAt(int row) const
     {
         const QModelIndex itemIndex = index(row);
@@ -126,6 +137,7 @@ private:
     int m_count;
     int m_thumbnailStatus;
     QString m_absolutePath;
+    QList<int> m_refreshedRows;
 };
 
 } // namespace
@@ -147,6 +159,8 @@ private slots:
     void tileSizeSettingResizesTheGridCells();
     void settingsDialogExposesStoredAndSessionSettings();
     void previewArrowKeysFollowTheGridOrder();
+    void aThumbnailTheProviderCannotServeIsAskedForAgain();
+    void aScanInProgressShowsActivity();
 };
 
 void TestAppSmoke::initTestCase()
@@ -520,6 +534,57 @@ void TestAppSmoke::previewArrowKeysFollowTheGridOrder()
 
     QTest::keyClick(window, Qt::Key_Escape);
     QTRY_VERIFY(!detail->property("visible").toBool());
+}
+
+void TestAppSmoke::aThumbnailTheProviderCannotServeIsAskedForAgain()
+{
+    // The row claims a thumbnail but the provider has nothing for it, which is
+    // exactly the grey-tile case. The view must report it instead of leaving
+    // the tile blank forever.
+    SyntheticMediaModel model(1, 2);
+    QQmlApplicationEngine engine;
+    engine.addImageProvider(QStringLiteral("thumbnail"),
+                            new pimio::browser::ThumbnailImageProvider);
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    QTRY_COMPARE(model.refreshedRows(), QList<int>({0}));
+}
+
+void TestAppSmoke::aScanInProgressShowsActivity()
+{
+    SyntheticMediaModel model(0);
+    pimio::app::LibraryActivity activity;
+    activity.setScanning(true);
+    activity.setIndexedCount(7);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("libraryActivity"), &activity);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+
+    auto *busy = window->findChild<QQuickItem *>(QStringLiteral("scanBusyIndicator"));
+    QVERIFY(busy != nullptr);
+    QTRY_VERIFY(busy->property("visible").toBool());
+
+    auto *placeholder = window->findChild<QQuickItem *>(QStringLiteral("scanningPlaceholder"));
+    QVERIFY(placeholder != nullptr);
+    QTRY_VERIFY(placeholder->property("visible").toBool());
+
+    auto *empty = window->findChild<QQuickItem *>(QStringLiteral("emptyLibraryPlaceholder"));
+    if (empty != nullptr) {
+        QVERIFY(!empty->property("visible").toBool());
+    }
+
+    // Finishing the scan puts the window back to its resting state.
+    activity.setScanning(false);
+    QTRY_VERIFY(!busy->property("visible").toBool());
+    QTRY_VERIFY(!placeholder->property("visible").toBool());
 }
 
 QTEST_MAIN(TestAppSmoke)

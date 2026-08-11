@@ -102,6 +102,24 @@ public:
     void setPrefetchMargin(int margin);
     int prefetchMargin() const;
 
+    /// Number of decoded thumbnails kept in memory at once. Default: 512.
+    ///
+    /// The model, not the image provider, owns this bound, because the model
+    /// is the only place that can act on it: dropping a thumbnail also puts
+    /// its row back to Pending, so the row is requested again when it returns
+    /// to the visible window. A provider that quietly evicted images on its
+    /// own would leave rows claiming to be Ready with nothing to serve, which
+    /// is exactly the "previously loaded tiles turn grey and never come back"
+    /// failure this bound exists to prevent.
+    ///
+    /// The effective bound is never smaller than the window currently being
+    /// fetched, so scrolling can never evict what the grid is looking at.
+    void setRetainedThumbnailLimit(int limit);
+    int retainedThumbnailLimit() const;
+
+    /// Number of decoded thumbnails currently held.
+    int retainedThumbnailCount() const;
+
     /// Field the rows are ordered by, and its direction.
     ///
     /// The order is the projection's, not the model's: the model asks the
@@ -122,6 +140,12 @@ public:
     ///
     /// Call after the projection is rebuilt or the database reference changes.
     /// No-op when no database is attached.
+    ///
+    /// Rows that survive the reload keep the thumbnail they already have, and
+    /// a reload that only appends rows to the end (which is what a scan in
+    /// progress does) is reported as an insertion rather than a model reset,
+    /// so the grid keeps its scroll position and its pictures while a library
+    /// is still being indexed.
     void reload();
 
     /// Sets the currently visible row range.
@@ -137,6 +161,15 @@ public:
 
     /// Ensures a thumbnail request exists for a selected row.
     Q_INVOKABLE void requestThumbnail(int row);
+
+    /// Drops whatever the model holds for \a row and requests it again.
+    ///
+    /// The view calls this when an `image://thumbnail/<id>` request fails
+    /// even though the row says Ready: the model and the provider have
+    /// disagreed about what is available, and re-rendering the row is the
+    /// only thing that can turn a grey tile back into a picture. A row whose
+    /// request is already in flight is left alone.
+    Q_INVOKABLE void refreshThumbnail(int row);
 
     int rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -158,6 +191,20 @@ private:
     /// Drops every loaded thumbnail and re-requests the ones that were
     /// already on screen. Used when the requested size changes.
     void invalidateThumbnails();
+    /// Records \a row as the most recently loaded thumbnail and drops the
+    /// least recently loaded ones beyond the retention bound.
+    void retainThumbnail(int row);
+    /// Drops the thumbnail held for \a mediaId (image, provider entry, and
+    /// Ready status), so the row is requested again when it is next needed.
+    void releaseThumbnail(const QString &mediaId);
+    /// Rebuilds the media-id → row lookup after the row list changes.
+    void rebuildRowIndex();
+    /// Retention bound for the current window: never smaller than the range
+    /// setVisibleRange() last asked for, plus its prefetch margins.
+    int effectiveRetentionLimit() const;
+    /// Keeps the provider's cache large enough to hold everything the model
+    /// retains, so the provider never evicts behind the model's back.
+    void syncImageProviderCapacity();
     void onThumbnailResult(const core::MediaRequest &request, const core::MediaResult &result);
     void onThumbnailError(const core::MediaRequest &request, const core::Error &error);
 
@@ -166,11 +213,18 @@ private:
     ThumbnailImageProvider *m_imageProvider = nullptr;
     QSize m_thumbnailSize{256, 256};
     int m_prefetchMargin = 20;
+    int m_retainedLimit = 512;
     projection::ProjectionDatabase::SortKey m_sortKey =
             projection::ProjectionDatabase::SortKey::CaptureTime;
     Qt::SortOrder m_sortOrder = Qt::AscendingOrder;
 
     QList<Item> m_items;
+    // Media ids of the rows whose thumbnails are held, most recently loaded
+    // first. The tail is what gets dropped when the bound is reached.
+    QList<QString> m_retainedIds;
+    // Media id → row, so a retained id can be found after the row list has
+    // been rebuilt by reload().
+    QHash<QString, int> m_rowById;
     // Last window setVisibleRange() was told about, so a thumbnail-size
     // change can re-request exactly what the user is looking at.
     int m_visibleFirst = -1;

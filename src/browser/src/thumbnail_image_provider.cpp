@@ -15,6 +15,36 @@ void ThumbnailImageProvider::setImage(const QString &mediaId, const QImage &imag
     m_images.insert(mediaId, new QImage(image));
 }
 
+void ThumbnailImageProvider::removeImage(const QString &mediaId)
+{
+    QMutexLocker locker(&m_mutex);
+    m_images.remove(mediaId);
+}
+
+bool ThumbnailImageProvider::contains(const QString &mediaId) const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_images.contains(mediaId);
+}
+
+void ThumbnailImageProvider::setCapacity(int images)
+{
+    QMutexLocker locker(&m_mutex);
+    m_images.setMaxCost(qMax(1, images));
+}
+
+int ThumbnailImageProvider::capacity() const
+{
+    QMutexLocker locker(&m_mutex);
+    return m_images.maxCost();
+}
+
+int ThumbnailImageProvider::count() const
+{
+    QMutexLocker locker(&m_mutex);
+    return static_cast<int>(m_images.size());
+}
+
 void ThumbnailImageProvider::clear()
 {
     QMutexLocker locker(&m_mutex);

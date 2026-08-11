@@ -1,5 +1,8 @@
 #pragma once
 
+#include "pimio/core/durable_store.h"
+
+#include <QList>
 #include <QObject>
 #include <QStringList>
 
@@ -61,10 +64,24 @@ public:
     void start(const QStringList &libraryPaths, QQmlApplicationEngine &engine);
 
 private:
-    /// Pushes the current user settings (sort order and tile size) into the
-    /// browser model. Called once at start() and again whenever one of those
-    /// settings changes, from wherever it was changed.
+    /// Pushes the current user settings (sort order, tile size, and scan
+    /// batch size) into the browser model and the scanner. Called once at
+    /// start() and again whenever one of those settings changes, from
+    /// wherever it was changed.
     void applySettings();
+
+    /// Projects a batch of records a running scan has just committed, and
+    /// refreshes the grid so they are browsable while the scan continues.
+    ///
+    /// Always runs on this object's own thread: the scan calls back from a
+    /// worker thread, which posts here rather than touching the projection
+    /// (a SQLite connection belonging to this thread) or the model itself.
+    void applyScanBatch(const QList<core::MediaRecord> &records, int indexedCount);
+
+    /// Reloads the model from the projection, at most a few times a second.
+    /// A scan commits far more often than a person can read, and each reload
+    /// re-queries the whole ordered id list.
+    void scheduleModelRefresh();
 
     class Private;
     std::unique_ptr<Private> d;

@@ -85,6 +85,9 @@ private slots:
     void tilePixelSizeSelectsAThumbnailTier();
     void changingTheThumbnailSizeReRequestsTheVisibleWindow();
     void modelPassesGenericModelTest();
+    void thumbnailsBeyondTheRetentionBoundAreDroppedAndRequestedAgain();
+    void refreshThumbnailReRequestsARowTheProviderCannotServe();
+    void appendingReloadKeepsLoadedThumbnailsAndInsertsRows();
 
 private:
     // Builds an in-memory projection with \a count items and leaves it in m_db.
@@ -553,6 +556,149 @@ void TestBrowserModel::modelPassesGenericModelTest()
     // construction and during any model mutations via Qt's own test harness.
     QAbstractItemModelTester{model.get(),
                              QAbstractItemModelTester::FailureReportingMode::Fatal};
+}
+
+namespace {
+
+/// A small encoded PNG, as a completed thumbnail request would carry.
+MediaResult makeThumbnailResult()
+{
+    QImage source(8, 8, QImage::Format_RGB32);
+    source.fill(Qt::green);
+    QByteArray encoded;
+    QBuffer buffer(&encoded);
+    buffer.open(QIODevice::WriteOnly);
+    source.save(&buffer, "png");
+
+    MediaResult result;
+    result.bytes = encoded;
+    result.format = QStringLiteral("png");
+    result.actualSize = source.size();
+    return result;
+}
+
+} // namespace
+
+void TestBrowserModel::thumbnailsBeyondTheRetentionBoundAreDroppedAndRequestedAgain()
+{
+    // The bug this covers: a long scroll used to leave the model claiming
+    // rows were Ready after their images had been evicted from the provider's
+    // cache, so QML asked for image://thumbnail/<id>, got nothing, and the
+    // tile stayed grey for the rest of the session.
+    populate(30);
+    RecordingMediaRequestService service;
+    ThumbnailImageProvider provider;
+
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setRetainedThumbnailLimit(4);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.setImageProvider(&provider);
+
+    QStringList mediaIds;
+    for (int row = 0; row < 30; ++row) {
+        mediaIds.append(model.data(model.index(row), MediaLibraryModel::MediaIdRole).toString());
+    }
+
+    // Scroll the whole library one row at a time, letting each render finish.
+    for (int row = 0; row < 30; ++row) {
+        model.setVisibleRange(row, row);
+        QVERIFY(service.complete(MediaRequestHandle(static_cast<quint64>(row) + 1),
+                                 makeThumbnailResult()));
+    }
+
+    // Something was dropped: the model does not hold all thirty.
+    QVERIFY(model.retainedThumbnailCount() < 30);
+
+    // Whatever the model still calls Ready, the provider can still serve.
+    for (int row = 0; row < 30; ++row) {
+        const int status =
+                model.data(model.index(row), MediaLibraryModel::ThumbnailStatusRole).toInt();
+        if (status == static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready)) {
+            QVERIFY2(provider.contains(mediaIds.at(row)),
+                     qPrintable(QStringLiteral("row %1 says Ready but the provider has no image "
+                                               "for it").arg(row)));
+        }
+    }
+
+    // The earliest rows were dropped rather than left claiming a thumbnail...
+    QCOMPARE(model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Pending));
+    QVERIFY(!provider.contains(mediaIds.constFirst()));
+
+    // ...and scrolling back to them asks for them again.
+    const int requestsBefore = service.requestedCacheKeys().size();
+    model.setVisibleRange(0, 0);
+    QVERIFY(service.requestedCacheKeys().size() > requestsBefore);
+    QCOMPARE(model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Loading));
+}
+
+void TestBrowserModel::refreshThumbnailReRequestsARowTheProviderCannotServe()
+{
+    populate(1);
+    RecordingMediaRequestService service;
+    ThumbnailImageProvider provider;
+
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.setImageProvider(&provider);
+
+    model.setVisibleRange(0, 0);
+    QVERIFY(service.complete(MediaRequestHandle(1), makeThumbnailResult()));
+    QCOMPARE(model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
+
+    // The view reports that image://thumbnail/<id> failed anyway.
+    model.refreshThumbnail(0);
+
+    QCOMPARE(model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Loading));
+    QCOMPARE(service.requestedCacheKeys().size(), 2);
+}
+
+void TestBrowserModel::appendingReloadKeepsLoadedThumbnailsAndInsertsRows()
+{
+    // A scan in progress reloads the model every time it commits a batch. The
+    // rows it already showed must keep their pictures and their place.
+    populate(2);
+    RecordingMediaRequestService service;
+    ThumbnailImageProvider provider;
+
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.setImageProvider(&provider);
+
+    model.setVisibleRange(0, 0);
+    QVERIFY(service.complete(MediaRequestHandle(1), makeThumbnailResult()));
+    const QString firstId =
+            model.data(model.index(0), MediaLibraryModel::MediaIdRole).toString();
+
+    // The scan finds two more files, sorting after the ones already shown.
+    MemoryDurableStore store(m_clock);
+    Error error;
+    for (int i = 0; i < 4; ++i) {
+        const QString id = QStringLiteral("item%1").arg(i, 3, 10, QLatin1Char('0'));
+        QVERIFY(store.stage(makeRecord(id, static_cast<qint64>(i) * 1000), &error));
+    }
+    QVERIFY(store.commit(QStringLiteral("more"), &error).has_value());
+    QVERIFY(m_db->rebuildFrom(store, &error));
+
+    QSignalSpy resetSpy(&model, &QAbstractItemModel::modelReset);
+    QSignalSpy insertSpy(&model, &QAbstractItemModel::rowsInserted);
+    model.reload();
+
+    QCOMPARE(model.rowCount(), 4);
+    QCOMPARE(resetSpy.count(), 0);
+    QCOMPARE(insertSpy.count(), 1);
+    QCOMPARE(model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
+    QVERIFY(provider.contains(firstId));
 }
 
 QTEST_MAIN(TestBrowserModel)

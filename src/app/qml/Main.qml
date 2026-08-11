@@ -12,6 +12,11 @@ Window {
     // them; every read below falls back to the same default the C++ side
     // uses, so the window still works.
     property var settings: typeof appSettings === "undefined" ? null : appSettings
+    // Set by LibrarySession when a real library is open; null in a test or a
+    // build with no durable store, where nothing is ever scanning.
+    property var activity: typeof libraryActivity === "undefined" ? null : libraryActivity
+    property bool scanning: activity ? activity.scanning : false
+    property int indexedCount: activity ? activity.indexedCount : 0
     property int selectedIndex: -1
 
     readonly property int tileSize: settings ? settings.tileSize : 176
@@ -127,12 +132,37 @@ Window {
         height: 48
         color: "#2b2b2b"
 
-        Text {
+        Row {
             anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
-            color: "#ffffff"
-            font.pixelSize: 16
-            text: qsTr("pimio %1").arg(Qt.application.version)
-            objectName: "placeholderLabel"
+            spacing: 8
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#ffffff"
+                font.pixelSize: 16
+                text: qsTr("pimio %1").arg(Qt.application.version)
+                objectName: "placeholderLabel"
+            }
+
+            // Indexing a large library takes long enough that a window with
+            // no visible activity looks like one that has stopped answering.
+            BusyIndicator {
+                objectName: "scanBusyIndicator"
+                anchors.verticalCenter: parent.verticalCenter
+                height: 24
+                width: 24
+                running: root.scanning
+                visible: root.scanning
+            }
+
+            Text {
+                objectName: "scanStatusLabel"
+                anchors.verticalCenter: parent.verticalCenter
+                color: "#bbbbbb"
+                font.pixelSize: 12
+                visible: root.scanning
+                text: qsTr("Scanning… %1 found").arg(root.indexedCount)
+            }
         }
 
         // The two controls a user reaches for constantly sit in the bar
@@ -343,6 +373,21 @@ Window {
                 source: model.thumbnailStatus === 2
                         ? "image://thumbnail/" + model.mediaId
                         : ""
+
+                // The model says this row has a thumbnail but the provider
+                // could not serve it. Ask the model to render it again rather
+                // than leaving a grey tile that nothing would ever fix. Once
+                // per delegate: a file that genuinely cannot be rendered must
+                // not turn into an endless re-request loop.
+                property bool retried: false
+                onSourceChanged: retried = false
+                onStatusChanged: {
+                    if (status === Image.Error && !retried && root.mediaModel
+                            && typeof root.mediaModel.refreshThumbnail === "function") {
+                        retried = true
+                        root.mediaModel.refreshThumbnail(index)
+                    }
+                }
             }
 
             // Placeholder while loading
@@ -430,10 +475,32 @@ Window {
     }
 
     // Empty-library placeholder
+    // Shown while a scan has not produced anything to display yet, so an
+    // empty window during a long first scan reads as "working", not "broken".
+    Column {
+        objectName: "scanningPlaceholder"
+        anchors.centerIn: grid
+        visible: grid.count === 0 && root.scanning
+        spacing: 12
+
+        BusyIndicator {
+            objectName: "scanningPlaceholderIndicator"
+            anchors.horizontalCenter: parent.horizontalCenter
+            running: parent.visible
+        }
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: "#888888"
+            font.pixelSize: 16
+            horizontalAlignment: Text.AlignHCenter
+            text: qsTr("Scanning your library…\n%1 found so far").arg(root.indexedCount)
+        }
+    }
+
     Column {
         objectName: "emptyLibraryPlaceholder"
         anchors.centerIn: grid
-        visible: grid.count === 0
+        visible: grid.count === 0 && !root.scanning
         spacing: 12
 
         // Camera glyph drawn from primitives: a color-emoji glyph ("📷")

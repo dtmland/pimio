@@ -223,3 +223,46 @@ checks are now runnable against real library roots.
 - `app.smoke` — arrow and page keys, key-hold acceleration and its off switch,
   wheel scrolling at two speeds and its bounds, the tile-size binding, preview
   stepping, and the settings dialog.
+
+## Increment 7.6 — Progressive scanning and thumbnail retention — Complete
+
+Reported symptoms: a window that looks frozen while a library is first scanned,
+tiles that all appear at once at the end, and thumbnails that decay into grey
+tiles the longer the application is scrolled. Rationale in
+[../decisions/0004-progressive-scan-and-thumbnail-retention.md](../decisions/0004-progressive-scan-and-thumbnail-retention.md).
+
+### Deliverables
+
+- `scan::Scanner::setCommitBatchSize()` and a progress callback — the scan
+  commits in batches and reports each committed batch, so the grid fills as the
+  scan walks the tree instead of at the end.
+- `ProjectionDatabase::applyRecords()` — projects one committed batch in a
+  single transaction, deliberately without advancing the projected state token
+  so `isStale()` stays truthful.
+- `MediaLibraryModel` thumbnail retention — a bounded most-recently-used list;
+  an evicted id is removed from the image provider and its row returns to
+  `Pending`, which is the fix for the grey tiles. `reload()` now preserves
+  loaded thumbnails and appends rows without resetting the model.
+- `MediaLibraryModel::refreshThumbnail()` and a one-shot QML retry when an
+  `Image` reports an error.
+- `app::LibraryActivity` — a busy indicator, a "Scanning… N found" label, and a
+  placeholder for an empty grid during the first scan.
+- `scanBatchSize` stored setting (8–2048, default 64) with a settings-dialog
+  slider.
+
+### Automated evidence
+
+- `browser.model` — the retention bound drops old thumbnails rather than
+  claiming rows the provider cannot serve, a row scrolled back into view is
+  requested again, `refreshThumbnail()` re-requests, and an appending `reload()`
+  keeps loaded thumbnails and inserts rows without a model reset.
+- `browser.thumbnailImageProvider` — capacity, removal, and containment.
+- `scan.incremental` — a batched scan is readable from the store before it
+  finishes and reports cumulative counts, an unbatched scan still commits once,
+  and a cancelled batched scan keeps what it committed.
+- `projection.rebuild` — `applyRecords()` adds and replaces rows and leaves the
+  state token alone.
+- `settings.store` — `scanBatchSize` default, clamping, signals, persistence,
+  and reset.
+- `app.smoke` — a thumbnail the provider cannot serve is asked for again, and a
+  scan in progress shows the busy indicator and placeholder.

@@ -582,8 +582,68 @@ bool ProjectionDatabase::rebuildFrom(const DurableStore &store, Error *error)
     return true;
 }
 
-qsizetype ProjectionDatabase::recordCount(Error *error) const
+bool ProjectionDatabase::applyRecords(const QList<MediaRecord> &records, Error *error)
 {
+    if (!d->open) {
+        setError(error, ErrorCode::StorageUnavailable,
+                 QStringLiteral("The projection is not open."));
+        return false;
+    }
+    if (records.isEmpty()) {
+        return true;
+    }
+
+    QSqlDatabase db = d->database();
+    if (!db.transaction()) {
+        setError(error, ErrorCode::Internal,
+                 QStringLiteral("Could not start the projection transaction: %1")
+                     .arg(db.lastError().text()));
+        return false;
+    }
+
+    for (const MediaRecord &record : records) {
+        // A record can arrive again with new content (a file edited between
+        // two batches of the same scan), so its previous rows go first.
+        for (const QString &statement : {QStringLiteral("DELETE FROM media_tag WHERE media_id = ?"),
+                                         QStringLiteral("DELETE FROM media_fts WHERE id = ?"),
+                                         QStringLiteral("DELETE FROM media WHERE id = ?")}) {
+            QSqlQuery remove(db);
+            if (!d->prepared(remove, statement, error)) {
+                db.rollback();
+                return false;
+            }
+            remove.addBindValue(record.id.value());
+            if (!remove.exec()) {
+                const QString message = remove.lastError().text();
+                db.rollback();
+                setError(error, ErrorCode::Internal,
+                         QStringLiteral("Could not replace the projected record %1: %2")
+                             .arg(record.id.value(), message));
+                return false;
+            }
+        }
+
+        Error insertError;
+        if (!d->insertRecord(db, record, &insertError)) {
+            db.rollback();
+            if (error != nullptr) {
+                *error = insertError;
+            }
+            return false;
+        }
+    }
+
+    if (!db.commit()) {
+        const QString message = db.lastError().text();
+        db.rollback();
+        setError(error, ErrorCode::Internal,
+                 QStringLiteral("Could not commit the projected records: %1").arg(message));
+        return false;
+    }
+    return true;
+}
+
+qsizetype ProjectionDatabase::recordCount(Error *error) const{
     if (!d->open) {
         setError(error, ErrorCode::StorageUnavailable,
                  QStringLiteral("The projection is not open."));
