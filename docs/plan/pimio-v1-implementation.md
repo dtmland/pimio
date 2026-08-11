@@ -195,6 +195,43 @@ plan is explicitly revised.
 - Native integration tests execute on every platform runner.
 - Reconciliation converges to the same index as a clean scan.
 
+## Increment 7.5 — Browsing Controls and Settings
+
+Inserted after Increment 7 rather than renumbering 8–12, which are referenced by
+number across the plans, decision records, and progress log. It is deliberately
+small and is pulled forward of Increment 8 because the increments after it are
+judged by looking at a library — ordering, thumbnail quality, timestamps — and
+that judgement needs controls a person can drive.
+
+**Deliverables**
+
+- A `pimio::settings` component holding every user-visible setting, split into
+  **stored settings** persisted to an application-wide `pimio.conf` and
+  **session settings** that reset at every launch.
+- Sorting in the projection database by capture time, file name, file date,
+  file type, and file size, in either direction, exposed as a control in the
+  browser.
+- Keyboard navigation: arrows and PageUp/PageDown in the grid, left/right in
+  the preview following the grid's order, with a held key accelerating to a
+  bounded maximum step.
+- Wheel scrolling at a configurable speed with optional acceleration within one
+  gesture.
+- A live tile-size slider bounded by the thumbnail resolutions the model can
+  request, and a settings dialog reachable from the browser toolbar.
+
+**Automated acceptance**
+
+- Settings tests pin every default, the clamping of out-of-range values, the
+  tolerance of a corrupt configuration file, and that session settings are not
+  written to disk.
+- Projection tests cover each sort key in both directions, ties, records with
+  no file date, and files with no extension.
+- Model tests cover re-sorting, an unknown sort key, tile-size-to-thumbnail
+  tier selection, and re-requesting the visible window after a size change.
+- QML smoke tests drive arrow/page keys, key-hold acceleration, wheel scrolling
+  at two speeds, the tile-size binding, preview stepping, and the settings
+  dialog.
+
 ## Increment 8 — Save, Portable Metadata, and Image Recipes
 
 **Deliverables**

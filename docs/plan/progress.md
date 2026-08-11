@@ -18,6 +18,7 @@ Update this file in the same change that moves an increment forward.
 | 5 | Metadata read, query, and search | Complete |
 | 6 | Thumbnails, models, and basic browser | Complete |
 | 7 | Watching and reconciliation | Complete |
+| 7.5 | Browsing controls and settings | Complete |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
@@ -188,3 +189,37 @@ checks are now runnable against real library roots.
 - `watch.reconciliation` (5 subtests) — incremental and dropped-event paths
   converge to the same durable store and projection as a clean scan, and
   startup overflow is preserved.
+
+## Increment 7.5 — Browsing Controls and Settings — Complete
+
+**Status: Complete**
+
+### Deliverables
+
+- `pimio::settings::Settings` — every user-visible setting in one place, split
+  into stored settings persisted to an application-wide `pimio.conf` and
+  session settings that reset at every launch, with clamping and tolerant
+  parsing. Rationale in
+  [../decisions/0003-settings-and-view-controls.md](../decisions/0003-settings-and-view-controls.md).
+- `ProjectionDatabase::idsSorted()` and migration 3 (`file_extension` column and
+  sort indexes) — sorting by capture time, file name, file date, file type, and
+  file size in either direction.
+- `MediaLibraryModel` sorting and tile-size-driven thumbnail tiers (128/256/512),
+  so a larger tile is served a larger thumbnail rather than an upscaled one.
+- Browser controls: sort selector and direction, live tile-size slider, keyboard
+  navigation with hold-to-accelerate in both the grid and the preview,
+  configurable wheel scrolling with optional in-gesture acceleration, a settings
+  dialog, and a session-only tile diagnostics overlay.
+
+### Automated evidence
+
+- `settings.store` (16 subtests) — defaults, clamping, persistence across
+  instances, corrupt-file tolerance, reset, and that session settings are never
+  written.
+- `projection.sort` (9 subtests) — every sort key in both directions, ties,
+  missing file dates, and files without an extension.
+- `browser.model` — re-sorting, unknown sort keys, tier selection from tile
+  size, and re-requesting the visible window after a size change.
+- `app.smoke` — arrow and page keys, key-hold acceleration and its off switch,
+  wheel scrolling at two speeds and its bounds, the tile-size binding, preview
+  stepping, and the settings dialog.

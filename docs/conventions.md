@@ -14,13 +14,15 @@ These conventions apply to all implementation increments described in
 | `src/metadata/` | Metadata read adapters (`pimio::metadata`). Container parsers are private to `src/metadata/src/`; the only public surface is the `core::MetadataReader` implementation. |
 | `src/scan/` | Incremental scan and media identity (`pimio::scan`). Reaches the filesystem only through `core::FileSystem`. |
 | `src/projection/` | SQLite query cache (`pimio::projection`). The only place Qt Sql is linked. Holds nothing that cannot be rebuilt from the durable store. |
+| `src/settings/` | User settings (`pimio::settings`). Links only Qt Core so any component can read settings without a cycle. Stored settings persist to `pimio.conf`; session settings do not. See [decisions/0003-settings-and-view-controls.md](decisions/0003-settings-and-view-controls.md). |
 | `src/app/` | Qt application shell. `pimio::app_lib` holds testable startup logic; `pimio_app` is the thin executable. |
 | `src/app/qml/` | QML files, exposed through the `Pimio` QML module. |
 | `tests/core/` | Core unit and contract tests. No display, no network. |
 | `tests/support/` | Test-only fakes (`pimio::test_support`): clock, filesystem, durable store, metadata reader, media-request service. |
 | `tests/app/` | Application and QML smoke tests. |
 | `tests/lore/` | LORE adapter, fault, and concurrency tests. Skip with a stated reason when LORE is absent. |
-| `tests/projection/` | Schema migration and projection rebuild tests. |
+| `tests/projection/` | Schema migration, projection rebuild, and sorting tests. |
+| `tests/settings/` | Settings defaults, clamping, and persistence tests. |
 | `tests/fixtures/` | Fixture manifest test. The media itself lives in `tests/fixtures/data/` with recorded provenance and hashes. See [tests/fixtures/README.md](../tests/fixtures/README.md). |
 | `tests/studio/` | Studio (Tests B) GUI tests: automated, but they need a real display. CTest label `studio`; excluded from the offscreen `default` preset, run by the `studio` preset and under Xvfb by `default-x11`. See [docs/testing.md](testing.md). |
 | `tools/` | Maintenance tools that are not shipped, such as the fixture generator. |

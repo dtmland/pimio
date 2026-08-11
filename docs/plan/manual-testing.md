@@ -179,6 +179,131 @@ QtQuick, QtQuick.Controls, and QtQuick.Window modules installed.
 
 ---
 
+## Increment 7.5 — Browsing Controls and Settings
+
+Automated tests cover what these controls compute — the step a held key
+produces, the distance a wheel notch scrolls, the thumbnail tier a tile size
+selects. What they cannot judge is how it feels, which is the whole point of
+the increment.
+
+### MT-7.5.1 — Scroll feel with a real wheel and a real touchpad
+
+**Status**: Ready for sign-off.
+
+**Condition**: Real display server; a mouse with a notched wheel *and* a
+touchpad or high-resolution wheel, on the same machine if possible.
+
+**Steps**
+
+1. Launch `pimio` with a library of at least 500 items.
+2. Scroll with the notched wheel: one notch at a time, then a fast continuous
+   spin.
+3. Scroll with the touchpad using the same two gestures.
+4. Open Settings, halve and then double the scroll speed, and repeat.
+5. Turn scroll acceleration off and repeat the fast continuous scroll.
+
+**Acceptance**
+
+- One notch moves a useful distance — noticeably more than half a tile row —
+  without overshooting.
+- A fast continuous scroll speeds up smoothly and stops speeding up at a rate
+  the tester can still read.
+- Pausing for about a second and scrolling again starts slow: the previous
+  gesture's speed is not inherited.
+- The touchpad feels like the content is being dragged, not stepped.
+- With acceleration off, every notch moves the same distance.
+
+**Platforms**: Linux (X11/Wayland), macOS, Windows
+
+---
+
+### MT-7.5.2 — Key-hold acceleration in the grid and the preview
+
+**Status**: Ready for sign-off.
+
+**Condition**: Real display server. The OS keyboard repeat rate is at its
+default; note the value if it is not.
+
+**Steps**
+
+1. Launch with a library of at least 500 items.
+2. Tap Down once, then hold Down for about five seconds, then release.
+3. Repeat with Up, PageDown, and PageUp.
+4. Open a preview and hold Right for about five seconds, then Left.
+5. Turn key acceleration off in Settings and repeat steps 2 and 4.
+
+**Acceptance**
+
+- A single tap moves exactly one item (one row for Up/Down).
+- A hold starts at the same speed and speeds up within a second or so, and
+  stops speeding up while still being followable.
+- The selection never leaves the library at either end, and never jumps
+  backwards.
+- In the preview, held arrows keep up: the image being shown is never more
+  than a moment behind the key.
+- With acceleration off, a held key moves one item per repeat.
+
+**Platforms**: Linux (X11/Wayland), macOS, Windows
+
+---
+
+### MT-7.5.3 — Tile size and thumbnail sharpness
+
+**Status**: Ready for sign-off.
+
+**Condition**: Real display server. Run once on a standard-density display and
+once on a HiDPI display if one is available.
+
+**Steps**
+
+1. Launch with a library containing detailed photographs.
+2. Drag the tile-size slider from its minimum to its maximum and back, slowly,
+   then quickly.
+3. Leave it at the maximum and let the grid settle.
+4. Restart the application.
+
+**Acceptance**
+
+- The grid re-lays out live while the slider moves, without flicker or a frozen
+  window.
+- At the maximum tile size, thumbnails are sharp — not visibly softer than at
+  the default size.
+- After a size change, tiles that were on screen fill in again promptly rather
+  than staying on placeholders.
+- The size chosen before the restart is the size shown after it.
+
+**Platforms**: Linux (X11/Wayland), macOS, Windows
+
+---
+
+### MT-7.5.4 — Settings persistence and the session/stored split
+
+**Status**: Ready for sign-off.
+
+**Condition**: Real display server.
+
+**Steps**
+
+1. Change every stored setting away from its default, and turn the tile
+   diagnostics overlay on.
+2. Quit and relaunch.
+3. Locate `pimio.conf` (the platform's application configuration directory) and
+   read it.
+4. Use Reset in the settings dialog, then quit and relaunch.
+
+**Acceptance**
+
+- Every stored setting survives the restart.
+- The tile diagnostics overlay is off after the restart.
+- `pimio.conf` is readable text, contains the stored settings, and contains no
+  entry for the diagnostics overlay.
+- After Reset, the application looks as it did on first launch, and still does
+  after a restart.
+
+**Platforms**: Linux (X11/Wayland), macOS, Windows
+
+---
+
 ## General / Cross-increment
 
 ### MT-G.1 — Application does not modify originals during scan
