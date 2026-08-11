@@ -1,5 +1,6 @@
 #include "pimio/app/library_session.h"
 
+#include "pimio/app/application.h"
 #include "pimio/browser/media_library_model.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/core/error.h"
@@ -9,6 +10,7 @@
 #include "pimio/projection/job_queue.h"
 #include "pimio/projection/projection_database.h"
 #include "pimio/scan/library_root.h"
+#include "pimio/settings/settings.h"
 #include "pimio/scan/qt_file_system.h"
 #include "pimio/scan/scanner.h"
 #include "pimio/thumbnail/composite_renderer.h"
@@ -29,8 +31,10 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QLoggingCategory>
+#include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QScreen>
 #include <QStandardPaths>
 
 #include <algorithm>
@@ -128,6 +132,48 @@ LibrarySession::LibrarySession(QObject *parent)
 
 LibrarySession::~LibrarySession() = default;
 
+namespace {
+
+/// Maps a stored sort choice to the projection's ORDER BY. Written as a
+/// switch rather than a cast so the two enumerations can be reordered or
+/// extended independently and the compiler reports the mismatch.
+projection::ProjectionDatabase::SortKey projectionSortKey(settings::SortKey key)
+{
+    switch (key) {
+    case settings::SortKey::CaptureTime:
+        return projection::ProjectionDatabase::SortKey::CaptureTime;
+    case settings::SortKey::FileName:
+        return projection::ProjectionDatabase::SortKey::FileName;
+    case settings::SortKey::FileDate:
+        return projection::ProjectionDatabase::SortKey::FileDate;
+    case settings::SortKey::FileType:
+        return projection::ProjectionDatabase::SortKey::FileType;
+    case settings::SortKey::FileSize:
+        return projection::ProjectionDatabase::SortKey::FileSize;
+    }
+    return projection::ProjectionDatabase::SortKey::CaptureTime;
+}
+
+} // namespace
+
+void LibrarySession::applySettings()
+{
+    if (!d->model) {
+        return;
+    }
+    const settings::Settings &userSettings = applicationSettings();
+
+    d->model->setSorting(static_cast<int>(projectionSortKey(userSettings.sortKey())),
+                         userSettings.sortDescending());
+
+    // A tile is sized in device-independent pixels but drawn in physical
+    // ones, so a 176-point tile on a 2x display needs a 352-pixel image if it
+    // is not to be an upscale of a smaller render.
+    const QScreen *screen = QGuiApplication::primaryScreen();
+    const qreal pixelRatio = screen ? screen->devicePixelRatio() : 1.0;
+    d->model->setTilePixelSize(qRound(userSettings.tileSize() * pixelRatio));
+}
+
 void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngine &engine)
 {
     // The image provider and (empty, for now) model are registered
@@ -143,6 +189,18 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     engine.addImageProvider(QStringLiteral("thumbnail"), provider);
     d->model->setImageProvider(d->imageProvider);
     engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), d->model.get());
+
+    // Settings drive the model directly rather than through QML: the
+    // dialog is one way to change a setting, not the only one, and the sort
+    // order and thumbnail size are properties of the library view itself.
+    applySettings();
+    settings::Settings &userSettings = applicationSettings();
+    connect(&userSettings, &settings::Settings::sortKeyChanged, this,
+            [this] { applySettings(); });
+    connect(&userSettings, &settings::Settings::sortDescendingChanged, this,
+            [this] { applySettings(); });
+    connect(&userSettings, &settings::Settings::tileSizeChanged, this,
+            [this] { applySettings(); });
 
     const QStringList normalizedPaths = normalizedLibraryPaths(libraryPaths);
     if (normalizedPaths.isEmpty()) {

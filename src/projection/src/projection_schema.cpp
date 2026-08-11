@@ -82,6 +82,34 @@ const QList<Migration> &projectionMigrations()
                 )"),
             },
         },
+        Migration{
+            3,
+            QStringLiteral("browse-sort-columns"),
+            QStringList{
+                // The extension is what a user means by "file type" in a sort
+                // menu, and deriving it in SQL at query time would need a
+                // last-index-of that SQLite does not have. Store it instead;
+                // like every other column here it is derived from the record
+                // JSON in the same row.
+                QStringLiteral(
+                    "ALTER TABLE media ADD COLUMN file_extension TEXT NOT NULL DEFAULT ''"),
+                // One index per sort order the browser offers, each ending in
+                // id so the order stays total when the leading column ties.
+                QStringLiteral(
+                    "CREATE INDEX media_file_name ON media(file_name COLLATE NOCASE, id)"),
+                QStringLiteral("CREATE INDEX media_modified ON media(last_modified_ms, id)"),
+                QStringLiteral("CREATE INDEX media_size ON media(size_bytes, id)"),
+                QStringLiteral(
+                    "CREATE INDEX media_extension ON media(file_extension, file_name"
+                    " COLLATE NOCASE, id)"),
+                // Existing rows predate the new column and would sort as if
+                // every file had no extension. Dropping the state token makes
+                // the projection stale, which the startup path already
+                // recovers from by rebuilding it from the durable store.
+                QStringLiteral(
+                    "DELETE FROM projection_meta WHERE key = 'durableStateToken'"),
+            },
+        },
     };
     return migrations;
 }

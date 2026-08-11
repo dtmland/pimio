@@ -15,6 +15,7 @@ target_link_libraries(pimio_app_lib PUBLIC
     pimio::metadata
     pimio::projection
     pimio::scan
+    pimio::settings
     pimio::thumbnail
     pimio::watch
     Qt6::Gui

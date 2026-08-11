@@ -61,6 +61,11 @@ public:
     void start(const QStringList &libraryPaths, QQmlApplicationEngine &engine);
 
 private:
+    /// Pushes the current user settings (sort order and tile size) into the
+    /// browser model. Called once at start() and again whenever one of those
+    /// settings changes, from wherever it was changed.
+    void applySettings();
+
     class Private;
     std::unique_ptr<Private> d;
 };
