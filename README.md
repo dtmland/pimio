@@ -122,3 +122,4 @@ Decisions:
 - [0001 — LORE as pimio's durable store](docs/decisions/0001-lore-durable-store.md)
 - [0002 — A built-in metadata reader for v1's read path](docs/decisions/0002-metadata-adapter.md)
 - [0003 — Settings, and the browsing controls that read them](docs/decisions/0003-settings-and-view-controls.md)
+- [0004 — Showing a library while it is still being scanned, and who owns a thumbnail](docs/decisions/0004-progressive-scan-and-thumbnail-retention.md)

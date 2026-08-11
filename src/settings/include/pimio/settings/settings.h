@@ -73,6 +73,10 @@ class Settings : public QObject
                        NOTIFY scrollAccelerationChanged)
     Q_PROPERTY(bool keyRepeatAcceleration READ keyRepeatAcceleration
                        WRITE setKeyRepeatAcceleration NOTIFY keyRepeatAccelerationChanged)
+    Q_PROPERTY(int scanBatchSize READ scanBatchSize WRITE setScanBatchSize
+                       NOTIFY scanBatchSizeChanged)
+    Q_PROPERTY(int minimumScanBatchSize READ minimumScanBatchSize CONSTANT)
+    Q_PROPERTY(int maximumScanBatchSize READ maximumScanBatchSize CONSTANT)
 
     // Session settings.
     Q_PROPERTY(bool showTileDiagnostics READ showTileDiagnostics WRITE setShowTileDiagnostics
@@ -129,6 +133,22 @@ public:
     bool keyRepeatAcceleration() const;
     void setKeyRepeatAcceleration(bool enabled);
 
+    // ---- Stored: indexing -------------------------------------------------
+
+    /// How many files an initial scan indexes before the ones it has found so
+    /// far appear in the grid.
+    ///
+    /// This is the responsiveness/overhead dial the grid fills in from: each
+    /// batch costs one durable commit and one projection write, so a small
+    /// batch shows pictures sooner and spends more of the scan committing,
+    /// while a large one scans faster and leaves the window emptier for
+    /// longer. It is a preference rather than a tuning constant because the
+    /// right answer depends on the library and the disk it is on.
+    int scanBatchSize() const;
+    void setScanBatchSize(int records);
+    static int minimumScanBatchSize();
+    static int maximumScanBatchSize();
+
     // ---- Session ----------------------------------------------------------
 
     /// Overlays each tile with its row index and thumbnail state. A testing
@@ -166,6 +186,7 @@ signals:
     void scrollSpeedChanged();
     void scrollAccelerationChanged();
     void keyRepeatAccelerationChanged();
+    void scanBatchSizeChanged();
     void showTileDiagnosticsChanged();
 
 private:

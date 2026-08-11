@@ -37,9 +37,14 @@ scan::LibraryRoot rootFromJobPayload(const QJsonObject &payload);
 /// root unavailable, or a failed projection rebuild); per-file problems are
 /// accumulated as warnings in \a outResult exactly as Scanner::scan()
 /// documents.
+///
+/// \a onProgress is handed straight to Scanner::scan(), so a caller that
+/// configured the scanner to commit in batches is told about each one while
+/// the scan is still running.
 core::Error runReconcileJob(const core::JobRecord &job, const std::atomic<bool> &isCancelled,
                            scan::Scanner &scanner, projection::ProjectionDatabase *projection,
                            const core::DurableStore &store,
-                           scan::Scanner::Result *outResult = nullptr);
+                           scan::Scanner::Result *outResult = nullptr,
+                           const scan::Scanner::ProgressCallback &onProgress = {});
 
 } // namespace pimio::watch

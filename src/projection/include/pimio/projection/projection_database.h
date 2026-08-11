@@ -74,6 +74,20 @@ public:
     /// claim to be current for data it does not hold.
     bool rebuildFrom(const core::DurableStore &store, core::Error *error);
 
+    /// Projects \a records into the index without rebuilding it.
+    ///
+    /// This is not a write path for user data: every record here has already
+    /// been committed to the durable store, and the projection still holds
+    /// nothing that a rebuild could not recompute. It exists so a scan can
+    /// show what it has found so far instead of showing nothing until it
+    /// finishes: each committed batch is projected as it arrives.
+    ///
+    /// Runs as one transaction, replacing any rows already projected for the
+    /// same ids. The recorded state token is deliberately left alone, so a
+    /// projection filled this way still reports itself stale until a full
+    /// rebuildFrom() vouches for it against the store.
+    bool applyRecords(const QList<core::MediaRecord> &records, core::Error *error);
+
     // Queries. These are what the projection exists for; they must return
     // exactly what the same question asked of the durable store would.
 

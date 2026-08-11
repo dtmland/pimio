@@ -1,6 +1,7 @@
 #include "pimio/app/library_session.h"
 
 #include "pimio/app/application.h"
+#include "pimio/app/library_activity.h"
 #include "pimio/browser/media_library_model.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/core/error.h"
@@ -36,6 +37,7 @@
 #include <QQmlContext>
 #include <QScreen>
 #include <QStandardPaths>
+#include <QTimer>
 
 #include <algorithm>
 #include <vector>
@@ -60,6 +62,11 @@ QString indexDirectoryFor(const QStringList &libraryPaths)
             QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     return base + QStringLiteral("/libraries/") + digest;
 }
+
+/// How often, at most, the grid is refreshed while a scan is running. Four
+/// times a second is fast enough to look continuous and slow enough that
+/// re-querying the ordered id list is not what the scan spends its time on.
+constexpr int kModelRefreshIntervalMs = 250;
 
 QStringList normalizedLibraryPaths(const QStringList &libraryPaths)
 {
@@ -117,9 +124,14 @@ public:
 
     browser::ThumbnailImageProvider *imageProvider = nullptr; // owned by QQmlEngine
     std::unique_ptr<browser::MediaLibraryModel> model;
+    std::unique_ptr<LibraryActivity> activity;
 
     std::vector<std::unique_ptr<watch::QtDirectoryWatchAdapter>> watchAdapters;
     std::vector<std::unique_ptr<watch::WatchService>> watchServices;
+
+    // Coalesces the model reloads a batching scan would otherwise ask for
+    // once per commit.
+    QTimer refreshTimer;
 
     bool ready = false;
 };
@@ -128,6 +140,13 @@ LibrarySession::LibrarySession(QObject *parent)
     : QObject(parent)
     , d(std::make_unique<Private>())
 {
+    d->refreshTimer.setSingleShot(true);
+    d->refreshTimer.setInterval(kModelRefreshIntervalMs);
+    connect(&d->refreshTimer, &QTimer::timeout, this, [this] {
+        if (d->model) {
+            d->model->reload();
+        }
+    });
 }
 
 LibrarySession::~LibrarySession() = default;
@@ -172,6 +191,36 @@ void LibrarySession::applySettings()
     const QScreen *screen = QGuiApplication::primaryScreen();
     const qreal pixelRatio = screen ? screen->devicePixelRatio() : 1.0;
     d->model->setTilePixelSize(qRound(userSettings.tileSize() * pixelRatio));
+
+    if (d->scanner) {
+        d->scanner->setCommitBatchSize(userSettings.scanBatchSize());
+    }
+}
+
+void LibrarySession::applyScanBatch(const QList<core::MediaRecord> &records, int indexedCount)
+{
+    if (d->activity) {
+        d->activity->setIndexedCount(indexedCount);
+    }
+    if (!d->projectionDb || !d->projectionDb->isOpen() || records.isEmpty()) {
+        return;
+    }
+
+    // The projection's state token is deliberately not advanced here: only a
+    // full rebuild, once the scan finishes, can vouch for the whole store.
+    core::Error applyError;
+    if (!d->projectionDb->applyRecords(records, &applyError)) {
+        qCWarning(lcLibrary) << "Could not project a scan batch:" << applyError.message();
+        return;
+    }
+    scheduleModelRefresh();
+}
+
+void LibrarySession::scheduleModelRefresh()
+{
+    if (!d->refreshTimer.isActive()) {
+        d->refreshTimer.start();
+    }
 }
 
 void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngine &engine)
@@ -184,11 +233,14 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     // them up front means a library added by a future session never has to
     // race a context property appearing after QML already bound to it.
     d->model = std::make_unique<browser::MediaLibraryModel>();
+    d->activity = std::make_unique<LibraryActivity>();
     auto *provider = new browser::ThumbnailImageProvider();
     d->imageProvider = provider;
     engine.addImageProvider(QStringLiteral("thumbnail"), provider);
     d->model->setImageProvider(d->imageProvider);
     engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), d->model.get());
+    engine.rootContext()->setContextProperty(QStringLiteral("libraryActivity"),
+                                             d->activity.get());
 
     // Settings drive the model directly rather than through QML: the
     // dialog is one way to change a setting, not the only one, and the sort
@@ -200,6 +252,8 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     connect(&userSettings, &settings::Settings::sortDescendingChanged, this,
             [this] { applySettings(); });
     connect(&userSettings, &settings::Settings::tileSizeChanged, this,
+            [this] { applySettings(); });
+    connect(&userSettings, &settings::Settings::scanBatchSizeChanged, this,
             [this] { applySettings(); });
 
     const QStringList normalizedPaths = normalizedLibraryPaths(libraryPaths);
@@ -248,6 +302,9 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     d->metadataReader = std::make_unique<metadata::BuiltinMetadataReader>(d->fileSystem.get());
     d->scanner = std::make_unique<scan::Scanner>(d->fileSystem.get(), d->metadataReader.get(),
                                                  d->store);
+    // Committing in batches is what lets the grid fill in while the scan is
+    // still walking the library; see settings::Settings::scanBatchSize().
+    d->scanner->setCommitBatchSize(userSettings.scanBatchSize());
 
     // The thumbnail cache and image/video renderers back the model's
     // request service. CompositeRenderer tries the image renderer first and
@@ -269,39 +326,73 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
 
     // The job dispatcher runs ScanRoot/ReconcileRoot workers on its own
     // thread pool. The worker itself only touches the scanner and the
-    // durable store, never the projection's SQLite connection: rebuilding
-    // the projection and reloading the model happen below, in the
-    // jobSucceeded handler, which JobDispatcher guarantees runs back on this
-    // object's own thread. This mirrors how JobDispatcher already posts its
-    // own queue mutations back to its owning thread rather than mutating
-    // SQLite from a pool thread.
+    // durable store, never the projection's SQLite connection: projecting
+    // what a scan has committed so far, rebuilding the projection, and
+    // reloading the model all happen on this object's own thread, either in
+    // the jobSucceeded handler (which JobDispatcher guarantees runs there) or
+    // in applyScanBatch(), which the worker reaches only by posting to it.
+    // This mirrors how JobDispatcher already posts its own queue mutations
+    // back to its owning thread rather than mutating SQLite from a pool
+    // thread.
     d->dispatcher = std::make_unique<projection::JobDispatcher>(d->jobQueue.get());
     scan::Scanner *scanner = d->scanner.get();
     core::DurableStore *store = d->store;
-    d->dispatcher->registerWorker(
-            core::JobKind::ScanRoot,
-            [scanner, store](const core::JobRecord &job, const std::atomic<bool> &isCancelled) {
-                return watch::runReconcileJob(job, isCancelled, *scanner, nullptr, *store);
-            });
-    d->dispatcher->registerWorker(
-            core::JobKind::ReconcileRoot,
-            [scanner, store](const core::JobRecord &job, const std::atomic<bool> &isCancelled) {
-                return watch::runReconcileJob(job, isCancelled, *scanner, nullptr, *store);
-            });
+
+    // Copies the batch, because the scan resumes as soon as this returns and
+    // the records it committed are its own local state.
+    LibrarySession *session = this;
+    const scan::Scanner::ProgressCallback onScanProgress =
+            [session](const QList<core::MediaRecord> &committed,
+                      const scan::Scanner::Result &progress) {
+                const int indexed = progress.added + progress.updated + progress.unchanged;
+                QMetaObject::invokeMethod(
+                        session,
+                        [session, committed, indexed] {
+                            session->applyScanBatch(committed, indexed);
+                        },
+                        Qt::QueuedConnection);
+            };
+
+    const auto worker = [scanner, store, onScanProgress](const core::JobRecord &job,
+                                                         const std::atomic<bool> &isCancelled) {
+        return watch::runReconcileJob(job, isCancelled, *scanner, nullptr, *store, nullptr,
+                                      onScanProgress);
+    };
+    d->dispatcher->registerWorker(core::JobKind::ScanRoot, worker);
+    d->dispatcher->registerWorker(core::JobKind::ReconcileRoot, worker);
 
     projection::ProjectionDatabase *projectionDb = d->projectionDb.get();
     browser::MediaLibraryModel *model = d->model.get();
+    LibraryActivity *activity = d->activity.get();
+    projection::JobDispatcher *dispatcher = d->dispatcher.get();
+
+    connect(d->dispatcher.get(), &projection::JobDispatcher::jobStarted, this,
+            [activity](const QString &) { activity->setScanning(true); });
+
+    // A job that failed or was cancelled leaves the same question as one that
+    // succeeded — is anything still running? — so all three settle the
+    // indicator the same way.
+    const auto settleActivity = [activity, dispatcher](const QString &) {
+        activity->setScanning(dispatcher->runningCount() > 0);
+    };
+    connect(d->dispatcher.get(), &projection::JobDispatcher::jobFailed, this, settleActivity);
+    connect(d->dispatcher.get(), &projection::JobDispatcher::jobCancelled, this, settleActivity);
+
     connect(d->dispatcher.get(), &projection::JobDispatcher::jobSucceeded, this,
-            [projectionDb, store, model](const QString &) {
+            [this, projectionDb, store, model, settleActivity](const QString &jobId) {
                 // Every job on this queue is a ScanRoot or ReconcileRoot;
                 // both mean "the durable store may have changed", so the
                 // projection is rebuilt and the model reloaded unconditionally.
+                // This rebuild is also what makes the projection trustworthy
+                // again: the batches applied while the scan ran deliberately
+                // left its recorded state token behind.
                 core::Error rebuildError;
                 if (projectionDb->rebuildFrom(*store, &rebuildError)) {
                     model->reload();
                 } else {
                     qCWarning(lcLibrary) << "Projection rebuild failed:" << rebuildError.message();
                 }
+                settleActivity(jobId);
             });
     d->dispatcher->start();
 
@@ -333,6 +424,11 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     }
 
     d->ready = true;
+
+    // The scans are queued but not dispatched yet, and the dispatcher only
+    // says a job started after its next poll. Saying so here means the window
+    // shows activity from its first frame instead of looking stalled.
+    d->activity->setScanning(true);
 #endif
 }
 

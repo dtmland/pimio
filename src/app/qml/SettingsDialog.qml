@@ -113,6 +113,31 @@ Dialog {
                                    dialog.settings.scrollAcceleration = checked
                 }
 
+                Label { text: qsTr("Show found files every") }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Slider {
+                        objectName: "settingsScanBatchSizeSlider"
+                        Layout.fillWidth: true
+                        from: dialog.settings ? dialog.settings.minimumScanBatchSize : 8
+                        to: dialog.settings ? dialog.settings.maximumScanBatchSize : 2048
+                        stepSize: 8
+                        snapMode: Slider.SnapAlways
+                        value: dialog.settings ? dialog.settings.scanBatchSize : 64
+                        // Fewer files per batch means tiles appear sooner
+                        // during a first scan and the scan itself spends more
+                        // time committing what it found.
+                        onMoved: if (dialog.settings)
+                                     dialog.settings.scanBatchSize = Math.round(value)
+                    }
+                    Label {
+                        text: dialog.settings
+                              ? qsTr("%1 files").arg(dialog.settings.scanBatchSize) : ""
+                        Layout.preferredWidth: 60
+                    }
+                }
+
                 Label { text: qsTr("Key repeat acceleration") }
 
                 CheckBox {

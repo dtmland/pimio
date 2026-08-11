@@ -107,10 +107,11 @@ public:
     core::FileSystem *fs;
     core::MetadataReader *reader; // nullable
     core::DurableStore *store;
+    int commitBatchSize = 0;
 };
 
 Scanner::Scanner(core::FileSystem *fs, core::MetadataReader *reader, core::DurableStore *store)
-    : d(new Private{fs, reader, store})
+    : d(new Private{fs, reader, store, 0})
 {
 }
 
@@ -119,8 +120,18 @@ Scanner::~Scanner()
     delete d;
 }
 
+void Scanner::setCommitBatchSize(int records)
+{
+    d->commitBatchSize = std::max(0, records);
+}
+
+int Scanner::commitBatchSize() const
+{
+    return d->commitBatchSize;
+}
+
 core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCancelled,
-                          Result *result)
+                          Result *result, const ProgressCallback &onProgress)
 {
     // Hard check: root must exist.
     if (!d->fs->exists(root.absolutePath) || !d->fs->isDirectory(root.absolutePath)) {
@@ -182,6 +193,37 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
     // ---- Reconcile each found file ----
 
     QSet<QString> seenIds; // ids of records that still exist on disk
+
+    // Records staged since the last commit. Batching them lets a browser show
+    // part of a library while the rest is still being scanned: a record is
+    // invisible outside this process until it is committed.
+    QList<core::MediaRecord> pendingBatch;
+
+    auto commitBatch = [&]() -> core::Error {
+        if (!d->store->hasStagedChanges()) {
+            pendingBatch.clear();
+            return {};
+        }
+        core::Error commitError;
+        const auto checkpoint =
+            d->store->commit(QStringLiteral("Scan: %1").arg(root.absolutePath), &commitError);
+        if (!checkpoint.has_value()) {
+            d->store->discardStaged(nullptr);
+            return commitError;
+        }
+        if (onProgress && !pendingBatch.isEmpty()) {
+            onProgress(pendingBatch, *result);
+        }
+        pendingBatch.clear();
+        return {};
+    };
+
+    auto commitBatchIfFull = [&]() -> core::Error {
+        if (d->commitBatchSize <= 0 || pendingBatch.size() < d->commitBatchSize) {
+            return {};
+        }
+        return commitBatch();
+    };
 
     for (const core::DirectoryEntry &entry : std::as_const(foundEntries)) {
         if (isCancelled.load()) {
@@ -255,6 +297,10 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
             }
             seenIds.insert(existing.id.value());
             ++result->updated;
+            pendingBatch.append(existing);
+            if (const core::Error batchError = commitBatchIfFull(); batchError.isError()) {
+                return batchError;
+            }
 
         } else {
             // File is new at this path; compute fingerprint.
@@ -319,6 +365,10 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
             }
             seenIds.insert(newRecord.id.value());
             isMoved ? ++result->updated : ++result->added;
+            pendingBatch.append(newRecord);
+            if (const core::Error batchError = commitBatchIfFull(); batchError.isError()) {
+                return batchError;
+            }
         }
     }
 
@@ -342,14 +392,8 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
 
     // ---- Commit all staged changes ----
 
-    if (d->store->hasStagedChanges()) {
-        core::Error commitError;
-        const auto checkpoint =
-            d->store->commit(QStringLiteral("Scan: %1").arg(root.absolutePath), &commitError);
-        if (!checkpoint.has_value()) {
-            d->store->discardStaged(nullptr);
-            return commitError;
-        }
+    if (const core::Error commitError = commitBatch(); commitError.isError()) {
+        return commitError;
     }
 
     return {};

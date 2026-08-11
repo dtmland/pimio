@@ -25,7 +25,8 @@ scan::LibraryRoot rootFromJobPayload(const QJsonObject &payload)
 
 core::Error runReconcileJob(const core::JobRecord &job, const std::atomic<bool> &isCancelled,
                            scan::Scanner &scanner, projection::ProjectionDatabase *projection,
-                           const core::DurableStore &store, scan::Scanner::Result *outResult)
+                           const core::DurableStore &store, scan::Scanner::Result *outResult,
+                           const scan::Scanner::ProgressCallback &onProgress)
 {
     const scan::LibraryRoot root = rootFromJobPayload(job.payload);
     if (root.absolutePath.isEmpty()) {
@@ -34,7 +35,7 @@ core::Error runReconcileJob(const core::JobRecord &job, const std::atomic<bool> 
     }
 
     scan::Scanner::Result result;
-    const core::Error scanError = scanner.scan(root, isCancelled, &result);
+    const core::Error scanError = scanner.scan(root, isCancelled, &result, onProgress);
     if (outResult) {
         *outResult = result;
     }

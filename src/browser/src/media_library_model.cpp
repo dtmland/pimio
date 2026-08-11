@@ -37,6 +37,13 @@ void MediaLibraryModel::setRequestService(core::MediaRequestService *service)
 void MediaLibraryModel::setImageProvider(ThumbnailImageProvider *provider)
 {
     m_imageProvider = provider;
+    if (m_imageProvider) {
+        // A little slack above the model's own bound so the provider never
+        // evicts an image on its own: the model is the only side that can
+        // also put the row back to Pending, and an image dropped without
+        // that leaves a permanently grey tile.
+        syncImageProviderCapacity();
+    }
 }
 
 void MediaLibraryModel::setThumbnailSize(const QSize &size)
@@ -87,6 +94,7 @@ void MediaLibraryModel::invalidateThumbnails()
         m_imageProvider->clear();
     }
     m_requestIndex.clear();
+    m_retainedIds.clear();
     for (Item &item : m_items) {
         item.thumbnailStatus = ThumbnailStatus::Pending;
         item.thumbnailImage = QImage();
@@ -173,34 +181,193 @@ int MediaLibraryModel::prefetchMargin() const
     return m_prefetchMargin;
 }
 
+void MediaLibraryModel::setRetainedThumbnailLimit(int limit)
+{
+    m_retainedLimit = qMax(1, limit);
+    if (m_imageProvider) {
+        syncImageProviderCapacity();
+    }
+    while (m_retainedIds.size() > effectiveRetentionLimit()) {
+        releaseThumbnail(m_retainedIds.takeLast());
+    }
+}
+
+int MediaLibraryModel::retainedThumbnailLimit() const
+{
+    return m_retainedLimit;
+}
+
+int MediaLibraryModel::retainedThumbnailCount() const
+{
+    return static_cast<int>(m_retainedIds.size());
+}
+
+int MediaLibraryModel::effectiveRetentionLimit() const
+{
+    if (m_visibleFirst < 0 || m_visibleLast < m_visibleFirst) {
+        return m_retainedLimit;
+    }
+    // Everything the current window can ask for, plus a little slack. A bound
+    // smaller than the window would drop a thumbnail the grid is showing and
+    // immediately ask for it again.
+    const int window = m_visibleLast - m_visibleFirst + 1 + 2 * m_prefetchMargin + 16;
+    return qMax(m_retainedLimit, window);
+}
+
+void MediaLibraryModel::syncImageProviderCapacity()
+{
+    if (m_imageProvider) {
+        m_imageProvider->setCapacity(effectiveRetentionLimit() + 8);
+    }
+}
+
+void MediaLibraryModel::retainThumbnail(int row)
+{
+    syncImageProviderCapacity();
+
+    if (row < 0 || row >= m_items.size()) {
+        return;
+    }
+    const QString id = m_items.at(row).id.value();
+    m_retainedIds.removeOne(id);
+    m_retainedIds.prepend(id);
+
+    const int limit = effectiveRetentionLimit();
+    const int fetchFirst = m_visibleFirst < 0 ? -1 : qMax(0, m_visibleFirst - m_prefetchMargin);
+    const int fetchLast = m_visibleLast < 0
+            ? -1
+            : qMin(static_cast<int>(m_items.size()) - 1, m_visibleLast + m_prefetchMargin);
+    while (m_retainedIds.size() > limit) {
+        const QString evicted = m_retainedIds.takeLast();
+        const auto it = m_rowById.constFind(evicted);
+        const int evictedRow = it == m_rowById.constEnd() ? -1 : it.value();
+        releaseThumbnail(evicted);
+        // Dropping a row the window still covers would leave it showing a
+        // placeholder until the next scroll, so it is requested again now.
+        if (evictedRow >= fetchFirst && evictedRow <= fetchLast && evictedRow >= 0) {
+            requestThumbnailIfNeeded(evictedRow);
+        }
+    }
+}
+
+void MediaLibraryModel::releaseThumbnail(const QString &mediaId)
+{
+    if (m_imageProvider) {
+        m_imageProvider->removeImage(mediaId);
+    }
+    const auto it = m_rowById.constFind(mediaId);
+    if (it == m_rowById.constEnd()) {
+        return;
+    }
+    const int row = it.value();
+    if (row < 0 || row >= m_items.size()) {
+        return;
+    }
+    Item &item = m_items[row];
+    item.thumbnailImage = QImage();
+    if (item.thumbnailStatus == ThumbnailStatus::Ready) {
+        item.thumbnailStatus = ThumbnailStatus::Pending;
+    }
+    const QModelIndex idx = index(row);
+    emit dataChanged(idx, idx, {ThumbnailStatusRole, ThumbnailImageRole});
+}
+
+void MediaLibraryModel::rebuildRowIndex()
+{
+    m_rowById.clear();
+    m_rowById.reserve(m_items.size());
+    for (int row = 0; row < m_items.size(); ++row) {
+        m_rowById.insert(m_items.at(row).id.value(), row);
+    }
+}
+
 void MediaLibraryModel::reload()
 {
-    // Cancel all in-flight requests before resetting the item list.
+    // Cancel all in-flight requests before rebuilding the item list: their
+    // rows are about to move, so their callbacks can no longer be trusted.
     if (m_service) {
         m_service->cancelAllExcept({});
     }
-    if (m_imageProvider) {
-        m_imageProvider->clear();
-    }
-
-    beginResetModel();
-    m_items.clear();
     m_requestIndex.clear();
-    m_visibleFirst = -1;
-    m_visibleLast = -1;
 
+    QList<core::MediaId> ids;
     if (m_db && m_db->isOpen()) {
         core::Error error;
-        const QList<core::MediaId> ids = m_db->idsSorted(m_sortKey, m_sortOrder, &error);
-        m_items.reserve(ids.size());
-        for (const core::MediaId &id : ids) {
+        ids = m_db->idsSorted(m_sortKey, m_sortOrder, &error);
+    }
+
+    // A scan in progress adds rows to the end of the current order far more
+    // often than it reorders it, and an insertion keeps the grid's scroll
+    // position and its delegates where a reset would throw both away.
+    const int oldCount = static_cast<int>(m_items.size());
+    bool isAppendOnly = ids.size() >= oldCount;
+    for (int row = 0; isAppendOnly && row < oldCount; ++row) {
+        isAppendOnly = m_items.at(row).id == ids.at(row);
+    }
+
+    QHash<QString, Item> previous;
+    previous.reserve(oldCount);
+    for (const Item &item : std::as_const(m_items)) {
+        previous.insert(item.id.value(), item);
+    }
+
+    QList<Item> next;
+    next.reserve(ids.size());
+    for (const core::MediaId &id : std::as_const(ids)) {
+        const auto it = previous.constFind(id.value());
+        if (it != previous.constEnd()) {
+            Item item = it.value();
+            // Its request was just cancelled, so it is nobody's work now.
+            if (item.thumbnailStatus == ThumbnailStatus::Loading) {
+                item.thumbnailStatus = ThumbnailStatus::Pending;
+            }
+            item.thumbnailHandle = {};
+            item.thumbnailRequestKey.clear();
+            next.append(std::move(item));
+        } else {
             Item item;
             item.id = id;
-            m_items.append(std::move(item));
+            next.append(std::move(item));
         }
     }
 
-    endResetModel();
+    if (isAppendOnly && next.size() == oldCount) {
+        m_items = std::move(next);
+        rebuildRowIndex();
+    } else if (isAppendOnly) {
+        beginInsertRows({}, oldCount, static_cast<int>(next.size()) - 1);
+        m_items = std::move(next);
+        rebuildRowIndex();
+        endInsertRows();
+    } else {
+        beginResetModel();
+        m_items = std::move(next);
+        rebuildRowIndex();
+        endResetModel();
+    }
+
+    // Rows that are gone take their held thumbnails with them.
+    for (auto it = m_retainedIds.begin(); it != m_retainedIds.end();) {
+        if (m_rowById.contains(*it)) {
+            ++it;
+            continue;
+        }
+        if (m_imageProvider) {
+            m_imageProvider->removeImage(*it);
+        }
+        it = m_retainedIds.erase(it);
+    }
+
+    if (m_items.isEmpty()) {
+        m_visibleFirst = -1;
+        m_visibleLast = -1;
+        return;
+    }
+
+    // Re-request what the view is looking at: the reload cancelled it.
+    if (m_visibleFirst >= 0 && m_visibleLast >= m_visibleFirst) {
+        setVisibleRange(m_visibleFirst, m_visibleLast);
+    }
 }
 
 void MediaLibraryModel::setVisibleRange(int first, int last)
@@ -215,6 +382,7 @@ void MediaLibraryModel::setVisibleRange(int first, int last)
     const int visLast = qBound(0, last, count - 1);
     m_visibleFirst = visFirst;
     m_visibleLast = visLast;
+    syncImageProviderCapacity();
 
     // Expand to include the prefetch margin.
     const int fetchFirst = qMax(0, visFirst - m_prefetchMargin);
@@ -275,6 +443,22 @@ void MediaLibraryModel::requestThumbnail(int row)
     if (row < 0 || row >= m_items.size()) {
         return;
     }
+    requestThumbnailIfNeeded(row);
+}
+
+void MediaLibraryModel::refreshThumbnail(int row)
+{
+    if (row < 0 || row >= m_items.size()) {
+        return;
+    }
+    Item &item = m_items[row];
+    if (item.thumbnailStatus == ThumbnailStatus::Loading) {
+        return;
+    }
+    const QString id = item.id.value();
+    m_retainedIds.removeOne(id);
+    releaseThumbnail(id);
+    item.thumbnailStatus = ThumbnailStatus::Pending;
     requestThumbnailIfNeeded(row);
 }
 
@@ -425,6 +609,12 @@ void MediaLibraryModel::onThumbnailResult(const core::MediaRequest &request,
 
     const QModelIndex idx = index(row);
     emit dataChanged(idx, idx, {ThumbnailStatusRole, ThumbnailImageRole});
+
+    // After the row is reported Ready, so that a thumbnail dropped to make
+    // room for this one is reported in the order it happened.
+    if (item.thumbnailStatus == ThumbnailStatus::Ready) {
+        retainThumbnail(row);
+    }
 }
 
 void MediaLibraryModel::onThumbnailError(const core::MediaRequest &request,

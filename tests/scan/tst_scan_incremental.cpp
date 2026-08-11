@@ -122,6 +122,120 @@ private slots:
         QCOMPARE(records[0].metadata.fileName, QStringLiteral("photo.jpg"));
     }
 
+    void batchedScanCommitsBeforeItFinishes()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+
+        fs.addDirectory(kRoot);
+        for (int i = 0; i < 10; ++i) {
+            addFile(fs, kRoot + QStringLiteral("/photo%1.jpg").arg(i, 2, 10, QLatin1Char('0')),
+                    QByteArray("content-") + QByteArray::number(i));
+        }
+
+        Scanner scanner(&fs, &reader, &store);
+        scanner.setCommitBatchSize(4);
+        QCOMPARE(scanner.commitBatchSize(), 4);
+
+        // What a browser would see: how many records were readable from the
+        // store at the moment each batch was reported.
+        QList<int> visibleAtEachBatch;
+        QList<int> batchSizes;
+        QList<int> indexedAtEachBatch;
+        const Scanner::ProgressCallback onProgress =
+            [&](const QList<core::MediaRecord> &committed, const Scanner::Result &progress) {
+                batchSizes.append(static_cast<int>(committed.size()));
+                visibleAtEachBatch.append(static_cast<int>(loadAll(store).size()));
+                indexedAtEachBatch.append(progress.added + progress.updated + progress.unchanged);
+            };
+
+        std::atomic<bool> cancel{false};
+        Scanner::Result result;
+        const core::Error err = scanner.scan({kRoot}, cancel, &result, onProgress);
+
+        QVERIFY(!err.isError());
+        QCOMPARE(result.added, 10);
+        QCOMPARE(loadAll(store).size(), 10);
+
+        // Three reports: two full batches of four and the remaining two.
+        QCOMPARE(batchSizes, QList<int>({4, 4, 2}));
+        QCOMPARE(visibleAtEachBatch, QList<int>({4, 8, 10}));
+        QCOMPARE(indexedAtEachBatch, QList<int>({4, 8, 10}));
+    }
+
+    void anUnbatchedScanCommitsOnceAtTheEnd()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+
+        fs.addDirectory(kRoot);
+        for (int i = 0; i < 5; ++i) {
+            addFile(fs, kRoot + QStringLiteral("/photo%1.jpg").arg(i),
+                    QByteArray("content-") + QByteArray::number(i));
+        }
+
+        Scanner scanner(&fs, &reader, &store);
+        QCOMPARE(scanner.commitBatchSize(), 0);
+
+        int reports = 0;
+        int reportedRecords = 0;
+        std::atomic<bool> cancel{false};
+        Scanner::Result result;
+        const core::Error err = scanner.scan(
+            {kRoot}, cancel, &result,
+            [&](const QList<core::MediaRecord> &committed, const Scanner::Result &) {
+                ++reports;
+                reportedRecords += static_cast<int>(committed.size());
+            });
+
+        QVERIFY(!err.isError());
+        QCOMPARE(result.added, 5);
+        QCOMPARE(reports, 1);
+        QCOMPARE(reportedRecords, 5);
+        QCOMPARE(loadAll(store).size(), 5);
+    }
+
+    void aCancelledBatchedScanKeepsWhatItAlreadyCommitted()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+
+        fs.addDirectory(kRoot);
+        for (int i = 0; i < 12; ++i) {
+            addFile(fs, kRoot + QStringLiteral("/photo%1.jpg").arg(i, 2, 10, QLatin1Char('0')),
+                    QByteArray("content-") + QByteArray::number(i));
+        }
+
+        Scanner scanner(&fs, &reader, &store);
+        scanner.setCommitBatchSize(4);
+
+        std::atomic<bool> cancel{false};
+        Scanner::Result result;
+        const core::Error err = scanner.scan(
+            {kRoot}, cancel, &result,
+            [&cancel](const QList<core::MediaRecord> &, const Scanner::Result &) {
+                // Stop the scan as soon as the first batch is durable.
+                cancel.store(true);
+            });
+
+        QVERIFY(err.code() == core::ErrorCode::Cancelled);
+        // The committed batch describes files that really are on disk, and a
+        // later scan converges on the rest, so it is kept rather than undone.
+        QCOMPARE(loadAll(store).size(), 4);
+
+        // The next run finishes the job.
+        cancel.store(false);
+        Scanner::Result second;
+        QVERIFY(!scanner.scan({kRoot}, cancel, &second).isError());
+        QCOMPARE(loadAll(store).size(), 12);
+    }
+
     void scanSkipsNonMediaFilesLikeDsStore()
     {
         testing::MemoryFileSystem fs;

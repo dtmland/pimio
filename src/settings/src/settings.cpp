@@ -19,6 +19,7 @@ constexpr auto kSortDescendingKey = "view/sortDescending";
 constexpr auto kScrollSpeedKey = "input/scrollSpeed";
 constexpr auto kScrollAccelerationKey = "input/scrollAcceleration";
 constexpr auto kKeyRepeatAccelerationKey = "input/keyRepeatAcceleration";
+constexpr auto kScanBatchSizeKey = "indexing/scanBatchSize";
 
 constexpr int kDefaultTileSize = 176;
 constexpr int kMinimumTileSize = 96;
@@ -37,9 +38,21 @@ constexpr bool kDefaultScrollAcceleration = true;
 constexpr bool kDefaultKeyRepeatAcceleration = true;
 constexpr bool kDefaultShowTileDiagnostics = false;
 
+// Large enough that the commits are a small fraction of the scan, small
+// enough that the first tiles appear within a second or two of launching on
+// a library big enough for the wait to be noticeable.
+constexpr int kDefaultScanBatchSize = 64;
+constexpr int kMinimumScanBatchSize = 8;
+constexpr int kMaximumScanBatchSize = 2048;
+
 int clampTileSize(int size)
 {
     return std::clamp(size, kMinimumTileSize, kMaximumTileSize);
+}
+
+int clampScanBatchSize(int records)
+{
+    return std::clamp(records, kMinimumScanBatchSize, kMaximumScanBatchSize);
 }
 
 qreal clampScrollSpeed(qreal speed)
@@ -154,6 +167,7 @@ public:
     qreal scrollSpeed = kDefaultScrollSpeed;
     bool scrollAcceleration = kDefaultScrollAcceleration;
     bool keyRepeatAcceleration = kDefaultKeyRepeatAcceleration;
+    int scanBatchSize = kDefaultScanBatchSize;
 
     // Session.
     bool showTileDiagnostics = kDefaultShowTileDiagnostics;
@@ -326,6 +340,32 @@ void Settings::setShowTileDiagnostics(bool enabled)
     emit showTileDiagnosticsChanged();
 }
 
+int Settings::scanBatchSize() const
+{
+    return d->scanBatchSize;
+}
+
+void Settings::setScanBatchSize(int records)
+{
+    const int clamped = clampScanBatchSize(records);
+    if (clamped == d->scanBatchSize) {
+        return;
+    }
+    d->scanBatchSize = clamped;
+    d->store.setValue(QLatin1String(kScanBatchSizeKey), clamped);
+    emit scanBatchSizeChanged();
+}
+
+int Settings::minimumScanBatchSize()
+{
+    return kMinimumScanBatchSize;
+}
+
+int Settings::maximumScanBatchSize()
+{
+    return kMaximumScanBatchSize;
+}
+
 void Settings::resetToDefaults()
 {
     setTileSize(kDefaultTileSize);
@@ -334,6 +374,7 @@ void Settings::resetToDefaults()
     setScrollSpeed(kDefaultScrollSpeed);
     setScrollAcceleration(kDefaultScrollAcceleration);
     setKeyRepeatAcceleration(kDefaultKeyRepeatAcceleration);
+    setScanBatchSize(kDefaultScanBatchSize);
     setShowTileDiagnostics(kDefaultShowTileDiagnostics);
 
     // The setters above only write the values that changed, so a file holding
@@ -345,6 +386,7 @@ void Settings::resetToDefaults()
     d->store.setValue(QLatin1String(kScrollSpeedKey), d->scrollSpeed);
     d->store.setValue(QLatin1String(kScrollAccelerationKey), d->scrollAcceleration);
     d->store.setValue(QLatin1String(kKeyRepeatAccelerationKey), d->keyRepeatAcceleration);
+    d->store.setValue(QLatin1String(kScanBatchSizeKey), d->scanBatchSize);
     flush();
 }
 
@@ -396,6 +438,13 @@ void Settings::reload()
     if (keyAcceleration != d->keyRepeatAcceleration) {
         d->keyRepeatAcceleration = keyAcceleration;
         emit keyRepeatAccelerationChanged();
+    }
+
+    const int batch = clampScanBatchSize(readInt(d->store, kScanBatchSizeKey,
+                                                 kDefaultScanBatchSize));
+    if (batch != d->scanBatchSize) {
+        d->scanBatchSize = batch;
+        emit scanBatchSizeChanged();
     }
 }
 
