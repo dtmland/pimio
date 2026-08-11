@@ -7,6 +7,7 @@
 
 #include <QList>
 #include <QString>
+#include <QtCore/qnamespace.h>
 
 #include <memory>
 #include <optional>
@@ -89,6 +90,28 @@ public:
     /// Ids ordered by capture time, oldest first, then by id so the order is
     /// total even when timestamps collide.
     QList<core::MediaId> idsByCaptureTime(core::Error *error) const;
+
+    /// Field a browse query is ordered by.
+    ///
+    /// Every order ends in the media id, so the result is total: two files
+    /// with the same name, size, timestamp, or extension always come back in
+    /// the same relative order, and a paginated query cannot repeat or skip a
+    /// row because SQLite chose a different tie-break this time.
+    enum class SortKey {
+        CaptureTime = 0, ///< Metadata capture time.
+        FileName,        ///< File name, case-insensitive.
+        FileDate,        ///< Filesystem last-modified time.
+        FileType,        ///< File extension, then file name.
+        FileSize,        ///< Size in bytes.
+    };
+
+    /// Ids ordered by \a key in \a order.
+    ///
+    /// Descending reverses the leading column only; the id tie-break stays
+    /// ascending so that reversing the sort does not reshuffle equal rows
+    /// relative to each other.
+    QList<core::MediaId> idsSorted(SortKey key, Qt::SortOrder order,
+                                   core::Error *error) const;
 
     /// Paginated capture-time query. \a offset is the number of records to
     /// skip; \a limit is the maximum number to return. \a limit < 0 returns

@@ -1,5 +1,6 @@
 #include "pimio/app/application.h"
 #include "pimio/browser/thumbnail_image_provider.h"
+#include "pimio/settings/settings.h"
 
 #include <QAbstractListModel>
 #include <QDir>
@@ -7,8 +8,10 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
+#include <QQuickStyle>
 #include <QQuickWindow>
 #include <QSignalSpy>
+#include <QStandardPaths>
 #include <QTest>
 
 #include <utility>
@@ -138,10 +141,28 @@ private slots:
     void readyThumbnailUsesImageProvider();
     void detailLoadsModernImage_data();
     void detailLoadsModernImage();
+    void arrowKeysMoveTheSelectionByRowsAndColumns();
+    void holdingANavigationKeyAcceleratesUnlessDisabled();
+    void wheelScrollingFollowsTheConfiguredSpeed();
+    void tileSizeSettingResizesTheGridCells();
+    void settingsDialogExposesStoredAndSessionSettings();
+    void previewArrowKeysFollowTheGridOrder();
 };
 
 void TestAppSmoke::initTestCase()
 {
+    // Qt Quick Controls picks a native style on macOS and Windows. The macOS
+    // one draws ComboBox and Slider through AppKit (QtQuick.NativeStyle),
+    // which needs a real window from the Cocoa platform plugin; under the
+    // offscreen plugin this test runs on there is none, and the first frame
+    // that paints one of those controls crashes the process. The style a
+    // headless test draws with is not what it is testing, so it asks for a
+    // Qt-drawn one, which also makes the three platforms behave alike.
+    QQuickStyle::setStyle(QStringLiteral("Fusion"));
+
+    // Keeps the settings this test writes out of the developer's real
+    // configuration directory.
+    QStandardPaths::setTestModeEnabled(true);
     pimio::app::configureApplicationMetadata();
     QCOMPARE(QCoreApplication::applicationName(), QStringLiteral("pimio"));
 }
@@ -243,6 +264,262 @@ void TestAppSmoke::detailLoadsModernImage()
     QVERIFY(preview != nullptr);
     QTRY_COMPARE_WITH_TIMEOUT(preview->property("status").toInt(), 1, 10000); // Image.Ready
     QCOMPARE(preview->property("source").toUrl(), QUrl::fromLocalFile(absolutePath));
+}
+
+void TestAppSmoke::arrowKeysMoveTheSelectionByRowsAndColumns()
+{
+    SyntheticMediaModel model(100);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
+    QVERIFY(grid != nullptr);
+    QTRY_VERIFY(grid->width() > 0 && grid->height() > 0);
+
+    // A running application is handed keyboard focus by the window manager;
+    // a headless test window (Xvfb has no window manager, and the offscreen
+    // platform has no windows at all) is never activated, so nothing holds
+    // active focus and key events are dropped. Asking for it explicitly is
+    // what the window manager would have done.
+    grid->forceActiveFocus();
+    QTRY_VERIFY(grid->hasActiveFocus());
+
+    const int columns = grid->property("columns").toInt();
+    QVERIFY(columns > 0);
+
+    QVERIFY(QMetaObject::invokeMethod(grid, "moveSelection", Q_ARG(QVariant, 0)));
+    QCOMPARE(grid->property("currentIndex").toInt(), 0);
+
+    QTest::keyClick(window, Qt::Key_Right);
+    QCOMPARE(grid->property("currentIndex").toInt(), 1);
+
+    QTest::keyClick(window, Qt::Key_Down);
+    QCOMPARE(grid->property("currentIndex").toInt(), 1 + columns);
+
+    QTest::keyClick(window, Qt::Key_Up);
+    QCOMPARE(grid->property("currentIndex").toInt(), 1);
+
+    // A page is one screenful of rows, and the selection never leaves the
+    // model.
+    const int rowsPerPage = grid->property("height").toReal() / grid->property("cellHeight").toReal();
+    QTest::keyClick(window, Qt::Key_PageDown);
+    QCOMPARE(grid->property("currentIndex").toInt(), 1 + columns * rowsPerPage);
+
+    QTest::keyClick(window, Qt::Key_End);
+    QCOMPARE(grid->property("currentIndex").toInt(), model.rowCount() - 1);
+    QTest::keyClick(window, Qt::Key_Home);
+    QCOMPARE(grid->property("currentIndex").toInt(), 0);
+}
+
+void TestAppSmoke::holdingANavigationKeyAcceleratesUnlessDisabled()
+{
+    pimio::settings::Settings settings;
+    settings.resetToDefaults();
+    SyntheticMediaModel model(100);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("appSettings"), &settings);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+
+    // The step a key press produces, given the synthetic event the QML
+    // handler sees. A first press always moves exactly one item.
+    const auto step = [window](bool autoRepeat, int key = Qt::Key_Down) {
+        QVariantMap event{{QStringLiteral("key"), key},
+                          {QStringLiteral("isAutoRepeat"), autoRepeat}};
+        QVariant result;
+        const bool ok = QMetaObject::invokeMethod(window, "navigationStep",
+                                                  Q_RETURN_ARG(QVariant, result),
+                                                  Q_ARG(QVariant, event));
+        return ok ? result.toInt() : -1;
+    };
+
+    QCOMPARE(step(false), 1);
+    int last = 1;
+    for (int repeat = 0; repeat < 60; ++repeat) {
+        const int current = step(true);
+        QVERIFY(current >= last); // never slows down mid-hold
+        last = current;
+    }
+    QVERIFY2(last > 1, "a held key must move further than a single press");
+    const int maximum = window->property("maximumKeyStep").toInt();
+    QCOMPARE(last, maximum);
+
+    // Switching keys starts the ramp over, so releasing Down and holding Up
+    // does not inherit the speed.
+    QCOMPARE(step(false, Qt::Key_Up), 1);
+
+    // With acceleration off, a held key keeps the single-press step.
+    settings.setKeyRepeatAcceleration(false);
+    QVERIFY(QMetaObject::invokeMethod(window, "endKeyRepeat"));
+    QCOMPARE(step(false), 1);
+    for (int repeat = 0; repeat < 20; ++repeat) {
+        QCOMPARE(step(true), 1);
+    }
+}
+
+void TestAppSmoke::wheelScrollingFollowsTheConfiguredSpeed()
+{
+    pimio::settings::Settings settings;
+    settings.resetToDefaults();
+    settings.setScrollAcceleration(false);
+    SyntheticMediaModel model(400);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("appSettings"), &settings);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
+    QVERIFY(grid != nullptr);
+    QTRY_VERIFY(grid->width() > 0 && grid->height() > 0);
+
+    // One notch of a wheel, from rest, with a timestamp far enough apart that
+    // no gesture is in progress.
+    const auto oneNotch = [grid](qreal atMs) {
+        grid->setProperty("contentY", 0);
+        QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, -120),
+                                  Q_ARG(QVariant, 0), Q_ARG(QVariant, atMs));
+        return grid->property("contentY").toReal();
+    };
+
+    const qreal slow = oneNotch(0);
+    QVERIFY(slow > 0);
+
+    settings.setScrollSpeed(settings.scrollSpeed() * 2.0);
+    const qreal fast = oneNotch(10000);
+    QCOMPARE(fast, slow * 2.0);
+
+    // With acceleration on, a continued gesture covers more ground per notch
+    // than the first notch did.
+    settings.setScrollAcceleration(true);
+    grid->setProperty("contentY", 0);
+    qreal previous = 0;
+    for (int notch = 0; notch < 6; ++notch) {
+        QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, -120),
+                                  Q_ARG(QVariant, 0), Q_ARG(QVariant, 20000 + notch * 50));
+        previous = grid->property("contentY").toReal();
+    }
+    QVERIFY2(previous > fast * 6, "a continued scroll gesture must speed up");
+
+    // Scrolling never runs past the end of the content.
+    QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, -120000),
+                              Q_ARG(QVariant, 0), Q_ARG(QVariant, 40000));
+    const qreal maximum = grid->property("contentHeight").toReal()
+            - grid->property("height").toReal();
+    QCOMPARE(grid->property("contentY").toReal(), maximum);
+    QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, 120000),
+                              Q_ARG(QVariant, 0), Q_ARG(QVariant, 60000));
+    QCOMPARE(grid->property("contentY").toReal(), qreal(0));
+}
+
+void TestAppSmoke::tileSizeSettingResizesTheGridCells()
+{
+    pimio::settings::Settings settings;
+    settings.resetToDefaults();
+    SyntheticMediaModel model(50);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("appSettings"), &settings);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
+    QVERIFY(grid != nullptr);
+    QCOMPARE(grid->property("cellWidth").toInt(), settings.tileSize());
+
+    // The slider writes the setting; the grid follows it live.
+    settings.setTileSize(settings.maximumTileSize());
+    QCOMPARE(grid->property("cellWidth").toInt(), settings.maximumTileSize());
+    QCOMPARE(grid->property("cellHeight").toInt(), settings.maximumTileSize());
+
+    auto *slider = window->findChild<QQuickItem *>(QStringLiteral("tileSizeSlider"));
+    QVERIFY(slider != nullptr);
+    QCOMPARE(slider->property("from").toInt(), settings.minimumTileSize());
+    QCOMPARE(slider->property("to").toInt(), settings.maximumTileSize());
+}
+
+void TestAppSmoke::settingsDialogExposesStoredAndSessionSettings()
+{
+    pimio::settings::Settings settings;
+    settings.resetToDefaults();
+    SyntheticMediaModel model(10);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("appSettings"), &settings);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *dialog = window->findChild<QObject *>(QStringLiteral("settingsDialog"));
+    QVERIFY(dialog != nullptr);
+    QVERIFY(!dialog->property("visible").toBool());
+
+    auto *button = window->findChild<QQuickItem *>(QStringLiteral("settingsButton"));
+    QVERIFY(button != nullptr);
+    QVERIFY(QMetaObject::invokeMethod(button, "clicked"));
+    QTRY_VERIFY(dialog->property("visible").toBool());
+
+    // A stored setting and the session-only one are both reachable from the
+    // dialog.
+    auto *scrollSlider = window->findChild<QQuickItem *>(QStringLiteral("settingsScrollSpeedSlider"));
+    QVERIFY(scrollSlider != nullptr);
+    QCOMPARE(scrollSlider->property("value").toReal(), settings.scrollSpeed());
+
+    auto *diagnostics = window->findChild<QQuickItem *>(QStringLiteral("settingsTileDiagnosticsCheck"));
+    QVERIFY(diagnostics != nullptr);
+    QVERIFY(!settings.showTileDiagnostics());
+    settings.setShowTileDiagnostics(true);
+    QTRY_VERIFY(diagnostics->property("checked").toBool());
+}
+
+void TestAppSmoke::previewArrowKeysFollowTheGridOrder()
+{
+    SyntheticMediaModel model(20);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    QVERIFY(QMetaObject::invokeMethod(window, "showDetail", Q_ARG(QVariant, 5)));
+
+    auto *detail = window->findChild<QQuickItem *>(QStringLiteral("detailView"));
+    QVERIFY(detail != nullptr);
+    QTRY_VERIFY(detail->property("visible").toBool());
+    QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-5"));
+
+    // showDetail() moves keyboard focus to the preview; the keys below only
+    // arrive once it holds it.
+    QTRY_VERIFY(detail->hasActiveFocus());
+
+    // Right and left step one item along the order the grid is showing.
+    QTest::keyClick(window, Qt::Key_Right);
+    QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-6"));
+    QTest::keyClick(window, Qt::Key_Left);
+    QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-5"));
+
+    // The grid selection follows the preview, so closing it leaves the user
+    // where they were looking.
+    auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
+    QVERIFY(grid != nullptr);
+    QCOMPARE(grid->property("currentIndex").toInt(), 5);
+
+    // Stepping past the ends clamps rather than wrapping or emptying.
+    QVERIFY(QMetaObject::invokeMethod(window, "stepDetail", Q_ARG(QVariant, -100)));
+    QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-0"));
+    QVERIFY(QMetaObject::invokeMethod(window, "stepDetail", Q_ARG(QVariant, 100)));
+    QCOMPARE(detail->property("mediaId").toString(), QStringLiteral("item-19"));
+
+    QTest::keyClick(window, Qt::Key_Escape);
+    QTRY_VERIFY(!detail->property("visible").toBool());
 }
 
 QTEST_MAIN(TestAppSmoke)

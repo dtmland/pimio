@@ -9,8 +9,11 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStringList>
 #include <QUuid>
 #include <QVariant>
+
+#include <utility>
 
 namespace pimio::projection {
 
@@ -44,6 +47,21 @@ void setError(Error *error, ErrorCode code, const QString &message)
 QString notNull(const QString &value)
 {
     return value.isNull() ? QString(QLatin1String("")) : value;
+}
+
+/// Lower-cased extension of \a fileName without the dot, or an empty string
+/// when there is none.
+///
+/// A leading dot is not a separator ("`.profile`" has no extension), and the
+/// last dot wins ("`clip.tar.gz`" is a `gz`), which is what a user sorting by
+/// file type expects to see.
+QString fileExtension(const QString &fileName)
+{
+    const qsizetype dot = fileName.lastIndexOf(QLatin1Char('.'));
+    if (dot <= 0 || dot == fileName.size() - 1) {
+        return QString(QLatin1String(""));
+    }
+    return fileName.mid(dot + 1).toLower();
 }
 
 /// Turns what the user typed into an FTS5 MATCH expression.
@@ -372,11 +390,12 @@ bool ProjectionDatabase::Private::insertRecord(QSqlDatabase &db, const MediaReco
                           id, record_json,
                           fingerprint_algorithm, fingerprint_digest,
                           absolute_path, volume_id, file_id, size_bytes, last_modified_ms,
-                          kind, file_name, folder_path,
+                          kind, file_name, file_extension, folder_path,
                           capture_sort_key, capture_has_offset,
                           camera_make, camera_model, pixel_width, pixel_height,
                           duration_ms, rating, caption, latitude, longitude
-                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                                ?, ?)
                   )"),
                   error)) {
         return false;
@@ -397,6 +416,7 @@ bool ProjectionDatabase::Private::insertRecord(QSqlDatabase &db, const MediaReco
                            : QVariant(QMetaType(QMetaType::LongLong)));
     query.addBindValue(core::toString(metadata.kind));
     query.addBindValue(notNull(metadata.fileName));
+    query.addBindValue(fileExtension(metadata.fileName));
     query.addBindValue(notNull(metadata.folderPath));
     query.addBindValue(metadata.captureTime.sortKeyMSecs());
     query.addBindValue(metadata.captureTime.hasKnownOffset() ? 1 : 0);
@@ -636,12 +656,54 @@ QList<MediaId> ProjectionDatabase::idsByCaptureTime(Error *error) const
         QStringLiteral("SELECT id FROM media ORDER BY capture_sort_key, id"), {}, error);
 }
 
-QList<MediaId> ProjectionDatabase::idsByCaptureTime(int offset, int limit, Error *error) const
-{
+QList<MediaId> ProjectionDatabase::idsByCaptureTime(int offset, int limit, Error *error) const{
     const int sqlLimit = limit < 0 ? -1 : limit;
     return d->idsFrom(
         QStringLiteral("SELECT id FROM media ORDER BY capture_sort_key, id LIMIT ? OFFSET ?"),
         {sqlLimit, offset}, error);
+}
+
+QList<MediaId> ProjectionDatabase::idsSorted(SortKey key, Qt::SortOrder order,
+                                             Error *error) const
+{
+    // The sort columns follow the requested direction; the id tie-break always
+    // ascends, so reversing the sort does not also reshuffle rows that compare
+    // equal.
+    const QString direction = order == Qt::DescendingOrder ? QStringLiteral(" DESC")
+                                                           : QString();
+    QStringList columns;
+    switch (key) {
+    case SortKey::CaptureTime:
+        columns << QStringLiteral("capture_sort_key");
+        break;
+    case SortKey::FileName:
+        columns << QStringLiteral("file_name COLLATE NOCASE");
+        break;
+    case SortKey::FileDate:
+        // last_modified_ms is nullable: a record whose file date could not be
+        // read sorts with the oldest rather than disappearing from the view.
+        columns << QStringLiteral("COALESCE(last_modified_ms, 0)");
+        break;
+    case SortKey::FileType:
+        // Extension first, then name, so one file type reads as a list rather
+        // than as an arbitrary interleaving.
+        columns << QStringLiteral("file_extension")
+                << QStringLiteral("file_name COLLATE NOCASE");
+        break;
+    case SortKey::FileSize:
+        columns << QStringLiteral("size_bytes");
+        break;
+    }
+
+    QStringList orderBy;
+    for (const QString &column : std::as_const(columns)) {
+        orderBy << column + direction;
+    }
+    orderBy << QStringLiteral("id");
+
+    return d->idsFrom(QStringLiteral("SELECT id FROM media ORDER BY %1")
+                              .arg(orderBy.join(QStringLiteral(", "))),
+                      {}, error);
 }
 
 QList<MediaId> ProjectionDatabase::idsWithKind(MediaKind kind, Error *error) const

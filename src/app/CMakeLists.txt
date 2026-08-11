@@ -15,6 +15,7 @@ target_link_libraries(pimio_app_lib PUBLIC
     pimio::metadata
     pimio::projection
     pimio::scan
+    pimio::settings
     pimio::thumbnail
     pimio::watch
     Qt6::Gui
@@ -39,6 +40,7 @@ qt_add_qml_module(pimio_app_lib
     QML_FILES
         qml/DetailView.qml
         qml/Main.qml
+        qml/SettingsDialog.qml
 )
 
 qt_add_executable(pimio_app

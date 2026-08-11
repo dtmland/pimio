@@ -10,14 +10,65 @@ Rectangle {
     property int mediaKind
     property int thumbnailStatus
     property url thumbnailSource
+    // Whether holding an arrow key jumps progressively further.
+    property bool keyRepeatAcceleration: true
     signal closeRequested()
+    // Asks the view that owns this preview to move by delta items in its own
+    // order, so the preview always follows what the grid is showing.
+    signal stepRequested(int delta)
 
     objectName: "detailView"
     color: "#ee1b1b1b"
     visible: false
     focus: visible
 
+    // A held arrow key steps further per repeat, but more gently than in the
+    // grid: each step here decodes another full-size image, so the ceiling is
+    // low enough that the preview keeps up with the keyboard.
+    readonly property int maximumKeyStep: 4
+    property int keyRepeatCount: 0
+    property int lastNavigationKey: 0
+
+    function navigationStep(event) {
+        if (event.key !== lastNavigationKey) {
+            lastNavigationKey = event.key
+            keyRepeatCount = 0
+        }
+        if (!event.isAutoRepeat) {
+            keyRepeatCount = 0
+            return 1
+        }
+        keyRepeatCount = keyRepeatCount + 1
+        if (!keyRepeatAcceleration)
+            return 1
+        return Math.min(maximumKeyStep, 1 + Math.floor(keyRepeatCount / 4))
+    }
+
+    function endKeyRepeat() {
+        keyRepeatCount = 0
+        lastNavigationKey = 0
+    }
+
+    onVisibleChanged: if (!visible) endKeyRepeat()
+
     Keys.onEscapePressed: closeRequested()
+
+    Keys.onPressed: function(event) {
+        const step = detail.navigationStep(event)
+        if (event.key === Qt.Key_Left) {
+            detail.stepRequested(-step)
+        } else if (event.key === Qt.Key_Right) {
+            detail.stepRequested(step)
+        } else {
+            return
+        }
+        event.accepted = true
+    }
+
+    Keys.onReleased: function(event) {
+        if (!event.isAutoRepeat)
+            detail.endKeyRepeat()
+    }
 
     // When the full-resolution original is an image format Qt cannot decode
     // (for example a WebP or AVIF build without the matching image plugin),

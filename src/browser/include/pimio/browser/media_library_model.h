@@ -70,14 +70,53 @@ public:
     /// (the default); not owned by the model.
     void setImageProvider(ThumbnailImageProvider *provider);
 
-    /// Size of requested thumbnails in device-independent pixels. Default: 160×160.
+    /// Size of requested thumbnails in pixels. Default: 256×256.
+    ///
+    /// Changing the size invalidates every thumbnail already held: the cache
+    /// key includes the requested size, so a new size is a different render.
+    /// Rows go back to Pending and the visible window is requested again.
     void setThumbnailSize(const QSize &size);
     QSize thumbnailSize() const;
+
+    /// The thumbnail sizes the model will ask for, smallest first.
+    ///
+    /// Thumbnails are rendered at a few fixed sizes rather than at whatever
+    /// the tile happens to be, so that dragging a tile-size slider re-renders
+    /// (and re-caches) the library at most a handful of times instead of once
+    /// per pixel of slider travel. See
+    /// docs/decisions/0003-settings-and-view-controls.md.
+    static QList<int> thumbnailTiers();
+
+    /// The tier that covers a tile \a pixels across: the smallest tier that
+    /// is at least that big, or the largest tier when the tile exceeds it.
+    static QSize thumbnailSizeForTile(int pixels);
+
+    /// Sets the thumbnail size from the tile size the view is drawing, in
+    /// physical pixels (tile size in device-independent pixels multiplied by
+    /// the device pixel ratio). Quantised by thumbnailSizeForTile(), so a
+    /// slider drag that stays inside one tier costs nothing.
+    Q_INVOKABLE void setTilePixelSize(int pixels);
 
     /// Number of rows to prefetch beyond each edge of the visible range.
     /// Default: 20.
     void setPrefetchMargin(int margin);
     int prefetchMargin() const;
+
+    /// Field the rows are ordered by, and its direction.
+    ///
+    /// The order is the projection's, not the model's: the model asks the
+    /// database for ids in the requested order rather than sorting rows it
+    /// has already loaded, so the order is the same one pagination and any
+    /// other consumer of the projection would see. Changing either reloads.
+    void setSortKey(projection::ProjectionDatabase::SortKey key);
+    projection::ProjectionDatabase::SortKey sortKey() const;
+
+    void setSortOrder(Qt::SortOrder order);
+    Qt::SortOrder sortOrder() const;
+
+    /// Sets both at once, reloading only once. \a key is a
+    /// ProjectionDatabase::SortKey cast to int, so QML can call it.
+    Q_INVOKABLE void setSorting(int key, bool descending);
 
     /// Reloads the item list from the attached database.
     ///
@@ -116,16 +155,26 @@ private:
 
     const core::MediaRecord *ensureRecord(int row) const;
     void requestThumbnailIfNeeded(int row) const;
+    /// Drops every loaded thumbnail and re-requests the ones that were
+    /// already on screen. Used when the requested size changes.
+    void invalidateThumbnails();
     void onThumbnailResult(const core::MediaRequest &request, const core::MediaResult &result);
     void onThumbnailError(const core::MediaRequest &request, const core::Error &error);
 
     projection::ProjectionDatabase *m_db = nullptr;
     core::MediaRequestService *m_service = nullptr;
     ThumbnailImageProvider *m_imageProvider = nullptr;
-    QSize m_thumbnailSize{160, 160};
+    QSize m_thumbnailSize{256, 256};
     int m_prefetchMargin = 20;
+    projection::ProjectionDatabase::SortKey m_sortKey =
+            projection::ProjectionDatabase::SortKey::CaptureTime;
+    Qt::SortOrder m_sortOrder = Qt::AscendingOrder;
 
     QList<Item> m_items;
+    // Last window setVisibleRange() was told about, so a thumbnail-size
+    // change can re-request exactly what the user is looking at.
+    int m_visibleFirst = -1;
+    int m_visibleLast = -1;
     // Maps request cache key to row index for fast callback lookup.
     mutable QHash<QString, int> m_requestIndex;
 };

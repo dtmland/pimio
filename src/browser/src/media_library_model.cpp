@@ -41,7 +41,121 @@ void MediaLibraryModel::setImageProvider(ThumbnailImageProvider *provider)
 
 void MediaLibraryModel::setThumbnailSize(const QSize &size)
 {
+    if (!size.isValid() || size.isEmpty() || size == m_thumbnailSize) {
+        return;
+    }
     m_thumbnailSize = size;
+    invalidateThumbnails();
+}
+
+QList<int> MediaLibraryModel::thumbnailTiers()
+{
+    // 128 covers the smallest tile at 1x, 256 the default tile at 1x and the
+    // smallest at 2x, 512 the largest tile at 2x. Nothing larger is offered
+    // because nothing in the grid can use it: the detail view loads the
+    // original file instead.
+    return {128, 256, 512};
+}
+
+QSize MediaLibraryModel::thumbnailSizeForTile(int pixels)
+{
+    const QList<int> tiers = thumbnailTiers();
+    int chosen = tiers.constLast();
+    for (const int tier : tiers) {
+        if (pixels <= tier) {
+            chosen = tier;
+            break;
+        }
+    }
+    return {chosen, chosen};
+}
+
+void MediaLibraryModel::setTilePixelSize(int pixels)
+{
+    setThumbnailSize(thumbnailSizeForTile(pixels));
+}
+
+void MediaLibraryModel::invalidateThumbnails()
+{
+    if (m_items.isEmpty()) {
+        return;
+    }
+    if (m_service) {
+        m_service->cancelAllExcept({});
+    }
+    if (m_imageProvider) {
+        m_imageProvider->clear();
+    }
+    m_requestIndex.clear();
+    for (Item &item : m_items) {
+        item.thumbnailStatus = ThumbnailStatus::Pending;
+        item.thumbnailImage = QImage();
+        item.thumbnailHandle = {};
+        item.thumbnailRequestKey.clear();
+    }
+    emit dataChanged(index(0), index(m_items.size() - 1),
+                     {ThumbnailStatusRole, ThumbnailImageRole});
+
+    // Re-request what the view is currently showing. Without this the grid
+    // would stay on placeholders until the next scroll.
+    if (m_visibleFirst >= 0 && m_visibleLast >= m_visibleFirst) {
+        setVisibleRange(m_visibleFirst, m_visibleLast);
+    }
+}
+
+void MediaLibraryModel::setSortKey(projection::ProjectionDatabase::SortKey key)
+{
+    if (key == m_sortKey) {
+        return;
+    }
+    m_sortKey = key;
+    reload();
+}
+
+projection::ProjectionDatabase::SortKey MediaLibraryModel::sortKey() const
+{
+    return m_sortKey;
+}
+
+void MediaLibraryModel::setSortOrder(Qt::SortOrder order)
+{
+    if (order == m_sortOrder) {
+        return;
+    }
+    m_sortOrder = order;
+    reload();
+}
+
+Qt::SortOrder MediaLibraryModel::sortOrder() const
+{
+    return m_sortOrder;
+}
+
+void MediaLibraryModel::setSorting(int key, bool descending)
+{
+    using SortKey = projection::ProjectionDatabase::SortKey;
+    SortKey requested = m_sortKey;
+    switch (static_cast<SortKey>(key)) {
+    case SortKey::CaptureTime:
+    case SortKey::FileName:
+    case SortKey::FileDate:
+    case SortKey::FileType:
+    case SortKey::FileSize:
+        requested = static_cast<SortKey>(key);
+        break;
+    default:
+        // An unknown value (a newer configuration file, or a QML typo) keeps
+        // the current order rather than emptying the view.
+        break;
+    }
+
+    const Qt::SortOrder order = descending ? Qt::DescendingOrder : Qt::AscendingOrder;
+    if (requested == m_sortKey && order == m_sortOrder) {
+        return;
+    }
+    m_sortKey = requested;
+    m_sortOrder = order;
+    reload();
 }
 
 QSize MediaLibraryModel::thumbnailSize() const
@@ -72,10 +186,12 @@ void MediaLibraryModel::reload()
     beginResetModel();
     m_items.clear();
     m_requestIndex.clear();
+    m_visibleFirst = -1;
+    m_visibleLast = -1;
 
     if (m_db && m_db->isOpen()) {
         core::Error error;
-        const QList<core::MediaId> ids = m_db->idsByCaptureTime(&error);
+        const QList<core::MediaId> ids = m_db->idsSorted(m_sortKey, m_sortOrder, &error);
         m_items.reserve(ids.size());
         for (const core::MediaId &id : ids) {
             Item item;
@@ -97,6 +213,8 @@ void MediaLibraryModel::setVisibleRange(int first, int last)
     // Clamp visible range.
     const int visFirst = qBound(0, first, count - 1);
     const int visLast = qBound(0, last, count - 1);
+    m_visibleFirst = visFirst;
+    m_visibleLast = visLast;
 
     // Expand to include the prefetch margin.
     const int fetchFirst = qMax(0, visFirst - m_prefetchMargin);
