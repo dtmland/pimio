@@ -12,6 +12,16 @@ and maintaining chronological media libraries. It prioritizes dependable
 indexing, portable metadata, timestamp correction, and responsive everyday
 workflows over a custom graphics engine.
 
+Architecturally, 1.0.0 is the **standalone desktop** stage of the
+[deployment progression](pimio.md#deployment-progression): pimio client and
+embedded LORE on one computer, one user, excellent local libraries. The
+release should be intentionally modest in visible functionality but ambitious
+in architecture — the foundations laid here (library/asset/revision/author
+identity, storage abstraction, canonical-versus-derived separation, service
+boundaries) must not require a rewrite when v2 adds servers and v3 adds
+collaboration. The guiding distinction is between "not implemented yet" and
+"architecturally impossible"; v1 must always land on the former.
+
 The application should use Qt 6, C++, and QML. The initial interface uses
 standard Qt controls and virtualized QML grid, list, timeline, and detail
 views. This is intentionally a basic frontend: the library, metadata, jobs,
@@ -22,14 +32,21 @@ can support the 2.0.0 rendering frontend without being rewritten.
 
 ### Library and Resilience
 
-- Configure one or more local library roots.
+- Treat the **Library** as the fundamental, user-facing unit: one library is
+  one LORE repository with a stable unique identity independent of its
+  location on disk. Provide library management — create, open, close, switch,
+  rename, move, back up, and restore libraries — so a library is a portable,
+  self-contained object rather than an implicit side effect of scanned
+  folders.
+- Configure one or more local media roots per library.
 - Scan images and videos incrementally, preserving a stable file identity and
   content fingerprint to recognize moves and renames.
 - Store derived state in a SQLite cache with migrations, transactions,
   write-ahead logging, and a persistent job queue.
 - Treat LORE as the ground-truth storage layer for durable state and history.
-  Treat the SQLite index and generated cache as rebuildable. Preserve portable
-  metadata and edit recipes with the original media.
+  Treat the SQLite index and generated cache as rebuildable: a corrupted or
+  deleted index is reconstructed from the repository, never the reverse.
+  Preserve portable metadata and edit recipes with the original media.
 - Watch configured folders, coalesce filesystem events into durable jobs, and
   run low-priority reconciliation scans for watcher overflows, network volumes,
   or missed events.
@@ -105,6 +122,53 @@ The following services are UI-independent and form the stable contract for
 - Edit recipes, playback ranges, and export rendering.
 - Search and chronological grouping.
 
+pimio additionally maintains the three-layer separation described in
+[pimio.md](pimio.md#architectural-layers): UI/application, services, and LORE
+storage. LORE is reached only through the `pimio::core::DurableStore`
+abstraction; no other component may know LORE exists.
+
+### Foundation Requirements for Future Versions
+
+v1 is single-user and local, but the following concepts must be implemented
+correctly from the beginning because they are prohibitively hard to retrofit:
+
+- **Library identity.** Every library carries a persistent unique identifier,
+  stored inside the repository, that survives copying, backup, restoration,
+  migration, and relocation. A library's path or network location is never
+  its identity.
+- **Asset identity.** Every media asset has a stable identity independent of
+  filename and filesystem location, under which its original, derivatives,
+  metadata, and revisions are grouped.
+- **Revision identity.** Every meaningful modification produces an
+  identifiable revision recording its parent revision, author, timestamp,
+  application version, and change information.
+- **Author identity.** Every revision carries an author field
+  (`author = user id`), even though v1 has exactly one implicit local user.
+  Multi-user history in v3 must not require rewriting v1 history.
+- **Authorization boundary.** The service layer has a conceptual
+  authorization model (read / write / administer / share per library) that
+  v1 satisfies trivially by granting the local user everything. v2/v3 make it
+  configurable without moving the boundary.
+- **Immutable history.** Canonical revisions are never destructively
+  modified; changes append revisions. This is what makes future
+  collaboration, auditing, rollback, and conflict handling tractable.
+- **Explicit asset relationships.** Original-to-derivative relationships
+  (thumbnail, preview, export, proxy, trim) are modeled in the data, not
+  inferred from filenames.
+- **Rebuildable indexes.** Every search/index/cache database can be destroyed
+  and reconstructed from the repository. This is a fundamental v1 property,
+  not an optimization.
+- **Service API boundary.** Application logic reaches library services
+  through an in-process API designed so that v2 can put a network between
+  client and services (headless pimio Server, mobile clients) without an
+  architectural rewrite. v1 does not implement networking, authentication,
+  or user management UI — only the boundaries they will need.
+
+Deliberately postponed (not designed out): complex permissions, team
+administration, approval workflows, asset locking, client portals,
+multi-site replication, sophisticated conflict resolution, and distributed
+deployment. See [pimio-v2.md](pimio-v2.md) for when each arrives.
+
 ### Versioning and Commit Strategy (LORE Ground Truth)
 
 - Use LORE as the authoritative storage layer for library state, metadata
@@ -112,7 +176,10 @@ The following services are UI-independent and form the stable contract for
   read/query cache rebuilt from LORE.
 - Keep commits user-initiated rather than background-batched. Expose explicit
   "Save" affordances (including per-group checkpoints) so each LORE commit
-  maps to a meaningful user action.
+  maps to a meaningful user action. Scan/ingest results are committed in
+  batches as application checkpoints.
+- Record author, timestamp, application version, and change description with
+  each checkpoint so revisions satisfy the identity requirements above.
 - Stage metadata edits, tag changes, timestamp repairs, and recipe updates in
   SQLite during interaction, then commit them to LORE when the user saves.
   Handle failed LORE commits visibly and recoverably without destructive data
@@ -175,8 +242,18 @@ release.
 4. The app handles interrupted work, unavailable folders, event loss,
    unsupported media, low disk space, cancellation, and metadata conflicts
    visibly and recoverably.
-5. Native builds are tested on supported Windows and macOS versions and a
+5. A user can create, open, switch, back up, and restore libraries; a
+   restored or moved library is recognized as the same library, and pimio
+   reconstructs its index and caches from the repository.
+6. Native builds are tested on supported Windows and macOS versions and a
    representative X11/Wayland Linux environment.
+
+After 1.0.0, the 1.x series focuses on making the library extremely
+dependable before v2 introduces servers: robust backup and restore
+verification, library integrity checking, migration between computers,
+recovery from interrupted operations, background indexing, storage
+monitoring, cache management, and improved version history. A user must be
+able to trust a pimio Library before pimio adds collaboration.
 
 These are release-level outcomes, not a single implementation milestone.
 Feature work must pass the per-increment gates in the implementation plan.
