@@ -19,11 +19,19 @@ Update this file in the same change that moves an increment forward.
 | 6 | Thumbnails, models, and basic browser | Complete |
 | 7 | Watching and reconciliation | Complete |
 | 7.5 | Browsing controls and settings | Complete |
+| 7.6 | Progressive scanning and thumbnail retention | Complete |
+| 7.7 | Library, revision, and author identity | Not started |
+| 7.8 | Library storage-model gate (managed originals) | Not started |
+| 7.9 | Library manager and lifecycle | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
+
+Increments 7.7–7.9 were added when the plans were reoriented around the
+library-centric LORE design; the gap analysis motivating them is recorded in
+[pimio-v1-implementation.md](pimio-v1-implementation.md#reorientation-the-library-centric-direction).
 
 ## Increment 0 — Project skeleton and observable CI — Complete
 

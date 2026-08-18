@@ -4,6 +4,68 @@ This document turns [the v1 release plan](pimio-v1.md) into independently
 verifiable implementation increments. It is intentionally not a promise to
 implement all of v1 in one branch or agent session.
 
+## Reorientation: the Library-Centric Direction
+
+The plans were reoriented around the principle that **one pimio Library is
+one LORE repository** with a stable identity, portable as a self-contained
+unit, and the foundation for the v2 server / v3 studio progression described
+in [pimio.md](pimio.md) and [pimio-v2.md](pimio-v2.md). Increments 0–7.6 were
+implemented before this reorientation. This section records where the
+implementation stands against the new direction and what the delta is; the
+delta work is captured as Increments 7.7–7.9 and amendments to Increment 8.
+
+### Current state versus the target design
+
+| Target requirement | Current state | Delta |
+| --- | --- | --- |
+| Storage abstraction (LORE behind one adapter) | **Done.** `pimio::core::DurableStore`; only `src/lore/` knows LORE exists | None |
+| Asset identity independent of path/filename | **Done.** `core::MediaId` survives move/rename; duplicates get distinct ids | None |
+| Canonical vs. derived separation, rebuildable indexes | **Done.** SQLite projection and thumbnail cache are disposable and rebuilt from the store; enforced by tests | Keep enforcing for every new index |
+| Immutable, append-only history | **Done at the store level.** LORE revisions are append-only; `commit()` is a durability boundary | None |
+| Library identity independent of location | **Missing.** A "library" is a hash of the `--library` paths; the repository carries no identity | Increment 7.7 |
+| Revision identity with author, app version, parent | **Partial.** `Checkpoint` has id, message, timestamp only | Increment 7.7 |
+| Author identity on every revision | **Missing.** No author concept anywhere | Increment 7.7 |
+| Authorization boundary in the service layer | **Missing.** No permission concept | Increment 7.7 (conceptual only) |
+| Explicit original→derivative relationships | **Partial.** Thumbnails are correctly derived/disposable, but edited versions and exports have no modeled relationship | Increment 8 (amended) |
+| Originals stored/versioned in the repository | **Not the current model.** The repository stores JSON records; originals stay in user folders | Increment 7.8 gate |
+| Library lifecycle (create/open/rename/move/backup/restore) | **Missing.** Only repeatable `--library <path>` CLI options | Increment 7.9 |
+| Service API boundary remotable in v2 | **Partial.** Services are UI-independent C++ interfaces, but no consolidated session API designed for a future network boundary | Increment 7.9 records the boundary; v2 implements it |
+| Non-destructive edit recipes | **Planned as designed.** Increment 8 already specifies versioned recipes | None |
+| Single-writer coordination above LORE | **Done.** Writer lock per store; matches the rule that future multi-process/multi-user features coordinate above LORE | None |
+
+### Design holes and recommendations (for review)
+
+1. **Managed versus referenced originals.** The target design describes a
+   library that *contains* originals and derivatives, making it a
+   self-contained portable unit. The implementation references media in
+   place and versions only metadata/recipes. LORE's measured performance
+   covers ~2 KB JSON records, not multi-gigabyte video. **Recommendation:**
+   keep the current *referenced* model as the v1 default, and run the
+   Increment 7.8 feasibility gate for a *managed* mode (originals committed
+   to the repository). Until managed mode exists, "backup library" must
+   explicitly include the referenced media roots, or the portability claim
+   is false. Record the outcome as decision 0005.
+2. **The LORE branch-advance defect remains a release blocker** (condition 4
+   of [decision 0001](../decisions/0001-lore-durable-store.md)). The
+   library-centric direction makes the repository the *only* durable copy of
+   organizational state, which raises, not lowers, the bar.
+3. **Synchronization semantics are unproven.** The v2 mirror/synchronize
+   mode must be scoped to what LORE actually supports; pimio must not imply
+   Git-style peer-to-peer sync. **Recommendation:** a sync-semantics spike is
+   the entry gate for that v2 feature, mirroring how Increment 2 gated
+   persistence.
+4. **History shape for future multi-user.** Per decision 0001, concurrent
+   writers corrupt LORE; coordination happens above it. **Recommendation:**
+   plan v3 collaboration as server-serialized linear history per library
+   (parallel *revisions of an asset* are an application concept), rather
+   than assuming storage-level branching/merging.
+5. **Albums, tags, and ratings must be canonical.** When they are
+   implemented, they belong in repository records, not only in the
+   projection, or a rebuilt library silently loses organization.
+6. **Users are records, not configuration.** The single implicit v1 user
+   should be represented as a stable authored identity stored with the
+   library so v3 can add named users without rewriting history.
+
 ## Planning Review and Recommendations
 
 The product direction is coherent, but the current v1 scope is too broad for a
@@ -232,13 +294,104 @@ that judgement needs controls a person can drive.
   at two speeds, the tile-size binding, preview stepping, and the settings
   dialog.
 
+## Increment 7.7 — Library, Revision, and Author Identity
+
+Foundation work from the reorientation above. Small, code-level, and blocking
+for Increment 8, because checkpoints written by Save must already carry
+provenance.
+
+**Deliverables**
+
+- A library descriptor stored as a reserved record inside the repository:
+  stable library id (generated once at creation), user-visible name, format
+  version, and creation timestamp. The id survives copy, backup, restore,
+  move, and rename; the on-disk path is never the identity.
+- `core::Checkpoint` extended with author (a stable user id), application
+  version, and parent-checkpoint linkage. v1 creates one implicit local user,
+  stored with the library, so future named users do not rewrite history.
+- A documented conceptual authorization model in the service layer (read /
+  write / administer / share per library), satisfied in v1 by granting the
+  implicit user everything. No permission UI.
+- The application index/cache directory keyed by library id rather than by a
+  hash of the `--library` paths.
+
+**Automated acceptance**
+
+- A library copied or moved to a new path reports the same library id; two
+  independently created libraries report different ids.
+- Serialization round trips preserve the new checkpoint fields, and
+  pre-extension repositories load with sensible defaults (unknown author),
+  proving forward/backward compatibility.
+- History reports author, application version, and parent for new
+  checkpoints.
+
+## Increment 7.8 — Library Storage-Model Gate (Managed Originals)
+
+A feasibility gate in the spirit of Increment 2. The target design describes
+a library that contains original media; the implementation references media
+in place. Decide whether LORE can carry original photo/video content.
+
+**Deliverables**
+
+- A disposable spike committing representative original media (including
+  multi-hundred-MB video) into a LORE repository; measured commit time,
+  repository size, deduplication behavior, and read-back cost.
+- A recorded go/no-go decision (decision record 0005) choosing between:
+  managed libraries (originals in the repository), referenced libraries
+  (current model, with backup explicitly covering the media roots), or both
+  as user-selectable modes.
+- Documented consequences for backup/restore and the portability claim in
+  either outcome.
+
+**Automated acceptance**
+
+- Spike tests demonstrate commit, restart, reload, and integrity of binary
+  content, or the decision record documents the failure that produced a
+  no-go.
+
+Do not implement managed-mode ingest before this gate passes; the referenced
+model remains the default and is not blocked by this increment.
+
+## Increment 7.9 — Library Manager and Lifecycle
+
+Makes the Library a user-facing first-class object rather than a CLI flag.
+
+**Deliverables**
+
+- Create, open, close, and switch libraries from the application, with a
+  Library Manager listing known libraries by name and identity; location is
+  displayed but is not the identity.
+- Rename and move a library; back up a library to a single archive and
+  restore it, reconstructing the projection, job queue, and thumbnail caches
+  from the repository. In the referenced model the backup includes or
+  clearly enumerates the media roots.
+- A documented in-process service API boundary (session/service interfaces
+  the UI consumes) shaped so v2 can place a network between client and
+  services without redesign. No networking, authentication, or user
+  management is implemented.
+
+**Automated acceptance**
+
+- Create/open/switch tests cover fresh, existing, missing, and locked
+  libraries.
+- A backup/restore round trip on a populated library preserves the library
+  id, records, history, and organization, and rebuilds all derived state.
+- Restoring onto a machine path different from the original produces a
+  working library recognized as the same library.
+
 ## Increment 8 — Save, Portable Metadata, and Image Recipes
 
 **Deliverables**
 
 - Staged metadata edits and explicit LORE-backed Save/checkpoint behavior.
+  Checkpoints carry the author, application version, and parent linkage from
+  Increment 7.7.
 - Conflict-aware XMP/embedded writes using atomic replacement where supported.
 - Versioned crop/orientation/rotation recipes and image export.
+- Explicit original→derivative relationships recorded in the media record:
+  an export or rendered edit is linked to its source asset and recipe
+  revision rather than being inferred from filenames. (Thumbnails/previews
+  remain fingerprint-keyed disposable cache entries, not records.)
 
 **Automated acceptance**
 
