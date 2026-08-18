@@ -48,6 +48,23 @@ installation over a remote shell:
   set QT_QPA_PLATFORM=offscreen
   pimio.bat --self-check
 
+Resetting local rebuildable state
+---------------------------------
+
+Before deleting local state, close pimio.
+
+pimio stores user-level derived data on this PC, including a rebuildable
+SQLite projection/index and thumbnail/preview caches. Deleting it is safe: it
+does not remove the library's durable data, and pimio will recreate it. This
+is useful when you want a clean local rebuild between version upgrades.
+
+From PowerShell:
+
+  Remove-Item -Recurse -Force "$env:LOCALAPPDATA\pimio" -ErrorAction SilentlyContinue
+  Remove-Item -Recurse -Force "$env:APPDATA\pimio" -ErrorAction SilentlyContinue
+
+After cleanup, start pimio again and allow it to rebuild its caches/indexes.
+
 When something goes wrong
 -------------------------
 

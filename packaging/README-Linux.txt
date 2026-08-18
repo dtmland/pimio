@@ -66,6 +66,24 @@ SSH:
 
   QT_QPA_PLATFORM=offscreen ./pimio --self-check
 
+Resetting local rebuildable state
+---------------------------------
+
+Before deleting local state, close pimio.
+
+pimio stores user-level derived data on this machine, including a rebuildable
+SQLite projection/index and thumbnail/preview caches. Deleting it is safe: it
+does not remove the library's durable data, and pimio will recreate it. This
+is useful when you want a clean local rebuild between version upgrades.
+
+  rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/pimio"
+  rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/pimio"
+  rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/pimio"
+
+If you use non-default XDG environment variables, those change the effective
+paths. After cleanup, start pimio again and allow it to rebuild its
+caches/indexes.
+
 When something goes wrong
 -------------------------
 
