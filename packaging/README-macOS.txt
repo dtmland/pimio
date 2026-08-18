@@ -45,6 +45,22 @@ without a window server, for example to verify an installation over SSH:
 
   QT_QPA_PLATFORM=offscreen ./pimio --self-check
 
+Resetting local rebuildable state
+---------------------------------
+
+Before deleting local state, quit pimio.
+
+pimio stores user-level derived data on this Mac, including a rebuildable
+SQLite projection/index and thumbnail/preview caches. Deleting it is safe: it
+does not remove the library's durable data, and pimio will recreate it. This
+is useful when you want a clean local rebuild between version upgrades.
+
+  rm -rf "$HOME/Library/Application Support/pimio"
+  rm -rf "$HOME/Library/Caches/pimio"
+  rm -f  "$HOME/Library/Preferences/io.pimio.pimio.plist"
+
+After cleanup, start pimio again and allow it to rebuild its caches/indexes.
+
 When something goes wrong
 -------------------------
 
