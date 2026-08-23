@@ -21,7 +21,7 @@ Legal review is a release gate. CI cannot certify it.
 | libaom | 3.14.1 | AV1 decoder only | Statically linked into libavif | BSD-2-Clause | https://aomedia.googlesource.com/aom/+/refs/tags/v3.14.1 | No | Yes |
 | qt-avif-image-plugin | 0.10.3 | Qt 6 image I/O adapter, read capability enabled | Statically linked Qt image plugin | BSD-2-Clause | https://github.com/novomesk/qt-avif-image-plugin/releases/tag/v0.10.3 | No | Yes |
 | libheif | 1.23.1 | HEIF parsing and grid composition; HEIC read only | Dynamically linked through the HEIC Qt image plugin | LGPL-3.0-or-later | https://github.com/strukturag/libheif/releases/tag/v1.23.1 | No | Yes |
-| libde265 | 1.1.1 | HEVC decoder only | Dynamically linked into libheif | LGPL-3.0-or-later | https://github.com/strukturag/libde265/releases/tag/v1.1.1 | No | Yes |
+| libde265 | 1.1.1 | HEVC decoder only | Dynamically linked into libheif | LGPL-3.0-or-later | https://github.com/strukturag/libde265/releases/tag/v1.1.1 | Yes (build-only CMake target rename) | Yes |
 | qt-heic-image-plugin | 0.7.1 | Qt 6 HEIC/HEIF image I/O adapter, read capability enabled | Dynamically loaded Qt image plugin | LGPL-2.0-or-later | https://github.com/novomesk/qt-heic-image-plugin/releases/tag/v0.7.1 | No | Yes |
 | LORE (`liblore`) | 0.8.5 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.8.5 | No | Yes |
 
