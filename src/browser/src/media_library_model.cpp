@@ -348,11 +348,12 @@ void MediaLibraryModel::reload()
                 ++newRow;
             }
             const int insertedCount = newRow - firstInserted;
+            Q_ASSERT(oldRow == firstInserted);
             beginInsertRows({}, firstInserted, newRow - 1);
-            for (int row = firstInserted; row < newRow; ++row) {
+            for (int idRow = firstInserted; idRow < newRow; ++idRow) {
                 Item item;
-                item.id = ids.at(row);
-                m_items.insert(row, std::move(item));
+                item.id = ids.at(idRow);
+                m_items.insert(idRow, std::move(item));
             }
             endInsertRows();
             oldRow += insertedCount;

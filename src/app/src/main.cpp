@@ -53,13 +53,13 @@ int main(int argc, char *argv[])
     auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
     if (window) {
         QObject::connect(window, &QQuickWindow::frameSwapped, &librarySession,
-                         [&librarySession] { librarySession.start(); },
+                         &pimio::app::LibrarySession::start,
                          Qt::SingleShotConnection);
     }
     // Some headless or unusual render loops may not report a swap. The
     // idempotent start() guard makes this a safe fallback without delaying a
     // normal first-frame start.
-    QTimer::singleShot(1000, &librarySession, [&librarySession] { librarySession.start(); });
+    QTimer::singleShot(1000, &librarySession, &pimio::app::LibrarySession::start);
 
     return QGuiApplication::exec();
 }
