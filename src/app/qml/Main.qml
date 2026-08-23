@@ -18,6 +18,7 @@ Window {
     property bool scanning: activity ? activity.scanning : false
     property int indexedCount: activity ? activity.indexedCount : 0
     property int selectedIndex: -1
+    readonly property bool browsingContextActive: !detail.visible && !settingsDialog.visible
 
     readonly property int tileSize: settings ? settings.tileSize : 176
     readonly property real scrollSpeed: settings ? settings.scrollSpeed : 2.0
@@ -30,6 +31,9 @@ Window {
     height: 720
     title: qsTr("pimio")
     visible: true
+
+    onActiveChanged: if (active) restoreGridFocus()
+    Component.onCompleted: restoreGridFocus()
 
     // How far one held navigation key jumps. A single press always moves one
     // step; while the key repeats the step grows, so a long hold crosses a
@@ -59,6 +63,11 @@ Window {
     function endKeyRepeat() {
         keyRepeatCount = 0
         lastNavigationKey = 0
+    }
+
+    function restoreGridFocus() {
+        if (browsingContextActive)
+            Qt.callLater(grid.forceActiveFocus)
     }
 
     function showDetail(index) {
@@ -230,7 +239,7 @@ Window {
         anchors {
             top: toolbar.bottom
             left: parent.left
-            right: parent.right
+            right: scrollController.left
             bottom: parent.bottom
             margins: 8
         }
@@ -240,7 +249,7 @@ Window {
         clip: true
         cacheBuffer: cellHeight * 4
         model: root.mediaModel
-        focus: !detail.visible
+        focus: root.browsingContextActive
         // Arrow keys are handled explicitly below so a held key can
         // accelerate; the built-in handling has one fixed step.
         keyNavigationEnabled: false
@@ -250,6 +259,12 @@ Window {
         property int wheelStreak: 0
 
         readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
+
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            gesturePolicy: TapHandler.WithinBounds
+            onTapped: root.restoreGridFocus()
+        }
 
         highlight: Rectangle {
             color: "transparent"
@@ -504,6 +519,156 @@ Window {
         }
     }
 
+    // Picasa-style scroll controller: the center handle is a velocity control,
+    // not a position indicator. Pull it away from center to scroll, farther for
+    // faster movement; releasing it returns it to rest.
+    Item {
+        id: scrollController
+        objectName: "scrollController"
+        anchors {
+            top: toolbar.bottom
+            right: parent.right
+            bottom: parent.bottom
+            topMargin: 8
+            rightMargin: 8
+            bottomMargin: 8
+        }
+        width: 28
+
+        readonly property bool canScroll: grid.maximumContentY() > grid.minimumContentY()
+
+        function jumpToStart() {
+            grid.contentY = grid.minimumContentY()
+            grid.updateVisibleRange()
+            root.restoreGridFocus()
+        }
+
+        function jumpToEnd() {
+            grid.contentY = grid.maximumContentY()
+            grid.updateVisibleRange()
+            root.restoreGridFocus()
+        }
+
+        function scrollFromDisplacement(displacement) {
+            if (!canScroll)
+                return
+            const bounded = Math.max(-1, Math.min(1, displacement))
+            const deadZone = 0.06
+            if (Math.abs(bounded) <= deadZone)
+                return
+            const velocity = (Math.abs(bounded) - deadZone) / (1 - deadZone)
+            const distance = Math.sign(bounded) * velocity
+                    * grid.cellHeight * 0.12 * root.scrollSpeed
+            grid.contentY = grid.boundedContentY(grid.contentY + distance)
+            grid.updateVisibleRange()
+        }
+
+        function scrollFromHandle() {
+            const halfTravel = Math.max(1, (scrollTrack.height - scrollHandle.height) / 2)
+            const displacement = (scrollHandle.y - scrollHandle.restingY) / halfTravel
+            scrollFromDisplacement(displacement)
+        }
+
+        function returnHandleToCenter() {
+            returnAnimation.stop()
+            returnAnimation.from = scrollHandle.y
+            returnAnimation.to = scrollHandle.restingY
+            returnAnimation.start()
+        }
+
+        ToolButton {
+            id: jumpToStartButton
+            objectName: "jumpToStartButton"
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            height: width
+            text: "\u25b2"
+            enabled: scrollController.canScroll
+                     && grid.contentY > grid.minimumContentY()
+            Accessible.name: qsTr("Jump to beginning")
+            onClicked: scrollController.jumpToStart()
+        }
+
+        Item {
+            id: scrollTrack
+            objectName: "scrollControllerTrack"
+            anchors {
+                top: jumpToStartButton.bottom
+                bottom: jumpToEndButton.top
+                left: parent.left
+                right: parent.right
+                topMargin: 4
+                bottomMargin: 4
+            }
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 4
+                height: parent.height
+                radius: 2
+                color: "#d0d0d0"
+            }
+
+            Rectangle {
+                id: scrollHandle
+                objectName: "scrollControllerHandle"
+                readonly property real restingY: (scrollTrack.height - height) / 2
+                x: 2
+                y: restingY
+                width: scrollTrack.width - 4
+                height: Math.min(48, Math.max(28, scrollTrack.height / 5))
+                radius: 5
+                color: handleDrag.active ? "#707070" : "#909090"
+                border.color: "#555555"
+
+                DragHandler {
+                    id: handleDrag
+                    target: scrollHandle
+                    xAxis.enabled: false
+                    yAxis.minimum: 0
+                    yAxis.maximum: Math.max(0, scrollTrack.height - scrollHandle.height)
+                    enabled: scrollController.canScroll && root.browsingContextActive
+                    onActiveChanged: {
+                        if (active) {
+                            returnAnimation.stop()
+                            scrollTimer.start()
+                        } else {
+                            scrollTimer.stop()
+                            scrollController.returnHandleToCenter()
+                            root.restoreGridFocus()
+                        }
+                    }
+                }
+            }
+        }
+
+        ToolButton {
+            id: jumpToEndButton
+            objectName: "jumpToEndButton"
+            anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
+            height: width
+            text: "\u25bc"
+            enabled: scrollController.canScroll
+                     && grid.contentY < grid.maximumContentY()
+            Accessible.name: qsTr("Jump to end")
+            onClicked: scrollController.jumpToEnd()
+        }
+
+        Timer {
+            id: scrollTimer
+            interval: 16
+            repeat: true
+            onTriggered: scrollController.scrollFromHandle()
+        }
+
+        NumberAnimation {
+            id: returnAnimation
+            target: scrollHandle
+            property: "y"
+            duration: 160
+            easing.type: Easing.OutCubic
+        }
+    }
+
     // Wheel events reach this before the GridView's own flick handling, so
     // the scroll distance is the one computed above. It accepts no buttons,
     // which leaves clicks and taps to the delegates underneath.
@@ -512,7 +677,7 @@ Window {
         anchors.fill: grid
         acceptedButtons: Qt.NoButton
         propagateComposedEvents: true
-        enabled: !detail.visible
+        enabled: root.browsingContextActive
         onWheel: function(wheel) {
             grid.scrollByWheel(wheel.angleDelta.y, wheel.pixelDelta.y)
             wheel.accepted = true
@@ -608,7 +773,7 @@ Window {
         onCloseRequested: {
             visible = false
             root.endKeyRepeat()
-            grid.forceActiveFocus()
+            root.restoreGridFocus()
         }
         onStepRequested: function(delta) { root.stepDetail(delta) }
     }
@@ -618,5 +783,6 @@ Window {
         anchors.centerIn: Overlay.overlay
         width: Math.min(520, root.width - 48)
         settings: root.settings
+        onClosed: root.restoreGridFocus()
     }
 }

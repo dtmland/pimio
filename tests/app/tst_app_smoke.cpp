@@ -182,8 +182,10 @@ private slots:
     void detailLoadsModernImage_data();
     void detailLoadsModernImage();
     void arrowKeysMoveTheSelectionByRowsAndColumns();
+    void gridFocusFollowsTheBrowsingContext();
     void holdingANavigationKeyAcceleratesUnlessDisabled();
     void wheelScrollingFollowsTheConfiguredSpeed();
+    void scrollControllerJumpsAndUsesHandleDisplacement();
     void tileSizeSettingResizesTheGridCells();
     void gridScrollBoundsFollowLayoutOriginChanges();
     void settingsDialogExposesStoredAndSessionSettings();
@@ -363,6 +365,57 @@ void TestAppSmoke::arrowKeysMoveTheSelectionByRowsAndColumns()
     QCOMPARE(grid->property("currentIndex").toInt(), 0);
 }
 
+void TestAppSmoke::gridFocusFollowsTheBrowsingContext()
+{
+    SyntheticMediaModel model(100);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
+    auto *detail = window->findChild<QQuickItem *>(QStringLiteral("detailView"));
+    auto *dialog = window->findChild<QObject *>(QStringLiteral("settingsDialog"));
+    auto *settingsButton = window->findChild<QQuickItem *>(QStringLiteral("settingsButton"));
+    QVERIFY(grid != nullptr);
+    QVERIFY(detail != nullptr);
+    QVERIFY(dialog != nullptr);
+    QVERIFY(settingsButton != nullptr);
+
+    // The normal browsing view owns keyboard focus without requiring a tile
+    // click first.
+    QTRY_VERIFY(grid->hasActiveFocus());
+    QVERIFY(QMetaObject::invokeMethod(grid, "moveSelection", Q_ARG(QVariant, 0)));
+    QTest::keyClick(window, Qt::Key_Right);
+    QCOMPARE(grid->property("currentIndex").toInt(), 1);
+
+    // Preview navigation is a separate context, so grid-only keys do nothing.
+    QVERIFY(QMetaObject::invokeMethod(window, "showDetail", Q_ARG(QVariant, 5)));
+    QTRY_VERIFY(detail->hasActiveFocus());
+    QTest::keyClick(window, Qt::Key_PageDown);
+    QCOMPARE(grid->property("currentIndex").toInt(), 5);
+    QTest::keyClick(window, Qt::Key_Escape);
+    QTRY_VERIFY(!detail->property("visible").toBool());
+    QTRY_VERIFY(grid->hasActiveFocus());
+    QTest::keyClick(window, Qt::Key_Right);
+    QCOMPARE(grid->property("currentIndex").toInt(), 6);
+
+    // A modal settings dialog likewise suspends grid navigation and returns
+    // focus when it closes.
+    QVERIFY(QMetaObject::invokeMethod(settingsButton, "clicked"));
+    QTRY_VERIFY(dialog->property("visible").toBool());
+    QVERIFY(!grid->hasActiveFocus());
+    const int indexBeforeSettingsKey = grid->property("currentIndex").toInt();
+    QTest::keyClick(window, Qt::Key_PageDown);
+    QCOMPARE(grid->property("currentIndex").toInt(), indexBeforeSettingsKey);
+    QVERIFY(QMetaObject::invokeMethod(dialog, "close"));
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(grid->hasActiveFocus());
+    QTest::keyClick(window, Qt::Key_Right);
+    QCOMPARE(grid->property("currentIndex").toInt(), indexBeforeSettingsKey + 1);
+}
+
 void TestAppSmoke::holdingANavigationKeyAcceleratesUnlessDisabled()
 {
     pimio::settings::Settings settings;
@@ -467,6 +520,49 @@ void TestAppSmoke::wheelScrollingFollowsTheConfiguredSpeed()
     QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, 120000),
                               Q_ARG(QVariant, 0), Q_ARG(QVariant, 60000));
     QCOMPARE(grid->property("contentY").toReal(), origin);
+}
+
+void TestAppSmoke::scrollControllerJumpsAndUsesHandleDisplacement()
+{
+    pimio::settings::Settings settings;
+    settings.resetToDefaults();
+    SyntheticMediaModel model(400);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("appSettings"), &settings);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
+    auto *controller = window->findChild<QQuickItem *>(QStringLiteral("scrollController"));
+    auto *handle = window->findChild<QQuickItem *>(QStringLiteral("scrollControllerHandle"));
+    QVERIFY(grid != nullptr);
+    QVERIFY(controller != nullptr);
+    QVERIFY(handle != nullptr);
+    QTRY_VERIFY(grid->property("contentHeight").toReal() > grid->height());
+
+    QVERIFY(QMetaObject::invokeMethod(controller, "jumpToEnd"));
+    const qreal origin = grid->property("originY").toReal();
+    const qreal maximum = qMax(origin, origin + grid->property("contentHeight").toReal()
+                                      - grid->property("height").toReal());
+    QCOMPARE(grid->property("contentY").toReal(), maximum);
+    QVERIFY(QMetaObject::invokeMethod(controller, "jumpToStart"));
+    QCOMPARE(grid->property("contentY").toReal(), origin);
+
+    QVERIFY(QMetaObject::invokeMethod(controller, "scrollFromDisplacement",
+                                      Q_ARG(QVariant, 0.25)));
+    const qreal smallDisplacementDistance = grid->property("contentY").toReal() - origin;
+    QVERIFY(smallDisplacementDistance > 0);
+    grid->setProperty("contentY", origin);
+    QVERIFY(QMetaObject::invokeMethod(controller, "scrollFromDisplacement",
+                                      Q_ARG(QVariant, 0.75)));
+    const qreal largeDisplacementDistance = grid->property("contentY").toReal() - origin;
+    QVERIFY(largeDisplacementDistance > smallDisplacementDistance);
+
+    handle->setY(0);
+    QVERIFY(QMetaObject::invokeMethod(controller, "returnHandleToCenter"));
+    QTRY_COMPARE(handle->y(), handle->property("restingY").toReal());
 }
 
 void TestAppSmoke::tileSizeSettingResizesTheGridCells()
