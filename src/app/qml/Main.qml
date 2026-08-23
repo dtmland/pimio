@@ -536,6 +536,8 @@ Window {
         width: 28
 
         readonly property bool canScroll: grid.maximumContentY() > grid.minimumContentY()
+        readonly property real maximumTilesPerTick: 0.12
+        readonly property int tickIntervalMs: 16
 
         function jumpToStart() {
             grid.contentY = grid.minimumContentY()
@@ -558,7 +560,7 @@ Window {
                 return
             const velocity = (Math.abs(bounded) - deadZone) / (1 - deadZone)
             const distance = Math.sign(bounded) * velocity
-                    * grid.cellHeight * 0.12 * root.scrollSpeed
+                    * grid.cellHeight * maximumTilesPerTick * root.scrollSpeed
             grid.contentY = grid.boundedContentY(grid.contentY + distance)
             grid.updateVisibleRange()
         }
@@ -655,7 +657,7 @@ Window {
 
         Timer {
             id: scrollTimer
-            interval: 16
+            interval: scrollController.tickIntervalMs
             repeat: true
             onTriggered: scrollController.scrollFromHandle()
         }
