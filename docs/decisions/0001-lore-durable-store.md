@@ -128,8 +128,10 @@ Three rules follow. The first is on the write path, the other two are
 implemented in `open()`:
 
 1. **A commit is not finished until it is flushed.** See the defect below.
-   `commit()` calls `repository flush` before it reports a checkpoint, and only
-   then retires the rollback marker and clears the staging area.
+   Before changing the checkout or LORE's staged index, `commit()` snapshots the
+   clean committed repository and writes a rollback marker. It calls
+   `repository flush` before it reports a checkpoint, and only then retires the
+   rollback marker and clears the staging area.
 2. **Always restore the checkout.** An interrupted commit leaves untracked
    files, and LORE's dirty check does not see untracked files, so a cheap
    status cannot be trusted to decide whether recovery is needed. The full
