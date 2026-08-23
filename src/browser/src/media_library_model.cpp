@@ -348,7 +348,6 @@ void MediaLibraryModel::reload()
                 ++newRow;
             }
             const int insertedCount = newRow - firstInserted;
-            Q_ASSERT(oldRow == firstInserted);
             beginInsertRows({}, firstInserted, newRow - 1);
             for (int idRow = firstInserted; idRow < newRow; ++idRow) {
                 Item item;

@@ -8,6 +8,10 @@
 #include <QQuickWindow>
 #include <QTimer>
 
+namespace {
+constexpr int kLibraryStartFallbackDelayMs = 1000;
+} // namespace
+
 int main(int argc, char *argv[])
 {
     QGuiApplication application(argc, argv);
@@ -59,7 +63,8 @@ int main(int argc, char *argv[])
     // Some headless or unusual render loops may not report a swap. The
     // idempotent start() guard makes this a safe fallback without delaying a
     // normal first-frame start.
-    QTimer::singleShot(1000, &librarySession, &pimio::app::LibrarySession::start);
+    QTimer::singleShot(kLibraryStartFallbackDelayMs, &librarySession,
+                       &pimio::app::LibrarySession::start);
 
     return QGuiApplication::exec();
 }
