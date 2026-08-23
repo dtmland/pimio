@@ -30,7 +30,7 @@ namespace pimio::app {
 /// is deliberate: writing pimio's own cache files inside a watched library
 /// would make the watcher observe its own writes.
 ///
-/// All of the pieces start()s creates live for the lifetime of this object
+/// All of the pieces start() creates live for the lifetime of this object
 /// and are only ever touched from the thread that constructed it, except for
 /// the bounded worker threads the job dispatcher and thumbnail service
 /// already manage internally; the projection database itself is only ever

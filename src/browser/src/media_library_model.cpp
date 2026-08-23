@@ -324,6 +324,7 @@ void MediaLibraryModel::reload()
     }
 
     if (isInsertionOnly) {
+        m_items.reserve(ids.size());
         int oldRow = 0;
         int newRow = 0;
         while (newRow < ids.size()) {

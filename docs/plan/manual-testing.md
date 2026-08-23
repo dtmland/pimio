@@ -235,6 +235,8 @@ default; note the value if it is not.
 **Acceptance**
 
 - A single tap moves exactly one item (one row for Up/Down).
+- Up/Down move the grid viewport immediately whenever more content exists in
+  that direction; there is no hidden selection travel before scrolling starts.
 - A hold starts at the same speed and speeds up within a second or so, and
   stops speeding up while still being followable.
 - The selection never leaves the library at either end, and never jumps
@@ -270,6 +272,8 @@ once on a HiDPI display if one is available.
   the default size.
 - After a size change, tiles that were on screen fill in again promptly rather
   than staying on placeholders.
+- Resizing tiles or the window leaves no blank overscroll above the first row,
+  keeps the final row reachable, and does not strand visible grey placeholders.
 - The size chosen before the restart is the size shown after it.
 
 **Platforms**: Linux (X11/Wayland), macOS, Windows

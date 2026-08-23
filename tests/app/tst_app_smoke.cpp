@@ -521,12 +521,19 @@ void TestAppSmoke::gridScrollBoundsFollowLayoutOriginChanges()
     model.prependRows(columns * 2);
     model.removeLeadingRows(columns);
     settings.setTileSize(settings.maximumTileSize());
-    window->setWidth(window->width() + 137);
+    QTRY_COMPARE(grid->property("cellHeight").toInt(), settings.maximumTileSize());
     QVERIFY(QMetaObject::invokeMethod(grid, "refreshGeometry"));
+    QTRY_VERIFY(!rangeSpy.isEmpty());
+    const int lastBeforeWidthChange = rangeSpy.constLast().at(1).toInt();
+    rangeSpy.clear();
+    window->setWidth(window->width() + settings.maximumTileSize());
+    QTRY_VERIFY(!rangeSpy.isEmpty()
+                && rangeSpy.constLast().at(1).toInt() > lastBeforeWidthChange);
 
     QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, 120000),
                               Q_ARG(QVariant, 0), Q_ARG(QVariant, 10000));
     const qreal origin = grid->property("originY").toReal();
+    QVERIFY2(origin != 0.0, "the regression setup must exercise a shifted GridView origin");
     QCOMPARE(grid->property("contentY").toReal(), origin);
     QTRY_VERIFY(!rangeSpy.isEmpty());
     QCOMPARE(rangeSpy.constLast().at(0).toInt(), 0);

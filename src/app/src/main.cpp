@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     // Some headless or unusual render loops may not report a swap. The
     // idempotent start() guard makes this a safe fallback without delaying a
     // normal first-frame start.
-    QTimer::singleShot(250, &librarySession, [&librarySession] { librarySession.start(); });
+    QTimer::singleShot(1000, &librarySession, [&librarySession] { librarySession.start(); });
 
     return QGuiApplication::exec();
 }
