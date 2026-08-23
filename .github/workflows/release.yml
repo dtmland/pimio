@@ -237,7 +237,7 @@ jobs:
               while IFS= read -r -d '' candidate; do
                 file -b "$candidate" | grep -q '^ELF ' || continue
                 ldd "$candidate" 2>/dev/null |
-                  grep 'not found' |
+                  { grep 'not found' || true; } |
                   sed "s|^|$candidate: |"
               done
           )
