@@ -88,6 +88,7 @@ private slots:
     void thumbnailsBeyondTheRetentionBoundAreDroppedAndRequestedAgain();
     void refreshThumbnailReRequestsARowTheProviderCannotServe();
     void appendingReloadKeepsLoadedThumbnailsAndInsertsRows();
+    void insertingReloadKeepsLoadedThumbnailsAndInsertsRows();
 
 private:
     // Builds an in-memory projection with \a count items and leaves it in m_db.
@@ -699,6 +700,73 @@ void TestBrowserModel::appendingReloadKeepsLoadedThumbnailsAndInsertsRows()
     QCOMPARE(model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt(),
              static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
     QVERIFY(provider.contains(firstId));
+}
+
+void TestBrowserModel::insertingReloadKeepsLoadedThumbnailsAndInsertsRows()
+{
+    // Scan batches arrive in filesystem order, not sort order. New rows can
+    // therefore belong before and between rows already shown without changing
+    // the relative order of anything the user was looking at.
+    MemoryDurableStore initialStore(m_clock);
+    Error error;
+    QVERIFY(initialStore.stage(makeRecord(QStringLiteral("b"), 2000), &error));
+    QVERIFY(initialStore.stage(makeRecord(QStringLiteral("d"), 4000), &error));
+    QVERIFY(initialStore.commit(QStringLiteral("initial"), &error).has_value());
+
+    m_db = std::make_unique<ProjectionDatabase>();
+    QVERIFY(m_db->openInMemory(&error));
+    QVERIFY(m_db->rebuildFrom(initialStore, &error));
+
+    RecordingMediaRequestService service;
+    ThumbnailImageProvider provider;
+    MediaLibraryModel model;
+    model.setPrefetchMargin(0);
+    model.setDatabase(m_db.get());
+    model.setRequestService(&service);
+    model.setImageProvider(&provider);
+    QAbstractItemModelTester tester(&model,
+                                    QAbstractItemModelTester::FailureReportingMode::Fatal);
+
+    model.setVisibleRange(0, 0);
+    QVERIFY(service.complete(MediaRequestHandle(1), makeThumbnailResult()));
+    const QString retainedId =
+            model.data(model.index(0), MediaLibraryModel::MediaIdRole).toString();
+
+    MemoryDurableStore expandedStore(m_clock);
+    const QList<QPair<QString, qint64>> records{
+        {QStringLiteral("a"), 1000},
+        {QStringLiteral("b"), 2000},
+        {QStringLiteral("c"), 3000},
+        {QStringLiteral("d"), 4000},
+        {QStringLiteral("e"), 5000},
+    };
+    for (const auto &[id, captureTime] : records) {
+        QVERIFY(expandedStore.stage(makeRecord(id, captureTime), &error));
+    }
+    QVERIFY(expandedStore.commit(QStringLiteral("expanded"), &error).has_value());
+    QVERIFY(m_db->rebuildFrom(expandedStore, &error));
+
+    QSignalSpy resetSpy(&model, &QAbstractItemModel::modelReset);
+    QSignalSpy insertSpy(&model, &QAbstractItemModel::rowsInserted);
+    model.reload();
+
+    QCOMPARE(model.rowCount(), 5);
+    QCOMPARE(resetSpy.count(), 0);
+    QCOMPARE(insertSpy.count(), 3);
+    QCOMPARE(insertSpy.at(0).at(1).toInt(), 0);
+    QCOMPARE(insertSpy.at(1).at(1).toInt(), 2);
+    QCOMPARE(insertSpy.at(2).at(1).toInt(), 4);
+
+    QStringList orderedIds;
+    for (int row = 0; row < model.rowCount(); ++row) {
+        orderedIds.append(model.data(model.index(row), MediaLibraryModel::MediaIdRole).toString());
+    }
+    QCOMPARE(orderedIds, QStringList({QStringLiteral("a"), QStringLiteral("b"),
+                                      QStringLiteral("c"), QStringLiteral("d"),
+                                      QStringLiteral("e")}));
+    QCOMPARE(model.data(model.index(1), MediaLibraryModel::ThumbnailStatusRole).toInt(),
+             static_cast<int>(MediaLibraryModel::ThumbnailStatus::Ready));
+    QVERIFY(provider.contains(retainedId));
 }
 
 QTEST_MAIN(TestBrowserModel)

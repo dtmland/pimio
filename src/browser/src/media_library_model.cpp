@@ -283,6 +283,15 @@ void MediaLibraryModel::rebuildRowIndex()
 
 void MediaLibraryModel::reload()
 {
+    const QString visibleFirstId =
+            m_visibleFirst >= 0 && m_visibleFirst < m_items.size()
+            ? m_items.at(m_visibleFirst).id.value()
+            : QString();
+    const QString visibleLastId =
+            m_visibleLast >= 0 && m_visibleLast < m_items.size()
+            ? m_items.at(m_visibleLast).id.value()
+            : QString();
+
     // Cancel all in-flight requests before rebuilding the item list: their
     // rows are about to move, so their callbacks can no longer be trusted.
     if (m_service) {
@@ -296,50 +305,86 @@ void MediaLibraryModel::reload()
         ids = m_db->idsSorted(m_sortKey, m_sortOrder, &error);
     }
 
-    // A scan in progress adds rows to the end of the current order far more
-    // often than it reorders it, and an insertion keeps the grid's scroll
-    // position and its delegates where a reset would throw both away.
     const int oldCount = static_cast<int>(m_items.size());
-    bool isAppendOnly = ids.size() >= oldCount;
-    for (int row = 0; isAppendOnly && row < oldCount; ++row) {
-        isAppendOnly = m_items.at(row).id == ids.at(row);
+    // Adding records to a sorted projection may place them before or between
+    // rows already shown. As long as every old id remains in the same relative
+    // order, this is still a pure insertion and can preserve GridView's
+    // delegates and viewport instead of resetting the whole model.
+    bool isInsertionOnly = ids.size() >= oldCount;
+    int candidateRow = 0;
+    for (int oldRow = 0; isInsertionOnly && oldRow < oldCount; ++oldRow) {
+        while (candidateRow < ids.size() && ids.at(candidateRow) != m_items.at(oldRow).id) {
+            ++candidateRow;
+        }
+        if (candidateRow == ids.size()) {
+            isInsertionOnly = false;
+        } else {
+            ++candidateRow;
+        }
     }
 
-    QHash<QString, Item> previous;
-    previous.reserve(oldCount);
-    for (const Item &item : std::as_const(m_items)) {
-        previous.insert(item.id.value(), item);
-    }
+    if (isInsertionOnly) {
+        m_items.reserve(ids.size());
+        int oldRow = 0;
+        int newRow = 0;
+        while (newRow < ids.size()) {
+            if (oldRow < m_items.size() && m_items.at(oldRow).id == ids.at(newRow)) {
+                Item &item = m_items[oldRow];
+                // Its request was just cancelled, so it is nobody's work now.
+                if (item.thumbnailStatus == ThumbnailStatus::Loading) {
+                    item.thumbnailStatus = ThumbnailStatus::Pending;
+                }
+                item.thumbnailHandle = {};
+                item.thumbnailRequestKey.clear();
+                ++oldRow;
+                ++newRow;
+                continue;
+            }
 
-    QList<Item> next;
-    next.reserve(ids.size());
-    for (const core::MediaId &id : std::as_const(ids)) {
-        const auto it = previous.constFind(id.value());
-        if (it != previous.constEnd()) {
+            const int firstInserted = newRow;
+            while (newRow < ids.size()
+                   && !(oldRow < m_items.size()
+                        && m_items.at(oldRow).id == ids.at(newRow))) {
+                ++newRow;
+            }
+            const int insertedCount = newRow - firstInserted;
+            beginInsertRows({}, firstInserted, newRow - 1);
+            for (int idRow = firstInserted; idRow < newRow; ++idRow) {
+                Item item;
+                item.id = ids.at(idRow);
+                m_items.insert(idRow, std::move(item));
+            }
+            endInsertRows();
+            oldRow += insertedCount;
+        }
+        rebuildRowIndex();
+    } else {
+        QHash<QString, Item> previous;
+        previous.reserve(oldCount);
+        for (const Item &item : std::as_const(m_items)) {
+            previous.insert(item.id.value(), item);
+        }
+
+        QList<Item> next;
+        next.reserve(ids.size());
+        for (const core::MediaId &id : std::as_const(ids)) {
+            const auto it = previous.constFind(id.value());
+            if (it == previous.constEnd()) {
+                Item item;
+                item.id = id;
+                next.append(std::move(item));
+                continue;
+            }
+
             Item item = it.value();
-            // Its request was just cancelled, so it is nobody's work now.
             if (item.thumbnailStatus == ThumbnailStatus::Loading) {
                 item.thumbnailStatus = ThumbnailStatus::Pending;
             }
             item.thumbnailHandle = {};
             item.thumbnailRequestKey.clear();
             next.append(std::move(item));
-        } else {
-            Item item;
-            item.id = id;
-            next.append(std::move(item));
         }
-    }
 
-    if (isAppendOnly && next.size() == oldCount) {
-        m_items = std::move(next);
-        rebuildRowIndex();
-    } else if (isAppendOnly) {
-        beginInsertRows({}, oldCount, static_cast<int>(next.size()) - 1);
-        m_items = std::move(next);
-        rebuildRowIndex();
-        endInsertRows();
-    } else {
         beginResetModel();
         m_items = std::move(next);
         rebuildRowIndex();
@@ -365,8 +410,14 @@ void MediaLibraryModel::reload()
     }
 
     // Re-request what the view is looking at: the reload cancelled it.
-    if (m_visibleFirst >= 0 && m_visibleLast >= m_visibleFirst) {
-        setVisibleRange(m_visibleFirst, m_visibleLast);
+    int visibleFirst = m_visibleFirst;
+    int visibleLast = m_visibleLast;
+    if (isInsertionOnly && !visibleFirstId.isEmpty() && !visibleLastId.isEmpty()) {
+        visibleFirst = m_rowById.value(visibleFirstId, visibleFirst);
+        visibleLast = m_rowById.value(visibleLastId, visibleLast);
+    }
+    if (visibleFirst >= 0 && visibleLast >= visibleFirst) {
+        setVisibleRange(visibleFirst, visibleLast);
     }
 }
 

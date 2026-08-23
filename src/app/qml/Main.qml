@@ -263,10 +263,10 @@ Window {
             const step = root.navigationStep(event)
             switch (event.key) {
             case Qt.Key_Up:
-                grid.moveSelection(-grid.columns * step)
+                grid.moveSelectionWithViewport(-grid.columns * step)
                 break
             case Qt.Key_Down:
-                grid.moveSelection(grid.columns * step)
+                grid.moveSelectionWithViewport(grid.columns * step)
                 break
             case Qt.Key_Left:
                 grid.moveSelection(-step)
@@ -275,10 +275,10 @@ Window {
                 grid.moveSelection(step)
                 break
             case Qt.Key_PageUp:
-                grid.moveSelection(-grid.columns * grid.rowsPerPage() * step)
+                grid.moveSelectionWithViewport(-grid.columns * grid.rowsPerPage() * step)
                 break
             case Qt.Key_PageDown:
-                grid.moveSelection(grid.columns * grid.rowsPerPage() * step)
+                grid.moveSelectionWithViewport(grid.columns * grid.rowsPerPage() * step)
                 break
             case Qt.Key_Home:
                 grid.moveSelection(-grid.count)
@@ -306,13 +306,41 @@ Window {
             return Math.max(1, Math.floor(height / cellHeight))
         }
 
+        function minimumContentY() {
+            return originY
+        }
+
+        function maximumContentY() {
+            return Math.max(originY, originY + contentHeight - height)
+        }
+
+        function boundedContentY(value) {
+            return Math.max(minimumContentY(), Math.min(maximumContentY(), value))
+        }
+
         function moveSelection(delta) {
+            moveSelectionInternal(delta, false)
+        }
+
+        function moveSelectionWithViewport(delta) {
+            moveSelectionInternal(delta, true)
+        }
+
+        function moveSelectionInternal(delta, scrollViewport) {
             if (count === 0)
                 return
             const start = currentIndex < 0 ? 0 : currentIndex
             const next = Math.max(0, Math.min(count - 1, start + delta))
+            const startRow = Math.floor(start / columns)
+            const nextRow = Math.floor(next / columns)
             currentIndex = next
             root.selectedIndex = next
+            // Vertical navigation moves the viewport by the same rows as the
+            // selection. The selected tile therefore keeps its place on
+            // screen instead of walking through an invisible viewport cursor
+            // before the content starts to move.
+            if (scrollViewport)
+                contentY = boundedContentY(contentY + (nextRow - startRow) * cellHeight)
             positionViewAtIndex(next, GridView.Contain)
             updateVisibleRange()
         }
@@ -347,8 +375,7 @@ Window {
                     ? pixelDeltaY * root.scrollSpeed * factor
                     : (angleDeltaY / 120) * cellHeight * 0.5 * root.scrollSpeed * factor
 
-            const maximum = Math.max(0, contentHeight - height)
-            contentY = Math.max(0, Math.min(maximum, contentY - distance))
+            contentY = boundedContentY(contentY - distance)
             updateVisibleRange()
         }
 
@@ -442,15 +469,33 @@ Window {
         // Notify the model when the visible range changes so it can manage
         // thumbnail requests for the on-screen window plus prefetch margin.
         onContentYChanged: updateVisibleRange()
-        onHeightChanged: updateVisibleRange()
-        onCellHeightChanged: Qt.callLater(updateVisibleRange)
-        onCountChanged: Qt.callLater(updateVisibleRange)
-        Component.onCompleted: Qt.callLater(updateVisibleRange)
+        onOriginYChanged: Qt.callLater(updateVisibleRange)
+        onContentHeightChanged: Qt.callLater(clampToContent)
+        onWidthChanged: Qt.callLater(refreshGeometry)
+        onHeightChanged: Qt.callLater(refreshGeometry)
+        onCellWidthChanged: Qt.callLater(refreshGeometry)
+        onCellHeightChanged: Qt.callLater(refreshGeometry)
+        onCountChanged: Qt.callLater(refreshGeometry)
+        Component.onCompleted: Qt.callLater(refreshGeometry)
+
+        function clampToContent() {
+            contentY = boundedContentY(contentY)
+            updateVisibleRange()
+        }
+
+        function refreshGeometry() {
+            forceLayout()
+            clampToContent()
+        }
 
         function updateVisibleRange() {
             const columnCount = Math.max(1, Math.floor(width / cellWidth))
-            const firstRow = Math.floor(Math.max(0, contentY) / cellHeight)
-            const lastRow = Math.floor(Math.max(0, contentY + height - 1) / cellHeight)
+            // Item views may move their logical origin when rows are inserted
+            // or their geometry changes. contentY is in that shifted
+            // coordinate system; row numbers start at originY.
+            const relativeY = Math.max(0, contentY - originY)
+            const firstRow = Math.floor(relativeY / cellHeight)
+            const lastRow = Math.floor(Math.max(0, relativeY + height - 1) / cellHeight)
             const first = Math.min(count - 1, firstRow * columnCount)
             const last = Math.min(count - 1, (lastRow + 1) * columnCount - 1)
             if (model && typeof model.setVisibleRange === "function") {

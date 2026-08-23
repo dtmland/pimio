@@ -142,10 +142,10 @@ public:
     /// No-op when no database is attached.
     ///
     /// Rows that survive the reload keep the thumbnail they already have, and
-    /// a reload that only appends rows to the end (which is what a scan in
-    /// progress does) is reported as an insertion rather than a model reset,
-    /// so the grid keeps its scroll position and its pictures while a library
-    /// is still being indexed.
+    /// a reload that only inserts new rows without removing or reordering old
+    /// ones (which is what a scan in progress normally does) is reported as
+    /// insertions rather than a model reset, so the grid keeps its scroll
+    /// position and its pictures while a library is still being indexed.
     void reload();
 
     /// Sets the currently visible row range.

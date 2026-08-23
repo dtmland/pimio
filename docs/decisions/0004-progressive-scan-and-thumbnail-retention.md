@@ -93,9 +93,10 @@ partial projection.
 
 - More LORE revisions per scan (one per batch instead of one per scan).
 - A model reload per batch, coalesced by a 250 ms timer so a fast scanner
-  cannot force more than about four reloads a second. A reload that only
-  appends rows uses `beginInsertRows`, not a model reset, so the grid keeps its
-  scroll position and its loaded thumbnails while a scan runs.
+  cannot force more than about four reloads a second. A reload that only adds
+  rows uses `beginInsertRows` at their sorted positions, not a model reset, so
+  the grid keeps its scroll position and its loaded thumbnails even when a
+  later batch sorts before or between rows already shown.
 - A bounded amount of thumbnail re-rendering when a user scrolls further than
   the retention bound and comes back. That work is the point: it is what makes
   the tile appear instead of staying grey.

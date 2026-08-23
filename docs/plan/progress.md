@@ -250,7 +250,8 @@ tiles the longer the application is scrolled. Rationale in
 - `MediaLibraryModel` thumbnail retention — a bounded most-recently-used list;
   an evicted id is removed from the image provider and its row returns to
   `Pending`, which is the fix for the grey tiles. `reload()` now preserves
-  loaded thumbnails and appends rows without resetting the model.
+  loaded thumbnails and inserts new rows at their sorted positions without
+  resetting the model.
 - `MediaLibraryModel::refreshThumbnail()` and a one-shot QML retry when an
   `Image` reports an error.
 - `app::LibraryActivity` — a busy indicator, a "Scanning… N found" label, and a
@@ -262,8 +263,8 @@ tiles the longer the application is scrolled. Rationale in
 
 - `browser.model` — the retention bound drops old thumbnails rather than
   claiming rows the provider cannot serve, a row scrolled back into view is
-  requested again, `refreshThumbnail()` re-requests, and an appending `reload()`
-  keeps loaded thumbnails and inserts rows without a model reset.
+  requested again, `refreshThumbnail()` re-requests, and insertion-only
+  `reload()` calls keep loaded thumbnails without a model reset.
 - `browser.thumbnailImageProvider` — capacity, removal, and containment.
 - `scan.incremental` — a batched scan is readable from the store before it
   finishes and reports cumulative counts, an unbatched scan still commits once,
@@ -272,5 +273,6 @@ tiles the longer the application is scrolled. Rationale in
   state token alone.
 - `settings.store` — `scanBatchSize` default, clamping, signals, persistence,
   and reset.
-- `app.smoke` — a thumbnail the provider cannot serve is asked for again, and a
-  scan in progress shows the busy indicator and placeholder.
+- `app.smoke` — a thumbnail the provider cannot serve is asked for again, scan
+  startup shows feedback before storage opens, and resized grids use their
+  shifted layout origin for scroll bounds and thumbnail requests.
