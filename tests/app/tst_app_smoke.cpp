@@ -289,6 +289,7 @@ void TestAppSmoke::detailLoadsModernImage_data()
 
     QTest::newRow("WebP") << QStringLiteral("images/webp-solid.webp");
     QTest::newRow("AVIF") << QStringLiteral("images/avif-solid.avif");
+    QTest::newRow("HEIC grid") << QStringLiteral("images/heic-grid.heic");
 }
 
 void TestAppSmoke::detailLoadsModernImage()
