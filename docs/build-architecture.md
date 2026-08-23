@@ -127,7 +127,9 @@ The HEIC path builds decoder-only libheif and libde265 shared libraries plus a
 dynamic Qt image plugin. This shared-first placement keeps grid composition
 identical in CI, Release, and both local environments, while preserving the
 LGPL replaceable-library boundary. Release layout checks require the plugin,
-both libraries, and their license texts on every platform.
+both libraries, and their license texts on every platform. A shared CMake-only
+source patch namespaces libde265's unused `dist` helper target so it can coexist
+with libaom's target of the same name.
 
 The Linux runtime prerequisites a user must supply (not bundled in the archive)
 are documented separately in

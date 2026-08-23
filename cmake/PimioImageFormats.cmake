@@ -82,6 +82,10 @@ function(pimio_enable_image_formats)
         pimio_libde265
         URL "https://github.com/strukturag/libde265/releases/download/v${PIMIO_LIBDE265_VERSION}/libde265-${PIMIO_LIBDE265_VERSION}.tar.gz"
         URL_HASH SHA256=fd48a927e94ed74fc7ce8829d222b9d8599fcbfe8b6448ba66705babc56ab219
+        PATCH_COMMAND
+            "${CMAKE_COMMAND}"
+            "-DPIMIO_LIBDE265_CMAKE_FILE=<SOURCE_DIR>/CMakeLists.txt"
+            -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/PimioNamespaceLibde265Target.cmake"
         EXCLUDE_FROM_ALL
     )
     FetchContent_MakeAvailable(pimio_libde265)
