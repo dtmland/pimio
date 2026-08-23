@@ -20,6 +20,9 @@ Legal review is a release gate. CI cannot certify it.
 | libavif | 1.4.2 | AVIF read with libaom | Statically linked through the AVIF Qt image plugin | BSD-2-Clause | https://github.com/AOMediaCodec/libavif/releases/tag/v1.4.2 | No | Yes |
 | libaom | 3.14.1 | AV1 decoder only | Statically linked into libavif | BSD-2-Clause | https://aomedia.googlesource.com/aom/+/refs/tags/v3.14.1 | No | Yes |
 | qt-avif-image-plugin | 0.10.3 | Qt 6 image I/O adapter, read capability enabled | Statically linked Qt image plugin | BSD-2-Clause | https://github.com/novomesk/qt-avif-image-plugin/releases/tag/v0.10.3 | No | Yes |
+| libheif | 1.23.1 | HEIF parsing and grid composition; HEIC read only | Dynamically linked through the HEIC Qt image plugin | LGPL-3.0 | https://github.com/strukturag/libheif/releases/tag/v1.23.1 | No | Yes |
+| libde265 | 1.1.1 | HEVC decoder only | Dynamically linked into libheif | LGPL-3.0 | https://github.com/strukturag/libde265/releases/tag/v1.1.1 | No | Yes |
+| qt-heic-image-plugin | 0.7.1 | Qt 6 HEIC/HEIF image I/O adapter, read capability enabled | Dynamically loaded Qt image plugin | LGPL-2.0-or-later | https://github.com/novomesk/qt-heic-image-plugin/releases/tag/v0.7.1 | No | Yes |
 | LORE (`liblore`) | 0.8.5 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.8.5 | No | Yes |
 
 Qt is used under the LGPL dynamic-linking path. The application must keep Qt
@@ -30,6 +33,14 @@ AVIF decoding uses the maintained libavif codec and qt-avif-image-plugin
 adapter rather than a project-specific decoder. They and libaom are pinned and
 fetched from their tagged upstream releases; all three use permissive
 BSD-2-Clause terms.
+
+HEIC decoding uses the maintained libheif, libde265, and qt-heic-image-plugin
+stack. Qt ImageFormats does not provide HEIC, libavif cannot decode HEVC, and
+Qt Multimedia's video path does not compose HEIF tile grids. Only the HEVC
+decoder is enabled: no HEVC encoder or GPL x265 component is built. The three
+LGPL components are shipped as separate shared libraries/plugins with their
+license texts so users can replace them. HEVC patent review remains a release
+gate that CI cannot certify.
 
 Metadata is read by `pimio::metadata`, parsers written for this project, so the
 read path adds no row here. The reasoning and what would reverse it are in

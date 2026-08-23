@@ -218,9 +218,12 @@ jobs:
         run: |
           set -euo pipefail
           status=0
-          for required in bin/pimio bin/qt.conf lib plugins/platforms/libqxcb.so \
+          for required in bin/pimio bin/qt.conf lib/libheif.so.1 lib/libde265.so.0 \
+            plugins/platforms/libqxcb.so \
             plugins/platforms/libqoffscreen.so \
-            plugins/imageformats/libqwebp.so \
+            plugins/imageformats/libqwebp.so plugins/imageformats/libqheif.so \
+            licenses/libheif-COPYING.txt licenses/libde265-COPYING.txt \
+            licenses/qt-heic-image-plugin-LICENSE.txt \
             qml/QtQuick pimio pimio-doctor README.txt; do
             if [ -e "deploy/$required" ]; then
               echo "ok      $required"
@@ -257,6 +260,11 @@ jobs:
             pimio.app/Contents/PlugIns/platforms \
             pimio.app/Contents/PlugIns/platforms/libqoffscreen.dylib \
             pimio.app/Contents/PlugIns/imageformats/libqwebp.dylib \
+            pimio.app/Contents/PlugIns/imageformats/libqheif.dylib \
+            pimio.app/Contents/Frameworks/libheif.1.dylib \
+            pimio.app/Contents/Frameworks/libde265.0.dylib \
+            licenses/libheif-COPYING.txt licenses/libde265-COPYING.txt \
+            licenses/qt-heic-image-plugin-LICENSE.txt \
             pimio.app/Contents/Resources/qml/QtQuick \
             pimio pimio-doctor README.txt; do
             if [ -e "deploy/$required" ]; then
@@ -286,8 +294,11 @@ jobs:
           $status = 0
           $required = @(
             'bin/pimio.exe', 'bin/qt.conf', 'bin/Qt6Core.dll',
+            'bin/heif.dll', 'bin/libde265.dll',
             'plugins/platforms/qwindows.dll', 'plugins/platforms/qoffscreen.dll',
-            'plugins/imageformats/qwebp.dll',
+            'plugins/imageformats/qwebp.dll', 'plugins/imageformats/qheif.dll',
+            'licenses/libheif-COPYING.txt', 'licenses/libde265-COPYING.txt',
+            'licenses/qt-heic-image-plugin-LICENSE.txt',
             'qml/QtQuick', 'pimio.bat', 'pimio-doctor.ps1', 'README.txt'
           )
           foreach ($item in $required) {
@@ -333,7 +344,9 @@ jobs:
           }
           $status = 0
           foreach ($item in @('bin/pimio.exe', 'bin/qt.conf',
+              'bin/heif.dll', 'bin/libde265.dll',
               'plugins/platforms/qwindows.dll', 'plugins/platforms/qoffscreen.dll',
+              'plugins/imageformats/qheif.dll',
               'qml/QtQuick/')) {
             if ($entries | Where-Object { $_ -eq $item -or $_.StartsWith($item) }) {
               Write-Host "ok      $item"

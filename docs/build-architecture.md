@@ -40,10 +40,12 @@ they contain.
   description states it is "shared configuration used locally and in CI on all
   platforms." This is the reason the *build itself* cannot drift between
   contexts.
-- **[`CMakeLists.txt`](../CMakeLists.txt) and [`cmake/PimioLore.cmake`](../cmake/PimioLore.cmake)**
-  — the dependency requirements and the pinned LORE version and per-artifact
-  SHA-256 checksums. LORE is acquired by the same checksum-verified download on
-  every platform and in every context.
+- **[`CMakeLists.txt`](../CMakeLists.txt),
+  [`cmake/PimioLore.cmake`](../cmake/PimioLore.cmake), and
+  [`cmake/PimioImageFormats.cmake`](../cmake/PimioImageFormats.cmake)** — the
+  dependency requirements and checksum-verified dependency pins. LORE and the
+  bundled image decoders are acquired from the same sources on every platform
+  and in every context.
 - **[`packaging/`](../packaging/)** — the launcher, `README.txt`, and
   `pimio-doctor` that ship at the root of every archive. Installed by
   `cmake --install`, so a local install reproduces the released tree.
@@ -118,6 +120,14 @@ bare image and has no Perl. The sandbox toolchain therefore downloads a
 as a pinned, checksum-verified artifact alongside CMake, Ninja, NASM, and MinGit.
 Linux CI and the Linux container image both inherit Perl from the Ubuntu base image,
 so no explicit Perl install is needed on those paths.
+
+**Bundled image decoders.** AVIF and HEIC are acquired and configured centrally
+by `cmake/PimioImageFormats.cmake`; no context installs a system codec package.
+The HEIC path builds decoder-only libheif and libde265 shared libraries plus a
+dynamic Qt image plugin. This shared-first placement keeps grid composition
+identical in CI, Release, and both local environments, while preserving the
+LGPL replaceable-library boundary. Release layout checks require the plugin,
+both libraries, and their license texts on every platform.
 
 The Linux runtime prerequisites a user must supply (not bundled in the archive)
 are documented separately in
