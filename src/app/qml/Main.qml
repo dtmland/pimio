@@ -66,8 +66,12 @@ Window {
     }
 
     function restoreGridFocus() {
+        Qt.callLater(forceGridFocusIfBrowsing)
+    }
+
+    function forceGridFocusIfBrowsing() {
         if (browsingContextActive)
-            Qt.callLater(grid.forceActiveFocus)
+            grid.forceActiveFocus()
     }
 
     function showDetail(index) {
@@ -538,6 +542,7 @@ Window {
         readonly property bool canScroll: grid.maximumContentY() > grid.minimumContentY()
         readonly property real maximumTilesPerTick: 0.12
         readonly property int tickIntervalMs: 16
+        property real handleOffset: 0
 
         function jumpToStart() {
             grid.contentY = grid.minimumContentY()
@@ -567,14 +572,12 @@ Window {
 
         function scrollFromHandle() {
             const halfTravel = Math.max(1, (scrollTrack.height - scrollHandle.height) / 2)
-            const displacement = (scrollHandle.y - scrollHandle.restingY) / halfTravel
+            const displacement = handleOffset / halfTravel
             scrollFromDisplacement(displacement)
         }
 
         function returnHandleToCenter() {
             returnAnimation.stop()
-            returnAnimation.from = scrollHandle.y
-            returnAnimation.to = scrollHandle.restingY
             returnAnimation.start()
         }
 
@@ -615,7 +618,7 @@ Window {
                 objectName: "scrollControllerHandle"
                 readonly property real restingY: (scrollTrack.height - height) / 2
                 x: 2
-                y: restingY
+                y: restingY + scrollController.handleOffset
                 width: scrollTrack.width - 4
                 height: Math.min(48, Math.max(28, scrollTrack.height / 5))
                 radius: 5
@@ -624,11 +627,15 @@ Window {
 
                 DragHandler {
                     id: handleDrag
-                    target: scrollHandle
+                    target: null
                     xAxis.enabled: false
-                    yAxis.minimum: 0
-                    yAxis.maximum: Math.max(0, scrollTrack.height - scrollHandle.height)
                     enabled: scrollController.canScroll && root.browsingContextActive
+                    onActiveTranslationChanged: {
+                        const halfTravel = Math.max(
+                                0, (scrollTrack.height - scrollHandle.height) / 2)
+                        scrollController.handleOffset = Math.max(
+                                -halfTravel, Math.min(halfTravel, activeTranslation.y))
+                    }
                     onActiveChanged: {
                         if (active) {
                             returnAnimation.stop()
@@ -664,8 +671,9 @@ Window {
 
         NumberAnimation {
             id: returnAnimation
-            target: scrollHandle
-            property: "y"
+            target: scrollController
+            property: "handleOffset"
+            to: 0
             duration: 160
             easing.type: Easing.OutCubic
         }

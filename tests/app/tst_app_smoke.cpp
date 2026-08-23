@@ -560,7 +560,7 @@ void TestAppSmoke::scrollControllerJumpsAndUsesHandleDisplacement()
     const qreal largeDisplacementDistance = grid->property("contentY").toReal() - origin;
     QVERIFY(largeDisplacementDistance > smallDisplacementDistance);
 
-    handle->setY(0);
+    controller->setProperty("handleOffset", -100);
     QVERIFY(QMetaObject::invokeMethod(controller, "returnHandleToCenter"));
     QTRY_COMPARE(handle->y(), handle->property("restingY").toReal());
 }
