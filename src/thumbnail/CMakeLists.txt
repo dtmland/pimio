@@ -16,6 +16,7 @@ qt_add_library(pimio_thumbnail STATIC
 add_library(pimio::thumbnail ALIAS pimio_thumbnail)
 
 target_include_directories(pimio_thumbnail PUBLIC include)
+add_dependencies(pimio_thumbnail pimio_heic_image_plugin)
 
 # Qt Multimedia gives VideoFrameRenderer a genuine cross-platform decode path
 # (Windows Media Foundation, GStreamer, AVFoundation) without pimio linking or
