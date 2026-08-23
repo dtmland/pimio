@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QImage>
 #include <QImageReader>
+#include <QStringList>
 #include <QTest>
 
 #ifndef PIMIO_FIXTURES_DIR
@@ -40,6 +41,7 @@ private slots:
     void decodesAtARequestedPosition();
     void imageRendererDecodesModernFormats_data();
     void imageRendererDecodesModernFormats();
+    void imageRendererComposesTiledHeic();
     void reportsErrorForAStructurallyValidButUndecodableFile();
     void reportsInternalErrorForAnEmptyPath();
     void compositeDispatchesImagesToTheImageRenderer();
@@ -98,21 +100,30 @@ void TestThumbnailVideo::decodesAtARequestedPosition()
 void TestThumbnailVideo::imageRendererDecodesModernFormats_data()
 {
     QTest::addColumn<QString>("relativePath");
-    QTest::addColumn<QByteArray>("format");
+    QTest::addColumn<QStringList>("expectedFormats");
+    QTest::addColumn<QSize>("expectedSize");
 
     QTest::newRow("WebP") << QStringLiteral("images/webp-solid.webp")
-                          << QByteArrayLiteral("webp");
+                          << QStringList{QStringLiteral("webp")} << QSize(16, 12);
     QTest::newRow("AVIF") << QStringLiteral("images/avif-solid.avif")
-                          << QByteArrayLiteral("avif");
+                          << QStringList{QStringLiteral("avif")} << QSize(16, 12);
+    QTest::newRow("HEIC") << QStringLiteral("images/heic-grid.heic")
+                          << QStringList{QStringLiteral("heif"), QStringLiteral("heic")}
+                          << QSize(16, 16);
 }
 
 void TestThumbnailVideo::imageRendererDecodesModernFormats()
 {
     QFETCH(QString, relativePath);
-    QFETCH(QByteArray, format);
+    QFETCH(QStringList, expectedFormats);
+    QFETCH(QSize, expectedSize);
 
     const QString absolutePath = fixturePath(relativePath);
-    QCOMPARE(QImageReader::imageFormat(absolutePath), format);
+    const QString detectedFormat =
+            QString::fromLatin1(QImageReader::imageFormat(absolutePath));
+    QVERIFY2(expectedFormats.contains(detectedFormat),
+             qPrintable(QStringLiteral("Detected format '%1', expected one of: %2")
+                                .arg(detectedFormat, expectedFormats.join(QStringLiteral(", ")))));
 
     ImageRenderer renderer;
     MediaRequest request;
@@ -125,7 +136,37 @@ void TestThumbnailVideo::imageRendererDecodesModernFormats()
     QVERIFY2(!error.isError(), qPrintable(error.message()));
     QCOMPARE(result.format, QStringLiteral("jpeg"));
     QVERIFY(!QImage::fromData(result.bytes, "jpeg").isNull());
-    QCOMPARE(result.actualSize, QSize(16, 12));
+    QCOMPARE(result.actualSize, expectedSize);
+}
+
+void TestThumbnailVideo::imageRendererComposesTiledHeic()
+{
+    ImageRenderer renderer;
+    MediaRequest request;
+    request.absolutePath = fixturePath(QStringLiteral("images/heic-grid.heic"));
+    request.targetSize = QSize(64, 64);
+
+    Error error;
+    const MediaResult result = renderer.render(request, &error);
+
+    QVERIFY2(!error.isError(), qPrintable(error.message()));
+    QCOMPARE(result.actualSize, QSize(64, 64));
+
+    const QImage decoded = QImage::fromData(result.bytes, "jpeg");
+    QCOMPARE(decoded.size(), QSize(64, 64));
+
+    const QColor topLeft = decoded.pixelColor(16, 16);
+    const QColor topRight = decoded.pixelColor(48, 16);
+    const QColor bottomLeft = decoded.pixelColor(16, 48);
+    const QColor bottomRight = decoded.pixelColor(48, 48);
+
+    QVERIFY(topLeft.red() > topLeft.green() + 80 && topLeft.red() > topLeft.blue() + 80);
+    QVERIFY(topRight.green() > topRight.red() + 80
+            && topRight.green() > topRight.blue() + 80);
+    QVERIFY(bottomLeft.blue() > bottomLeft.red() + 80
+            && bottomLeft.blue() > bottomLeft.green() + 80);
+    QVERIFY(bottomRight.red() > bottomRight.blue() + 80
+            && bottomRight.green() > bottomRight.blue() + 80);
 }
 
 void TestThumbnailVideo::reportsErrorForAStructurallyValidButUndecodableFile()

@@ -13,7 +13,7 @@ supported product matrix.
 | Item | Baseline | Confirmed? |
 | --- | --- | --- |
 | Qt | 6.8.3 (pinned in CI); CMake accepts >= 6.4 | Provisional |
-| Image formats | WebP and AVIF decode on every supported platform | Confirmed by CI |
+| Image formats | WebP, AVIF, and tiled HEIC decode on every supported platform | Confirmed by CI |
 | C++ standard | C++20 | Provisional |
 | Build system | CMake >= 3.24 with CMake Presets, Ninja generator | Provisional |
 | Windows | Windows 10 22H2 and Windows 11, x86-64 | Provisional |

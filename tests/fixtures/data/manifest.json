@@ -168,6 +168,14 @@
             "provenance": "Generated once by tools/fixture_generator with qt-avif-image-plugin 0.10.3, libavif 1.4.2, and libaom 3.14.1. Synthetic gradient owned by the pimio project; no third-party media is included.",
             "sha256": "5091e605a673cb76d58cb929fa781e5bb44648d4dd6c8a5c8e6cb19baf903aa6",
             "sizeBytes": 369
+        },
+        {
+            "covers": "A real 2x2 tiled HEIC image for complete thumbnail and detail-view decoding.",
+            "notes": "The four 64x64 tiles are solid red, green, blue, and yellow. A video decoder that exposes only one HEVC tile produces a cropped single-colour image; the HEIF image decoder must compose all four.",
+            "path": "images/heic-grid.heic",
+            "provenance": "Generated once with libheif 1.23.1 `heif-enc --cut-tiles 64 -q 90` from a synthetic 128x128 four-colour PNG owned by the pimio project; no third-party media is included.",
+            "sha256": "4a83447427207559a39ec6eb9b27ff3bd6c132284c520da8bb5c0e0d6c465920",
+            "sizeBytes": 760
         }
     ],
     "generatedWithQtVersion": "6.4.2",
