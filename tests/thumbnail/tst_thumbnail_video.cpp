@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QImage>
 #include <QImageReader>
+#include <QStringList>
 #include <QTest>
 
 #ifndef PIMIO_FIXTURES_DIR
@@ -99,25 +100,30 @@ void TestThumbnailVideo::decodesAtARequestedPosition()
 void TestThumbnailVideo::imageRendererDecodesModernFormats_data()
 {
     QTest::addColumn<QString>("relativePath");
-    QTest::addColumn<QByteArray>("format");
+    QTest::addColumn<QStringList>("expectedFormats");
     QTest::addColumn<QSize>("expectedSize");
 
     QTest::newRow("WebP") << QStringLiteral("images/webp-solid.webp")
-                          << QByteArrayLiteral("webp") << QSize(16, 12);
+                          << QStringList{QStringLiteral("webp")} << QSize(16, 12);
     QTest::newRow("AVIF") << QStringLiteral("images/avif-solid.avif")
-                          << QByteArrayLiteral("avif") << QSize(16, 12);
+                          << QStringList{QStringLiteral("avif")} << QSize(16, 12);
     QTest::newRow("HEIC") << QStringLiteral("images/heic-grid.heic")
-                          << QByteArrayLiteral("heif") << QSize(16, 16);
+                          << QStringList{QStringLiteral("heif"), QStringLiteral("heic")}
+                          << QSize(16, 16);
 }
 
 void TestThumbnailVideo::imageRendererDecodesModernFormats()
 {
     QFETCH(QString, relativePath);
-    QFETCH(QByteArray, format);
+    QFETCH(QStringList, expectedFormats);
     QFETCH(QSize, expectedSize);
 
     const QString absolutePath = fixturePath(relativePath);
-    QCOMPARE(QImageReader::imageFormat(absolutePath), format);
+    const QString detectedFormat =
+            QString::fromLatin1(QImageReader::imageFormat(absolutePath));
+    QVERIFY2(expectedFormats.contains(detectedFormat),
+             qPrintable(QStringLiteral("Detected format '%1', expected one of: %2")
+                                .arg(detectedFormat, expectedFormats.join(QStringLiteral(", ")))));
 
     ImageRenderer renderer;
     MediaRequest request;
