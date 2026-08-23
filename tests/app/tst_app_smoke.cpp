@@ -1,5 +1,6 @@
 #include "pimio/app/application.h"
 #include "pimio/app/library_activity.h"
+#include "pimio/app/library_session.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/settings/settings.h"
 
@@ -53,28 +54,31 @@ public:
     explicit SyntheticMediaModel(int count, int thumbnailStatus = 0, QString absolutePath = {},
                                  QObject *parent = nullptr)
         : QAbstractListModel(parent)
-        , m_count(count)
         , m_thumbnailStatus(thumbnailStatus)
         , m_absolutePath(std::move(absolutePath))
     {
+        m_ids.reserve(count);
+        for (int row = 0; row < count; ++row) {
+            m_ids.append(QStringLiteral("item-%1").arg(row));
+        }
     }
 
     int rowCount(const QModelIndex &parent = {}) const override
     {
-        return parent.isValid() ? 0 : m_count;
+        return parent.isValid() ? 0 : m_ids.size();
     }
 
     QVariant data(const QModelIndex &index, int role) const override
     {
-        if (!index.isValid() || index.row() < 0 || index.row() >= m_count) {
+        if (!index.isValid() || index.row() < 0 || index.row() >= m_ids.size()) {
             return {};
         }
         switch (role) {
         case MediaIdRole:
-            return QStringLiteral("item-%1").arg(index.row());
+            return m_ids.at(index.row());
         case AbsolutePathRole:
             return m_absolutePath.isEmpty()
-                    ? QStringLiteral("/library/item-%1.jpg").arg(index.row())
+                    ? QStringLiteral("/library/%1.jpg").arg(m_ids.at(index.row()))
                     : m_absolutePath;
         case CaptureTimeStringRole:
             return QStringLiteral("2026-01-01T00:00:00");
@@ -118,6 +122,29 @@ public:
         return m_refreshedRows;
     }
 
+    void prependRows(int count)
+    {
+        if (count <= 0) {
+            return;
+        }
+        beginInsertRows({}, 0, count - 1);
+        for (int row = 0; row < count; ++row) {
+            m_ids.insert(row, QStringLiteral("prepended-%1").arg(m_nextPrependedId++));
+        }
+        endInsertRows();
+    }
+
+    void removeLeadingRows(int count)
+    {
+        const int removed = qBound(0, count, static_cast<int>(m_ids.size()));
+        if (removed == 0) {
+            return;
+        }
+        beginRemoveRows({}, 0, removed - 1);
+        m_ids.remove(0, removed);
+        endRemoveRows();
+    }
+
     Q_INVOKABLE QVariantMap itemAt(int row) const
     {
         const QModelIndex itemIndex = index(row);
@@ -134,10 +161,11 @@ signals:
     void visibleRangeChanged(int first, int last);
 
 private:
-    int m_count;
+    QStringList m_ids;
     int m_thumbnailStatus;
     QString m_absolutePath;
     QList<int> m_refreshedRows;
+    int m_nextPrependedId = 0;
 };
 
 } // namespace
@@ -157,10 +185,12 @@ private slots:
     void holdingANavigationKeyAcceleratesUnlessDisabled();
     void wheelScrollingFollowsTheConfiguredSpeed();
     void tileSizeSettingResizesTheGridCells();
+    void gridScrollBoundsFollowLayoutOriginChanges();
     void settingsDialogExposesStoredAndSessionSettings();
     void previewArrowKeysFollowTheGridOrder();
     void aThumbnailTheProviderCannotServeIsAskedForAgain();
     void aScanInProgressShowsActivity();
+    void preparedLibraryShowsStartupFeedbackBeforeStorageOpens();
 };
 
 void TestAppSmoke::initTestCase()
@@ -306,15 +336,20 @@ void TestAppSmoke::arrowKeysMoveTheSelectionByRowsAndColumns()
 
     QVERIFY(QMetaObject::invokeMethod(grid, "moveSelection", Q_ARG(QVariant, 0)));
     QCOMPARE(grid->property("currentIndex").toInt(), 0);
+    const qreal initialContentY = grid->property("contentY").toReal();
 
     QTest::keyClick(window, Qt::Key_Right);
     QCOMPARE(grid->property("currentIndex").toInt(), 1);
+    QCOMPARE(grid->property("contentY").toReal(), initialContentY);
 
     QTest::keyClick(window, Qt::Key_Down);
     QCOMPARE(grid->property("currentIndex").toInt(), 1 + columns);
+    QCOMPARE(grid->property("contentY").toReal(),
+             initialContentY + grid->property("cellHeight").toReal());
 
     QTest::keyClick(window, Qt::Key_Up);
     QCOMPARE(grid->property("currentIndex").toInt(), 1);
+    QCOMPARE(grid->property("contentY").toReal(), initialContentY);
 
     // A page is one screenful of rows, and the selection never leaves the
     // model.
@@ -425,12 +460,13 @@ void TestAppSmoke::wheelScrollingFollowsTheConfiguredSpeed()
     // Scrolling never runs past the end of the content.
     QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, -120000),
                               Q_ARG(QVariant, 0), Q_ARG(QVariant, 40000));
-    const qreal maximum = grid->property("contentHeight").toReal()
-            - grid->property("height").toReal();
+    const qreal origin = grid->property("originY").toReal();
+    const qreal maximum = qMax(origin, origin + grid->property("contentHeight").toReal()
+                                      - grid->property("height").toReal());
     QCOMPARE(grid->property("contentY").toReal(), maximum);
     QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, 120000),
                               Q_ARG(QVariant, 0), Q_ARG(QVariant, 60000));
-    QCOMPARE(grid->property("contentY").toReal(), qreal(0));
+    QCOMPARE(grid->property("contentY").toReal(), origin);
 }
 
 void TestAppSmoke::tileSizeSettingResizesTheGridCells()
@@ -458,6 +494,49 @@ void TestAppSmoke::tileSizeSettingResizesTheGridCells()
     QVERIFY(slider != nullptr);
     QCOMPARE(slider->property("from").toInt(), settings.minimumTileSize());
     QCOMPARE(slider->property("to").toInt(), settings.maximumTileSize());
+}
+
+void TestAppSmoke::gridScrollBoundsFollowLayoutOriginChanges()
+{
+    pimio::settings::Settings settings;
+    settings.resetToDefaults();
+    SyntheticMediaModel model(400);
+    QSignalSpy rangeSpy(&model, &SyntheticMediaModel::visibleRangeChanged);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("appSettings"), &settings);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *grid = window->findChild<QQuickItem *>(QStringLiteral("mediaGrid"));
+    QVERIFY(grid != nullptr);
+    QTRY_VERIFY(grid->property("contentHeight").toReal() > grid->height());
+
+    const int columns = grid->property("columns").toInt();
+    const qreal cellHeight = grid->property("cellHeight").toReal();
+    grid->setProperty("contentY", cellHeight * 12);
+    QVERIFY(QMetaObject::invokeMethod(grid, "moveSelection",
+                                      Q_ARG(QVariant, columns * 12)));
+    model.prependRows(columns * 2);
+    model.removeLeadingRows(columns);
+    settings.setTileSize(settings.maximumTileSize());
+    window->setWidth(window->width() + 137);
+    QVERIFY(QMetaObject::invokeMethod(grid, "refreshGeometry"));
+
+    QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, 120000),
+                              Q_ARG(QVariant, 0), Q_ARG(QVariant, 10000));
+    const qreal origin = grid->property("originY").toReal();
+    QCOMPARE(grid->property("contentY").toReal(), origin);
+    QTRY_VERIFY(!rangeSpy.isEmpty());
+    QCOMPARE(rangeSpy.constLast().at(0).toInt(), 0);
+
+    QMetaObject::invokeMethod(grid, "scrollByWheel", Q_ARG(QVariant, -120000),
+                              Q_ARG(QVariant, 0), Q_ARG(QVariant, 20000));
+    const qreal maximum = qMax(origin, origin + grid->property("contentHeight").toReal()
+                                      - grid->property("height").toReal());
+    QCOMPARE(grid->property("contentY").toReal(), maximum);
+    QTRY_COMPARE(rangeSpy.constLast().at(1).toInt(), model.rowCount() - 1);
 }
 
 void TestAppSmoke::settingsDialogExposesStoredAndSessionSettings()
@@ -585,6 +664,23 @@ void TestAppSmoke::aScanInProgressShowsActivity()
     activity.setScanning(false);
     QTRY_VERIFY(!busy->property("visible").toBool());
     QTRY_VERIFY(!placeholder->property("visible").toBool());
+}
+
+void TestAppSmoke::preparedLibraryShowsStartupFeedbackBeforeStorageOpens()
+{
+    pimio::app::LibrarySession session;
+    QQmlApplicationEngine engine;
+    session.prepare({QStringLiteral("/library/not-opened-yet")}, engine);
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *busy = window->findChild<QQuickItem *>(QStringLiteral("scanBusyIndicator"));
+    auto *placeholder = window->findChild<QQuickItem *>(QStringLiteral("scanningPlaceholder"));
+    QVERIFY(busy != nullptr);
+    QVERIFY(placeholder != nullptr);
+    QTRY_VERIFY(busy->property("visible").toBool());
+    QTRY_VERIFY(placeholder->property("visible").toBool());
 }
 
 QTEST_MAIN(TestAppSmoke)

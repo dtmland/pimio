@@ -19,10 +19,8 @@ namespace pimio::app {
 /// already expects.
 ///
 /// Everything here is additive and optional. With no library path at all,
-/// start() is simply never called, and startup behaves exactly as it always
-/// has: an empty QQmlApplicationEngine loading Main.qml against whatever
-/// context properties a test itself set up, which is what keeps `pimio` and
-/// `pimio --self-check` working with no arguments.
+/// prepare() still registers an empty model so QML sees the same context
+/// properties as a real session, while start() has no storage work to do.
 ///
 /// Multiple library paths are supported (the --library option is
 /// repeatable): every path is scanned and watched independently, but all of
@@ -49,24 +47,27 @@ public:
     LibrarySession(const LibrarySession &) = delete;
     LibrarySession &operator=(const LibrarySession &) = delete;
 
+    /// Registers the model, activity state, and thumbnail image provider on
+    /// \a engine before QML is loaded. The requested \a libraryPaths are kept
+    /// for start(), and a non-empty list immediately marks the session as
+    /// starting so the first rendered frame can show progress feedback.
+    void prepare(const QStringList &libraryPaths, QQmlApplicationEngine &engine);
+
     /// Opens durable storage (LORE-backed when this build was compiled with
     /// it, which the shipped and CI builds always are; otherwise the library
-    /// stays empty and a warning is logged, exactly like a missing
-    /// --library) and starts scanning and watching every path in \a
-    /// libraryPaths. Registers "mediaLibraryModel" on \a engine's root
-    /// context and an "thumbnail" image provider before returning, so both
-    /// exist before the caller calls engine.load() — no QML binding ever
-    /// observes them appearing.
+    /// stays empty and a warning is logged) and starts scanning and watching
+    /// every path supplied to prepare().
     ///
     /// The initial scan of each path runs asynchronously via the job queue;
-    /// this call itself never blocks on disk I/O beyond opening the (small,
-    /// local) store, projection, and job-queue files.
-    void start(const QStringList &libraryPaths, QQmlApplicationEngine &engine);
+    /// opening its stores and registering recursive filesystem watches are
+    /// synchronous. The application therefore calls this only after its first
+    /// window frame has been presented.
+    void start();
 
 private:
     /// Pushes the current user settings (sort order, tile size, and scan
     /// batch size) into the browser model and the scanner. Called once at
-    /// start() and again whenever one of those settings changes, from
+    /// prepare() and again whenever one of those settings changes, from
     /// wherever it was changed.
     void applySettings();
 

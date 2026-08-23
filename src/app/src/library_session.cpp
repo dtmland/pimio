@@ -133,7 +133,9 @@ public:
     // once per commit.
     QTimer refreshTimer;
 
-    bool ready = false;
+    QStringList libraryPaths;
+    bool prepared = false;
+    bool started = false;
 };
 
 LibrarySession::LibrarySession(QObject *parent)
@@ -223,8 +225,14 @@ void LibrarySession::scheduleModelRefresh()
     }
 }
 
-void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngine &engine)
+void LibrarySession::prepare(const QStringList &libraryPaths, QQmlApplicationEngine &engine)
 {
+    if (d->prepared) {
+        return;
+    }
+    d->prepared = true;
+    d->libraryPaths = libraryPaths;
+
     // The image provider and (empty, for now) model are registered
     // unconditionally, even with no library path at all or if opening
     // storage fails below: Main.qml's "typeof mediaLibraryModel ===
@@ -256,8 +264,22 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     connect(&userSettings, &settings::Settings::scanBatchSizeChanged, this,
             [this] { applySettings(); });
 
-    const QStringList normalizedPaths = normalizedLibraryPaths(libraryPaths);
+    // This state is visible in Main.qml's first frame. The synchronous storage
+    // and recursive-watch setup happens later in start(), after that frame has
+    // reached the display.
+    d->activity->setScanning(!libraryPaths.isEmpty());
+}
+
+void LibrarySession::start()
+{
+    if (!d->prepared || d->started) {
+        return;
+    }
+    d->started = true;
+
+    const QStringList normalizedPaths = normalizedLibraryPaths(d->libraryPaths);
     if (normalizedPaths.isEmpty()) {
+        d->activity->setScanning(false);
         return;
     }
 
@@ -265,8 +287,10 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     qCWarning(lcLibrary) << "Cannot open a library: this build has no durable store (LORE was "
                            "unavailable at compile time). The library stays empty; see "
                            "docs/decisions/0001-lore-durable-store.md.";
+    d->activity->setScanning(false);
     return;
 #else
+    settings::Settings &userSettings = applicationSettings();
     const QString indexDir = indexDirectoryFor(normalizedPaths);
     QDir().mkpath(indexDir);
 
@@ -276,6 +300,7 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
         qCWarning(lcLibrary) << "Cannot open durable storage for" << normalizedPaths << ":"
                               << storeError.message();
         d->loreStore.reset();
+        d->activity->setScanning(false);
         return;
     }
     d->store = d->loreStore.get();
@@ -286,6 +311,7 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
                                &projectionError)) {
         qCWarning(lcLibrary) << "Cannot open the projection cache:" << projectionError.message();
         d->projectionDb.reset();
+        d->activity->setScanning(false);
         return;
     }
 
@@ -294,6 +320,7 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
     if (!d->jobQueue->open(indexDir + QStringLiteral("/jobs.sqlite3"), &jobQueueError)) {
         qCWarning(lcLibrary) << "Cannot open the job queue:" << jobQueueError.message();
         d->jobQueue.reset();
+        d->activity->setScanning(false);
         return;
     }
     d->jobQueue->recoverInterruptedJobs(nullptr);
@@ -423,12 +450,6 @@ void LibrarySession::start(const QStringList &libraryPaths, QQmlApplicationEngin
         d->watchServices.push_back(std::move(service));
     }
 
-    d->ready = true;
-
-    // The scans are queued but not dispatched yet, and the dispatcher only
-    // says a job started after its next poll. Saying so here means the window
-    // shows activity from its first frame instead of looking stalled.
-    d->activity->setScanning(true);
 #endif
 }
 

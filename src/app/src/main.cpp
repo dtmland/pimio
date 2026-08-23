@@ -5,6 +5,8 @@
 #include <QCommandLineParser>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QQuickWindow>
+#include <QTimer>
 
 int main(int argc, char *argv[])
 {
@@ -34,12 +36,11 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
-    // Registering the library session's context properties and image
-    // provider happens before loadMainQml() unconditionally, even with no
-    // --library at all, so QML never observes them appearing after the
-    // fact — see LibrarySession::start().
+    // Register the library session's context properties and image provider
+    // before QML is loaded, but leave storage and recursive-watch setup until
+    // the first frame has given the user visible startup feedback.
     pimio::app::LibrarySession librarySession;
-    librarySession.start(parser.values(libraryOption), engine);
+    librarySession.prepare(parser.values(libraryOption), engine);
 
     if (!pimio::app::loadMainQml(engine)) {
         return 1;
@@ -48,6 +49,17 @@ int main(int argc, char *argv[])
     if (parser.isSet(selfCheckOption)) {
         return 0;
     }
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    if (window) {
+        QObject::connect(window, &QQuickWindow::frameSwapped, &librarySession,
+                         [&librarySession] { librarySession.start(); },
+                         Qt::SingleShotConnection);
+    }
+    // Some headless or unusual render loops may not report a swap. The
+    // idempotent start() guard makes this a safe fallback without delaying a
+    // normal first-frame start.
+    QTimer::singleShot(250, &librarySession, [&librarySession] { librarySession.start(); });
 
     return QGuiApplication::exec();
 }
