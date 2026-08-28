@@ -3,7 +3,14 @@
 ## General
 
 - Do not make claims without actually reading file contents - do not only look at file names and sizes, and do not speculate.
-- Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justificaiton.
+- Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justification.
+
+## Repository health metrics
+
+- At the start of each session, run `python3 tools/metrics/generate_repo_metrics.py` and review the generated reports under `docs/metrics/` to evaluate whether the work in that session should trigger refactoring of any files that have grown too large or have become too complex to maintain comfortably.
+- Treat this operation as standard operating procedure for repo health reporting. When a change affects the repository's structure or maintenance workflow, update the generated metrics reports so the repository history reflects the current state.
+- Use the health snapshot as a guide for refactoring decisions. A practical default heuristic for this repository is: functions should generally stay at 20-50 LOC, classes at 200-300 LOC, files at 400-500 LOC, and line width should usually stay within 80-120 characters. Use these as signals for review, not hard rules: generated UI files, data models, configuration files, and complex algorithms may reasonably exceed them.
+- Favor small, focused units of responsibility, and prefer to split a file or function when it becomes hard to understand at a glance, hard to test, or difficult to reason about without scrolling across multiple screens.
 
 ## Build changes must be propagated across every context
 

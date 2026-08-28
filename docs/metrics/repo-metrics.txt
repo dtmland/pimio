@@ -1,0 +1,53 @@
+pimio repository health metrics
+===============================
+generated: 2026-08-28 15:04:29 UTC
+repository: pimio
+commit: fbdb790
+
+Included files: 217
+Total lines: 35631
+Code lines: 26777
+Blank lines: 5489
+Comment lines: 3365
+
+By language:
+- C++: 81
+- C/C++ Header: 55
+- CMake: 29
+- Markdown: 23
+- Shell: 8
+- PowerShell: 7
+- Batch: 3
+- QML: 3
+- Text: 3
+- YAML: 3
+- JSON: 2
+
+By top-level directory:
+- src: 106 files
+- tests: 56 files
+- tools: 20 files
+- docs: 18 files
+- packaging: 7 files
+- .github: 4 files
+- cmake: 3 files
+- CMakeLists.txt: 1 files
+- CMakePresets.json: 1 files
+- README.md: 1 files
+
+Largest files:
+- src/lore/src/lore_durable_store.cpp: 1067 lines (841 code, 108 blank, 118 comments)
+- src/projection/src/projection_database.cpp: 833 lines (691 code, 72 blank, 70 comments)
+- src/app/qml/Main.qml: 798 lines (643 code, 85 blank, 70 comments)
+- tests/app/tst_app_smoke.cpp: 792 lines (640 code, 108 blank, 44 comments)
+- tests/browser/tst_browser_model.cpp: 774 lines (609 code, 126 blank, 39 comments)
+- tests/scan/tst_scan_incremental.cpp: 773 lines (580 code, 152 blank, 41 comments)
+- src/browser/src/media_library_model.cpp: 700 lines (579 code, 85 blank, 36 comments)
+- tests/projection/tst_projection_metadata.cpp: 674 lines (508 code, 119 blank, 47 comments)
+- tests/lore/tst_lore_faults.cpp: 617 lines (467 code, 91 blank, 59 comments)
+- src/metadata/src/image_reader.cpp: 607 lines (528 code, 54 blank, 25 comments)
+- tools/fixture_generator/main.cpp: 599 lines (510 code, 71 blank, 18 comments)
+- src/projection/src/job_queue.cpp: 568 lines (508 code, 53 blank, 7 comments)
+- tests/projection/tst_projection_jobs.cpp: 554 lines (421 code, 102 blank, 31 comments)
+- .github/workflows/release.yml: 552 lines (476 code, 37 blank, 39 comments)
+- tests/metadata/tst_metadata_golden.cpp: 543 lines (428 code, 80 blank, 35 comments)
