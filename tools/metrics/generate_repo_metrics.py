@@ -76,12 +76,13 @@ FILENAME_LANGUAGE = {
 
 
 def is_supported_path(path: Path) -> bool:
-    rel = path.relative_to(REPO_ROOT).as_posix()
-    if any(rel.startswith(prefix) for prefix in EXCLUDED_PATH_PREFIXES):
+    rel = path.relative_to(REPO_ROOT)
+    rel_posix = rel.as_posix()
+    if any(rel_posix.startswith(prefix) for prefix in EXCLUDED_PATH_PREFIXES):
         return False
     if path.name.startswith(".") and path.name not in {".gitignore", ".gitattributes"}:
         return False
-    if any(part in EXCLUDED_DIRS for part in path.parts):
+    if any(part in EXCLUDED_DIRS for part in rel.parts):
         return False
     return True
 
@@ -104,7 +105,7 @@ def is_text_file(path: Path) -> bool:
 
 
 def count_comment_lines(lines: List[str], language: str) -> int:
-    if language in {"C++", "C", "C/C++ Header", "QML", "CMake", "XML", "CSS", "JavaScript", "TypeScript", "Qt Resource", "SVG"}:
+    if language in {"C++", "C", "C/C++ Header", "QML", "XML", "CSS", "JavaScript", "TypeScript", "Qt Resource", "SVG"}:
         comment_lines = 0
         in_block_comment = False
         for line in lines:
@@ -120,23 +121,22 @@ def count_comment_lines(lines: List[str], language: str) -> int:
                     in_block_comment = True
             elif stripped.startswith("//"):
                 comment_lines += 1
-            elif language == "CMake" and stripped.startswith("#"):
-                comment_lines += 1
             elif language in {"CSS", "JavaScript", "TypeScript"} and stripped.startswith("*"):
                 comment_lines += 1
         return comment_lines
 
-    if language in {"Python", "Shell", "PowerShell", "Batch", "Docker", "Make", "Text", "Markdown", "YAML", "TOML", "INI", "JSON", "Properties", "SQL"}:
+    if language in {"CMake", "Python", "Shell", "PowerShell", "Batch", "Docker", "Make", "Text", "Markdown", "YAML", "TOML", "INI", "Properties", "SQL"}:
         comment_lines = 0
         for line in lines:
             stripped = line.lstrip()
             if language == "Batch" and stripped.upper().startswith("REM"):
                 comment_lines += 1
-            elif language in {"Python", "Shell", "PowerShell", "CMake", "Docker", "Make"} and stripped.startswith("#"):
+            elif language in {"CMake", "Python", "Shell", "PowerShell", "Docker", "Make", "YAML", "TOML", "INI", "Properties"} and stripped.startswith("#"):
                 comment_lines += 1
-            elif language in {"Text", "Markdown"}:
-                if stripped.startswith("<!--") or stripped.startswith("#"):
-                    comment_lines += 1
+            elif language in {"Text", "Markdown"} and (stripped.startswith("<!--") or stripped.startswith("#")):
+                comment_lines += 1
+            elif language == "SQL" and (stripped.upper().startswith("--") or stripped.upper().startswith("/*")):
+                comment_lines += 1
         return comment_lines
 
     return 0
@@ -153,7 +153,7 @@ def collect_metrics(root: Path) -> Dict[str, object]:
     total_comment_lines = 0
     language_counts: Counter[str] = Counter()
     top_level_counts: Counter[str] = Counter()
-    biggest_files: List[Tuple[int, str, int, int, int, int]] = []
+    biggest_files: List[Tuple[int, str, int, int, int]] = []
 
     for path in files:
         try:
@@ -182,14 +182,14 @@ def collect_metrics(root: Path) -> Dict[str, object]:
         total_comment_lines += comment_lines
         total_code_lines += code_lines
 
-        biggest_files.append((total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines, len(lines)))
+        biggest_files.append((total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines))
 
     biggest_files.sort(reverse=True)
     top_files = biggest_files[:15]
 
     return {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z"),
-        "repo_root": str(root),
+        "repo_name": root.name,
         "commit": get_git_commit(root),
         "files": total_files,
         "lines": total_lines,
@@ -224,7 +224,7 @@ def write_text_report(metrics: Dict[str, object], output_path: Path) -> None:
         "pimio repository health metrics",
         "===============================",
         f"generated: {metrics['generated_at']}",
-        f"repository: {metrics['repo_root']}",
+        f"repository: {metrics['repo_name']}",
         f"commit: {metrics['commit']}",
         "",
         f"Included files: {metrics['files']}",
@@ -243,7 +243,7 @@ def write_text_report(metrics: Dict[str, object], output_path: Path) -> None:
         lines.append(f"- {directory}: {count} files")
 
     lines.extend(["", "Largest files:"])
-    for total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines, _ in metrics["top_files"]:
+    for total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines in metrics["top_files"]:
         lines.append(
             f"- {rel_str}: {total_lines_for_file} lines ({code_lines} code, {blank_lines} blank, {comment_lines} comments)"
         )
@@ -262,11 +262,13 @@ def write_html_report(metrics: Dict[str, object], output_path: Path) -> None:
         dir_rows.append(f"<tr><td>{html.escape(directory)}</td><td>{count}</td></tr>")
 
     file_rows = []
-    for total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines, _ in metrics["top_files"]:
+    for total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines in metrics["top_files"]:
         file_rows.append(
             f"<tr><td>{html.escape(rel_str)}</td><td>{total_lines_for_file}</td><td>{code_lines}</td><td>{blank_lines}</td><td>{comment_lines}</td></tr>"
         )
 
+    generated_at = html.escape(str(metrics["generated_at"]))
+    commit = html.escape(str(metrics["commit"]))
     html_content = f"""<!DOCTYPE html>
 <html lang=\"en\">
   <head>
@@ -284,8 +286,8 @@ def write_html_report(metrics: Dict[str, object], output_path: Path) -> None:
   </head>
   <body>
     <h1>pimio repository health metrics</h1>
-    <p>Generated: {metrics['generated_at']}</p>
-    <p>Commit: {metrics['commit']}</p>
+    <p>Generated: {generated_at}</p>
+    <p>Commit: {commit}</p>
     <div class=\"summary\">
       <div><strong>Included files</strong><br />{metrics['files']}</div>
       <div><strong>Total lines</strong><br />{metrics['lines']}</div>

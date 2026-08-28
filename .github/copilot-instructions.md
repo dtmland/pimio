@@ -3,7 +3,7 @@
 ## General
 
 - Do not make claims without actually reading file contents - do not only look at file names and sizes, and do not speculate.
-- Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justificaiton.
+- Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justification.
 
 ## Repository health metrics
 
