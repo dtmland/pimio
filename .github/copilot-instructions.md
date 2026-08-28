@@ -5,6 +5,11 @@
 - Do not make claims without actually reading file contents - do not only look at file names and sizes, and do not speculate.
 - Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justificaiton.
 
+## Repository health metrics
+
+- When the repository needs a health snapshot, run `python3 tools/metrics/generate_repo_metrics.py` and commit the generated artifacts under `docs/metrics/` as part of the normal maintenance workflow.
+- Treat this operation as standard operating procedure for repo health reporting. When a change affects the repository's structure or maintenance workflow, update the generated metrics reports so the repository history reflects the current state.
+
 ## Build changes must be propagated across every context
 
 pimio is built in four contexts that share build commands but provision their
