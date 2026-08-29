@@ -42,6 +42,7 @@ qt_add_qml_module(pimio_app_lib
     QML_FILES
         qml/DetailView.qml
         qml/Main.qml
+        qml/ScrollController.qml
         qml/SettingsDialog.qml
         qml/TopBar.qml
 )

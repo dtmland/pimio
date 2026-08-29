@@ -445,9 +445,8 @@ Window {
     // Picasa-style scroll controller: the center handle is a velocity control,
     // not a position indicator. Pull it away from center to scroll, farther for
     // faster movement; releasing it returns it to rest.
-    Item {
+    ScrollController {
         id: scrollController
-        objectName: "scrollController"
         anchors {
             top: toolbar.bottom
             right: parent.right
@@ -457,145 +456,10 @@ Window {
             bottomMargin: 8
         }
         width: 28
-
-        readonly property bool canScroll: grid.maximumContentY() > grid.minimumContentY()
-        readonly property real maximumTilesPerTick: 0.12
-        readonly property int tickIntervalMs: 16
-        property real handleOffset: 0
-
-        function jumpToStart() {
-            grid.contentY = grid.minimumContentY()
-            grid.updateVisibleRange()
-            root.restoreGridFocus()
-        }
-
-        function jumpToEnd() {
-            grid.contentY = grid.maximumContentY()
-            grid.updateVisibleRange()
-            root.restoreGridFocus()
-        }
-
-        function scrollFromDisplacement(displacement) {
-            if (!canScroll)
-                return
-            const bounded = Math.max(-1, Math.min(1, displacement))
-            const deadZone = 0.06
-            if (Math.abs(bounded) <= deadZone)
-                return
-            const velocity = (Math.abs(bounded) - deadZone) / (1 - deadZone)
-            const distance = Math.sign(bounded) * velocity
-                    * grid.cellHeight * maximumTilesPerTick * root.scrollSpeed
-            grid.contentY = grid.boundedContentY(grid.contentY + distance)
-            grid.updateVisibleRange()
-        }
-
-        function scrollFromHandle() {
-            const halfTravel = Math.max(1, (scrollTrack.height - scrollHandle.height) / 2)
-            const displacement = handleOffset / halfTravel
-            scrollFromDisplacement(displacement)
-        }
-
-        function returnHandleToCenter() {
-            returnAnimation.stop()
-            returnAnimation.start()
-        }
-
-        ToolButton {
-            id: jumpToStartButton
-            objectName: "jumpToStartButton"
-            anchors { top: parent.top; left: parent.left; right: parent.right }
-            height: width
-            text: "\u25b2"
-            enabled: scrollController.canScroll
-                     && grid.contentY > grid.minimumContentY()
-            Accessible.name: qsTr("Jump to beginning")
-            onClicked: scrollController.jumpToStart()
-        }
-
-        Item {
-            id: scrollTrack
-            objectName: "scrollControllerTrack"
-            anchors {
-                top: jumpToStartButton.bottom
-                bottom: jumpToEndButton.top
-                left: parent.left
-                right: parent.right
-                topMargin: 4
-                bottomMargin: 4
-            }
-
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 4
-                height: parent.height
-                radius: 2
-                color: "#d0d0d0"
-            }
-
-            Rectangle {
-                id: scrollHandle
-                objectName: "scrollControllerHandle"
-                readonly property real restingY: (scrollTrack.height - height) / 2
-                x: 2
-                y: restingY + scrollController.handleOffset
-                width: scrollTrack.width - 4
-                height: Math.min(48, Math.max(28, scrollTrack.height / 5))
-                radius: 5
-                color: handleDrag.active ? "#707070" : "#909090"
-                border.color: "#555555"
-
-                DragHandler {
-                    id: handleDrag
-                    target: null
-                    xAxis.enabled: false
-                    enabled: scrollController.canScroll && root.browsingContextActive
-                    onActiveTranslationChanged: {
-                        const halfTravel = Math.max(
-                                0, (scrollTrack.height - scrollHandle.height) / 2)
-                        scrollController.handleOffset = Math.max(
-                                -halfTravel, Math.min(halfTravel, activeTranslation.y))
-                    }
-                    onActiveChanged: {
-                        if (active) {
-                            returnAnimation.stop()
-                            scrollTimer.start()
-                        } else {
-                            scrollTimer.stop()
-                            scrollController.returnHandleToCenter()
-                            root.restoreGridFocus()
-                        }
-                    }
-                }
-            }
-        }
-
-        ToolButton {
-            id: jumpToEndButton
-            objectName: "jumpToEndButton"
-            anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
-            height: width
-            text: "\u25bc"
-            enabled: scrollController.canScroll
-                     && grid.contentY < grid.maximumContentY()
-            Accessible.name: qsTr("Jump to end")
-            onClicked: scrollController.jumpToEnd()
-        }
-
-        Timer {
-            id: scrollTimer
-            interval: scrollController.tickIntervalMs
-            repeat: true
-            onTriggered: scrollController.scrollFromHandle()
-        }
-
-        NumberAnimation {
-            id: returnAnimation
-            target: scrollController
-            property: "handleOffset"
-            to: 0
-            duration: 160
-            easing.type: Easing.OutCubic
-        }
+        grid: grid
+        window: root
+        browsingContextActive: root.browsingContextActive
+        scrollSpeed: root.scrollSpeed
     }
 
     // Wheel events reach this before the GridView's own flick handling, so
