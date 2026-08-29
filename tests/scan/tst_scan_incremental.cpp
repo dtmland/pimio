@@ -19,6 +19,7 @@ using namespace pimio;
 using namespace pimio::scan;
 using pimio::tests::scan_support::addFile;
 using pimio::tests::scan_support::kRoot;
+using pimio::tests::scan_support::kT0;
 using pimio::tests::scan_support::loadAll;
 using pimio::tests::scan_support::makeClock;
 

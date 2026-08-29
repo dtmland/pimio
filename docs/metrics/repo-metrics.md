@@ -1,13 +1,13 @@
 # pimio repository health metrics
 
-- Generated: 2026-08-29 21:01:44 UTC
+- Generated: 2026-08-29 21:40:51 UTC
 - Repository: pimio
-- Commit: b9078b7
+- Commit: 69d6ba5
 
 ## Summary
 - Included files: 223
-- Total lines: 35754
-- Code lines: 26887
+- Total lines: 35755
+- Code lines: 26888
 - Blank lines: 5512
 - Comment lines: 3355
 
@@ -48,7 +48,7 @@
 | --- | ---: | ---: | ---: | ---: |
 | src/lore/src/lore_durable_store.cpp | 1067 | 841 | 108 | 118 |
 | src/projection/src/projection_database.cpp | 833 | 691 | 72 | 70 |
-| tests/scan/tst_scan_incremental.cpp | 742 | 556 | 147 | 39 |
+| tests/scan/tst_scan_incremental.cpp | 743 | 557 | 147 | 39 |
 | tests/browser/tst_browser_model.cpp | 740 | 579 | 122 | 39 |
 | src/browser/src/media_library_model.cpp | 700 | 579 | 85 | 36 |
 | tests/projection/tst_projection_metadata.cpp | 674 | 508 | 119 | 47 |
