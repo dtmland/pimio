@@ -1,28 +1,28 @@
 # pimio repository health metrics
 
-- Generated: 2026-08-29 03:08:00 UTC
+- Generated: 2026-08-29 20:07:12 UTC
 - Repository: pimio
-- Commit: 221d290
+- Commit: 558b805
 
 ## Summary
-- Included files: 217
-- Total lines: 35633
-- Code lines: 26779
-- Blank lines: 5489
-- Comment lines: 3365
+- Included files: 222
+- Total lines: 35728
+- Code lines: 26864
+- Blank lines: 5509
+- Comment lines: 3355
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 81 |
-| C/C++ Header | 55 |
+| C++ | 82 |
+| C/C++ Header | 58 |
 | CMake | 29 |
 | Markdown | 23 |
 | Shell | 8 |
 | PowerShell | 7 |
+| QML | 4 |
 | Batch | 3 |
-| QML | 3 |
 | Text | 3 |
 | YAML | 3 |
 | JSON | 2 |
@@ -31,8 +31,8 @@
 
 | Directory | Files |
 | --- | ---: |
-| src | 106 |
-| tests | 56 |
+| src | 107 |
+| tests | 60 |
 | tools | 20 |
 | docs | 18 |
 | packaging | 7 |
@@ -48,12 +48,12 @@
 | --- | ---: | ---: | ---: | ---: |
 | src/lore/src/lore_durable_store.cpp | 1067 | 841 | 108 | 118 |
 | src/projection/src/projection_database.cpp | 833 | 691 | 72 | 70 |
-| src/app/qml/Main.qml | 798 | 643 | 85 | 70 |
-| tests/app/tst_app_smoke.cpp | 792 | 640 | 108 | 44 |
-| tests/browser/tst_browser_model.cpp | 774 | 609 | 126 | 39 |
-| tests/scan/tst_scan_incremental.cpp | 773 | 580 | 152 | 41 |
+| tests/scan/tst_scan_incremental.cpp | 742 | 556 | 147 | 39 |
+| tests/browser/tst_browser_model.cpp | 740 | 579 | 122 | 39 |
+| src/app/qml/Main.qml | 717 | 579 | 76 | 62 |
 | src/browser/src/media_library_model.cpp | 700 | 579 | 85 | 36 |
 | tests/projection/tst_projection_metadata.cpp | 674 | 508 | 119 | 47 |
+| tests/app/tst_app_smoke.cpp | 649 | 513 | 92 | 44 |
 | tests/lore/tst_lore_faults.cpp | 617 | 467 | 91 | 59 |
 | src/metadata/src/image_reader.cpp | 607 | 528 | 54 | 25 |
 | tools/fixture_generator/main.cpp | 599 | 510 | 71 | 18 |

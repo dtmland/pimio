@@ -5,6 +5,9 @@
 #include <utility>
 
 namespace pimio::tests::app_support {
+namespace {
+constexpr char kFakeCaptureTimeString[] = "2026-01-01T00:00:00";
+} // namespace
 
 SyntheticMediaModel::SyntheticMediaModel(int count, int thumbnailStatus, QString absolutePath,
                                          QObject *parent)
@@ -35,7 +38,7 @@ QVariant SyntheticMediaModel::data(const QModelIndex &index, int role) const
         return m_absolutePath.isEmpty() ? QStringLiteral("/library/%1.jpg").arg(m_ids.at(index.row()))
                                         : m_absolutePath;
     case CaptureTimeStringRole:
-        return QStringLiteral("2026-01-01T00:00:00");
+        return QString::fromLatin1(kFakeCaptureTimeString);
     case MediaKindRole:
         return 1;
     case ThumbnailStatusRole:
