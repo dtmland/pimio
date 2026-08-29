@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Generate repository health metrics reports in text and HTML formats."""
+"""Generate repository health metrics reports in Markdown format."""
 
 from __future__ import annotations
 
 import argparse
-import html
 import subprocess
 import sys
 from collections import Counter
@@ -15,8 +14,7 @@ from typing import Dict, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = REPO_ROOT / "docs" / "metrics"
-TEXT_OUTPUT = OUTPUT_DIR / "repo-metrics.txt"
-HTML_OUTPUT = OUTPUT_DIR / "repo-metrics.html"
+MARKDOWN_OUTPUT = OUTPUT_DIR / "repo-metrics.md"
 
 EXCLUDED_DIRS = {".git", ".cache", "build", "install"}
 EXCLUDED_PATH_PREFIXES = ("docs/metrics/", "tools/metrics/")
@@ -218,112 +216,47 @@ def get_git_commit(root: Path) -> str:
     return completed.stdout.strip()
 
 
-def write_text_report(metrics: Dict[str, object], output_path: Path) -> None:
+def write_markdown_report(metrics: Dict[str, object], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "pimio repository health metrics",
-        "===============================",
-        f"generated: {metrics['generated_at']}",
-        f"repository: {metrics['repo_name']}",
-        f"commit: {metrics['commit']}",
+        "# pimio repository health metrics",
         "",
-        f"Included files: {metrics['files']}",
-        f"Total lines: {metrics['lines']}",
-        f"Code lines: {metrics['code_lines']}",
-        f"Blank lines: {metrics['blank_lines']}",
-        f"Comment lines: {metrics['comment_lines']}",
+        f"- Generated: {metrics['generated_at']}",
+        f"- Repository: {metrics['repo_name']}",
+        f"- Commit: {metrics['commit']}",
         "",
-        "By language:",
+        "## Summary",
+        f"- Included files: {metrics['files']}",
+        f"- Total lines: {metrics['lines']}",
+        f"- Code lines: {metrics['code_lines']}",
+        f"- Blank lines: {metrics['blank_lines']}",
+        f"- Comment lines: {metrics['comment_lines']}",
+        "",
+        "## By language",
+        "",
+        "| Language | Files |",
+        "| --- | ---: |",
     ]
     for language, count in sorted(metrics["language_counts"].items(), key=lambda item: (-item[1], item[0])):
-        lines.append(f"- {language}: {count}")
+        lines.append(f"| {language} | {count} |")
 
-    lines.extend(["", "By top-level directory:"])
+    lines.extend(["", "## By top-level directory", "", "| Directory | Files |", "| --- | ---: |"])
     for directory, count in sorted(metrics["top_level_counts"].items(), key=lambda item: (-item[1], item[0])):
-        lines.append(f"- {directory}: {count} files")
+        lines.append(f"| {directory} | {count} |")
 
-    lines.extend(["", "Largest files:"])
+    lines.extend(["", "## Largest files", "", "| Path | Total lines | Code lines | Blank lines | Comment lines |", "| --- | ---: | ---: | ---: | ---: |"])
     for total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines in metrics["top_files"]:
         lines.append(
-            f"- {rel_str}: {total_lines_for_file} lines ({code_lines} code, {blank_lines} blank, {comment_lines} comments)"
+            f"| {rel_str} | {total_lines_for_file} | {code_lines} | {blank_lines} | {comment_lines} |"
         )
 
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def write_html_report(metrics: Dict[str, object], output_path: Path) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    rows = []
-    for language, count in sorted(metrics["language_counts"].items(), key=lambda item: (-item[1], item[0])):
-        rows.append(f"<tr><td>{html.escape(language)}</td><td>{count}</td></tr>")
-
-    dir_rows = []
-    for directory, count in sorted(metrics["top_level_counts"].items(), key=lambda item: (-item[1], item[0])):
-        dir_rows.append(f"<tr><td>{html.escape(directory)}</td><td>{count}</td></tr>")
-
-    file_rows = []
-    for total_lines_for_file, rel_str, code_lines, blank_lines, comment_lines in metrics["top_files"]:
-        file_rows.append(
-            f"<tr><td>{html.escape(rel_str)}</td><td>{total_lines_for_file}</td><td>{code_lines}</td><td>{blank_lines}</td><td>{comment_lines}</td></tr>"
-        )
-
-    generated_at = html.escape(str(metrics["generated_at"]))
-    commit = html.escape(str(metrics["commit"]))
-    html_content = f"""<!DOCTYPE html>
-<html lang=\"en\">
-  <head>
-    <meta charset=\"utf-8\" />
-    <title>pimio repository health metrics</title>
-    <style>
-      body {{ font-family: Arial, sans-serif; margin: 2rem; color: #1f2937; }}
-      table {{ border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }}
-      th, td {{ border: 1px solid #d1d5db; padding: 0.5rem; text-align: left; }}
-      th {{ background: #f3f4f6; }}
-      h1, h2 {{ margin-bottom: 0.5rem; }}
-      .summary {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }}
-      .summary div {{ border: 1px solid #e5e7eb; padding: 0.75rem; border-radius: 0.25rem; }}
-    </style>
-  </head>
-  <body>
-    <h1>pimio repository health metrics</h1>
-    <p>Generated: {generated_at}</p>
-    <p>Commit: {commit}</p>
-    <div class=\"summary\">
-      <div><strong>Included files</strong><br />{metrics['files']}</div>
-      <div><strong>Total lines</strong><br />{metrics['lines']}</div>
-      <div><strong>Code lines</strong><br />{metrics['code_lines']}</div>
-      <div><strong>Blank lines</strong><br />{metrics['blank_lines']}</div>
-      <div><strong>Comment lines</strong><br />{metrics['comment_lines']}</div>
-    </div>
-
-    <h2>By language</h2>
-    <table>
-      <thead><tr><th>Language</th><th>Files</th></tr></thead>
-      <tbody>{''.join(rows)}</tbody>
-    </table>
-
-    <h2>By top-level directory</h2>
-    <table>
-      <thead><tr><th>Directory</th><th>Files</th></tr></thead>
-      <tbody>{''.join(dir_rows)}</tbody>
-    </table>
-
-    <h2>Largest files</h2>
-    <table>
-      <thead><tr><th>Path</th><th>Total lines</th><th>Code lines</th><th>Blank lines</th><th>Comment lines</th></tr></thead>
-      <tbody>{''.join(file_rows)}</tbody>
-    </table>
-  </body>
-</html>
-"""
-    output_path.write_text(html_content, encoding="utf-8")
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=REPO_ROOT, help="Repository root to scan")
-    parser.add_argument("--text-output", type=Path, default=TEXT_OUTPUT, help="Path for the text report")
-    parser.add_argument("--html-output", type=Path, default=HTML_OUTPUT, help="Path for the HTML report")
+    parser.add_argument("--output", type=Path, default=MARKDOWN_OUTPUT, help="Path for the Markdown report")
     return parser.parse_args()
 
 
@@ -331,10 +264,8 @@ def main() -> int:
     args = parse_args()
     root = args.root.resolve()
     metrics = collect_metrics(root)
-    write_text_report(metrics, args.text_output)
-    write_html_report(metrics, args.html_output)
-    print(f"Wrote {args.text_output}")
-    print(f"Wrote {args.html_output}")
+    write_markdown_report(metrics, args.output)
+    print(f"Wrote {args.output}")
     return 0
 
 
