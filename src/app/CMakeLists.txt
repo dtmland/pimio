@@ -43,6 +43,7 @@ qt_add_qml_module(pimio_app_lib
         qml/DetailView.qml
         qml/Main.qml
         qml/SettingsDialog.qml
+        qml/TopBar.qml
 )
 
 qt_add_executable(pimio_app

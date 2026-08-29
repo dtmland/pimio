@@ -1,3 +1,5 @@
+#include "scan_test_support.h"
+
 #include "pimio/scan/media_hasher.h"
 #include "pimio/scan/scanner.h"
 
@@ -15,43 +17,10 @@
 
 using namespace pimio;
 using namespace pimio::scan;
-
-namespace {
-
-const QString kRoot = QStringLiteral("/library");
-const QDateTime kT0 = QDateTime(QDate(2024, 1, 1), QTime(0, 0, 0), Qt::UTC);
-
-testing::FakeClock makeClock()
-{
-    return testing::FakeClock(kT0);
-}
-
-/// Adds a plain file to the MemoryFileSystem and returns its path.
-QString addFile(testing::MemoryFileSystem &fs, const QString &path,
-                const QByteArray &contents = "test-content",
-                const QDateTime &modified = kT0)
-{
-    fs.addFile(path, contents, modified);
-    return path;
-}
-
-/// Loads all MediaRecords from the store.
-QList<core::MediaRecord> loadAll(testing::MemoryDurableStore &store)
-{
-    core::Error err;
-    const QList<core::MediaId> ids = store.listIds(&err);
-    Q_ASSERT(!err.isError());
-    QList<core::MediaRecord> records;
-    for (const core::MediaId &id : ids) {
-        core::Error loadErr;
-        auto rec = store.load(id, &loadErr);
-        Q_ASSERT(rec.has_value());
-        records.append(*rec);
-    }
-    return records;
-}
-
-} // namespace
+using pimio::tests::scan_support::addFile;
+using pimio::tests::scan_support::kRoot;
+using pimio::tests::scan_support::loadAll;
+using pimio::tests::scan_support::makeClock;
 
 class TestScanIncremental : public QObject
 {

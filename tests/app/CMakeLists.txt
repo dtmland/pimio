@@ -1,5 +1,6 @@
 qt_add_executable(tst_app_smoke
     tst_app_smoke.cpp
+    app_test_support.cpp
 )
 
 target_link_libraries(tst_app_smoke PRIVATE
