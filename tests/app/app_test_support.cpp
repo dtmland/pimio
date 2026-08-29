@@ -101,6 +101,10 @@ void SyntheticMediaModel::removeLeadingRows(int count)
 
 QVariantMap SyntheticMediaModel::itemAt(int row) const
 {
+    if (row < 0 || row >= m_ids.size()) {
+        return {};
+    }
+
     const QModelIndex itemIndex = index(row);
     return {
         {QStringLiteral("mediaId"), data(itemIndex, MediaIdRole)},
@@ -113,6 +117,9 @@ QVariantMap SyntheticMediaModel::itemAt(int row) const
 
 QQuickItem *findVisualItem(QQuickItem *root, const QString &objectName)
 {
+    if (root == nullptr) {
+        return nullptr;
+    }
     if (root->objectName() == objectName) {
         return root;
     }
