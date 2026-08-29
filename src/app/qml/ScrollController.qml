@@ -66,9 +66,7 @@ Item {
         anchors { top: parent.top; left: parent.left; right: parent.right }
         height: width
         text: "▲"
-        enabled: controller.canScroll
-                 && grid !== null
-                 && grid.contentY > grid.minimumContentY()
+        enabled: controller.canScroll && grid.contentY > grid.minimumContentY()
         Accessible.name: qsTr("Jump to beginning")
         onClicked: controller.jumpToStart()
     }
@@ -112,7 +110,7 @@ Item {
                 enabled: controller.canScroll && controller.browsingContextActive
                 onActiveTranslationChanged: {
                     const halfTravel = Math.max(
-                            0, (scrollTrack.height - scrollHandle.height) / 2)
+                            1, (scrollTrack.height - scrollHandle.height) / 2)
                     controller.handleOffset = Math.max(
                             -halfTravel, Math.min(halfTravel, activeTranslation.y))
                 }
@@ -137,9 +135,7 @@ Item {
         anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
         height: width
         text: "▼"
-        enabled: controller.canScroll
-                 && grid !== null
-                 && grid.contentY < grid.maximumContentY()
+        enabled: controller.canScroll && grid.contentY < grid.maximumContentY()
         Accessible.name: qsTr("Jump to end")
         onClicked: controller.jumpToEnd()
     }

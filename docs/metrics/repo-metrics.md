@@ -1,14 +1,14 @@
 # pimio repository health metrics
 
-- Generated: 2026-08-29 20:07:12 UTC
+- Generated: 2026-08-29 21:01:44 UTC
 - Repository: pimio
-- Commit: 558b805
+- Commit: b9078b7
 
 ## Summary
-- Included files: 222
-- Total lines: 35728
-- Code lines: 26864
-- Blank lines: 5509
+- Included files: 223
+- Total lines: 35754
+- Code lines: 26887
+- Blank lines: 5512
 - Comment lines: 3355
 
 ## By language
@@ -21,7 +21,7 @@
 | Markdown | 23 |
 | Shell | 8 |
 | PowerShell | 7 |
-| QML | 4 |
+| QML | 5 |
 | Batch | 3 |
 | Text | 3 |
 | YAML | 3 |
@@ -31,7 +31,7 @@
 
 | Directory | Files |
 | --- | ---: |
-| src | 107 |
+| src | 108 |
 | tests | 60 |
 | tools | 20 |
 | docs | 18 |
@@ -50,13 +50,13 @@
 | src/projection/src/projection_database.cpp | 833 | 691 | 72 | 70 |
 | tests/scan/tst_scan_incremental.cpp | 742 | 556 | 147 | 39 |
 | tests/browser/tst_browser_model.cpp | 740 | 579 | 122 | 39 |
-| src/app/qml/Main.qml | 717 | 579 | 76 | 62 |
 | src/browser/src/media_library_model.cpp | 700 | 579 | 85 | 36 |
 | tests/projection/tst_projection_metadata.cpp | 674 | 508 | 119 | 47 |
 | tests/app/tst_app_smoke.cpp | 649 | 513 | 92 | 44 |
 | tests/lore/tst_lore_faults.cpp | 617 | 467 | 91 | 59 |
 | src/metadata/src/image_reader.cpp | 607 | 528 | 54 | 25 |
 | tools/fixture_generator/main.cpp | 599 | 510 | 71 | 18 |
+| src/app/qml/Main.qml | 581 | 457 | 62 | 62 |
 | src/projection/src/job_queue.cpp | 568 | 508 | 53 | 7 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | .github/workflows/release.yml | 552 | 476 | 37 | 39 |
