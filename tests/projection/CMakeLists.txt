@@ -50,6 +50,9 @@ add_test(NAME projection.jobs COMMAND tst_projection_jobs)
 
 qt_add_executable(tst_projection_metadata
     tst_projection_metadata.cpp
+    tst_projection_metadata_fixture.h
+    tst_projection_metadata_ordering.cpp
+    tst_projection_metadata_search.cpp
 )
 
 target_link_libraries(tst_projection_metadata PRIVATE

@@ -1,6 +1,9 @@
 qt_add_executable(pimio_fixture_generator
     exif_builder.cpp
     exif_builder.h
+    fixtures.cpp
+    fixtures.h
+    fixtures_external.cpp
     main.cpp
 )
 

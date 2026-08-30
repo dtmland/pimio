@@ -1,5 +1,8 @@
 qt_add_executable(tst_browser_model
     tst_browser_model.cpp
+    tst_browser_model_fixture.h
+    tst_browser_model_roles.cpp
+    tst_browser_model_thumbnails.cpp
 )
 
 target_link_libraries(tst_browser_model PRIVATE

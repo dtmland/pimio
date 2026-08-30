@@ -1,4 +1,9 @@
-add_executable(tst_scan_incremental tst_scan_incremental.cpp)
+add_executable(tst_scan_incremental
+    tst_scan_incremental.cpp
+    tst_scan_incremental_fixture.h
+    tst_scan_incremental_hasher.cpp
+    tst_scan_incremental_crud.cpp
+)
 
 target_link_libraries(tst_scan_incremental
     PRIVATE
