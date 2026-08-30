@@ -193,6 +193,8 @@ bool JobQueue::markFailed(const JobId &id, const core::Error &failure, Error *er
 
     const QString failureJson = QString::fromUtf8(
         QJsonDocument(failure.toJson()).toJson(QJsonDocument::Compact));
+    // In the CASE expression below, 'attempts' is the old (pre-update) value,
+    // so attempts + 1 tests whether retries remain after counting this failure.
     const int isRetryable = failure.isRetryable() ? 1 : 0;
 
     QSqlQuery query(db);
