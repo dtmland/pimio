@@ -1,14 +1,14 @@
 # pimio repository health metrics
 
-- Generated: 2026-08-30 01:48:31 UTC
+- Generated: 2026-08-30 04:13:37 UTC
 - Repository: pimio
-- Commit: fae606c
+- Commit: 997817b
 
 ## Summary
 - Included files: 253
-- Total lines: 36156
-- Code lines: 27295
-- Blank lines: 5604
+- Total lines: 36158
+- Code lines: 27296
+- Blank lines: 5605
 - Comment lines: 3257
 
 ## By language
@@ -52,7 +52,7 @@
 | docs/plan/pimio-v1-implementation.md | 532 | 384 | 120 | 28 |
 | docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |
-| src/app/qml/Main.qml | 467 | 367 | 52 | 48 |
+| src/app/qml/Main.qml | 470 | 369 | 53 | 48 |
 | src/app/src/library_session.cpp | 456 | 343 | 57 | 56 |
 | src/metadata/src/tiff_reader.cpp | 455 | 395 | 41 | 19 |
 | tests/scan/tst_scan_incremental_crud.cpp | 445 | 346 | 83 | 16 |

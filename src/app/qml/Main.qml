@@ -318,6 +318,9 @@ Window {
         }
 
         delegate: MediaTile {
+            required property int index
+            required property var model
+
             width: grid.cellWidth - 4
             height: grid.cellHeight - 4
             modelIndex: index

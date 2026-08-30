@@ -1,7 +1,6 @@
 #pragma once
 
-#include "pimio/core/error.h"
-#include "pimio/core/types.h"
+#include "pimio/core/durable_store.h"
 
 #include <QByteArray>
 #include <QJsonObject>
