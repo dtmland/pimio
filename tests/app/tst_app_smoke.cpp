@@ -1,10 +1,11 @@
+#include "app_test_support.h"
+
 #include "pimio/app/application.h"
 #include "pimio/app/library_activity.h"
 #include "pimio/app/library_session.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/settings/settings.h"
 
-#include <QAbstractListModel>
 #include <QDir>
 #include <QImage>
 #include <QQmlApplicationEngine>
@@ -16,159 +17,15 @@
 #include <QStandardPaths>
 #include <QTest>
 
-#include <utility>
-
 #ifndef PIMIO_FIXTURES_DIR
 #error "PIMIO_FIXTURES_DIR must be defined by the build system"
 #endif
 
 namespace {
-
-QQuickItem *findVisualItem(QQuickItem *root, const QString &objectName)
-{
-    if (root->objectName() == objectName) {
-        return root;
-    }
-    for (QQuickItem *child : root->childItems()) {
-        if (QQuickItem *match = findVisualItem(child, objectName)) {
-            return match;
-        }
-    }
-    return nullptr;
-}
-
-class SyntheticMediaModel final : public QAbstractListModel
-{
-    Q_OBJECT
-
-public:
-    enum Role {
-        MediaIdRole = Qt::UserRole + 1,
-        AbsolutePathRole,
-        CaptureTimeStringRole,
-        MediaKindRole,
-        ThumbnailStatusRole,
-        ThumbnailImageRole,
-    };
-
-    explicit SyntheticMediaModel(int count, int thumbnailStatus = 0, QString absolutePath = {},
-                                 QObject *parent = nullptr)
-        : QAbstractListModel(parent)
-        , m_thumbnailStatus(thumbnailStatus)
-        , m_absolutePath(std::move(absolutePath))
-    {
-        m_ids.reserve(count);
-        for (int row = 0; row < count; ++row) {
-            m_ids.append(QStringLiteral("item-%1").arg(row));
-        }
-    }
-
-    int rowCount(const QModelIndex &parent = {}) const override
-    {
-        return parent.isValid() ? 0 : m_ids.size();
-    }
-
-    QVariant data(const QModelIndex &index, int role) const override
-    {
-        if (!index.isValid() || index.row() < 0 || index.row() >= m_ids.size()) {
-            return {};
-        }
-        switch (role) {
-        case MediaIdRole:
-            return m_ids.at(index.row());
-        case AbsolutePathRole:
-            return m_absolutePath.isEmpty()
-                    ? QStringLiteral("/library/%1.jpg").arg(m_ids.at(index.row()))
-                    : m_absolutePath;
-        case CaptureTimeStringRole:
-            return QStringLiteral("2026-01-01T00:00:00");
-        case MediaKindRole:
-            return 1;
-        case ThumbnailStatusRole:
-            return m_thumbnailStatus;
-        default:
-            return {};
-        }
-    }
-
-    QHash<int, QByteArray> roleNames() const override
-    {
-        return {
-            {MediaIdRole, "mediaId"},
-            {AbsolutePathRole, "absolutePath"},
-            {CaptureTimeStringRole, "captureTimeString"},
-            {MediaKindRole, "mediaKind"},
-            {ThumbnailStatusRole, "thumbnailStatus"},
-            {ThumbnailImageRole, "thumbnailImage"},
-        };
-    }
-
-    Q_INVOKABLE void setVisibleRange(int first, int last)
-    {
-        emit visibleRangeChanged(first, last);
-    }
-
-    Q_INVOKABLE void requestThumbnail(int)
-    {
-    }
-
-    Q_INVOKABLE void refreshThumbnail(int row)
-    {
-        m_refreshedRows.append(row);
-    }
-
-    QList<int> refreshedRows() const
-    {
-        return m_refreshedRows;
-    }
-
-    void prependRows(int count)
-    {
-        if (count <= 0) {
-            return;
-        }
-        beginInsertRows({}, 0, count - 1);
-        for (int row = 0; row < count; ++row) {
-            m_ids.insert(row, QStringLiteral("prepended-%1").arg(m_nextPrependedId++));
-        }
-        endInsertRows();
-    }
-
-    void removeLeadingRows(int count)
-    {
-        const int removed = qBound(0, count, static_cast<int>(m_ids.size()));
-        if (removed == 0) {
-            return;
-        }
-        beginRemoveRows({}, 0, removed - 1);
-        m_ids.remove(0, removed);
-        endRemoveRows();
-    }
-
-    Q_INVOKABLE QVariantMap itemAt(int row) const
-    {
-        const QModelIndex itemIndex = index(row);
-        return {
-            {QStringLiteral("mediaId"), data(itemIndex, MediaIdRole)},
-            {QStringLiteral("absolutePath"), data(itemIndex, AbsolutePathRole)},
-            {QStringLiteral("captureTimeString"), data(itemIndex, CaptureTimeStringRole)},
-            {QStringLiteral("mediaKind"), data(itemIndex, MediaKindRole)},
-            {QStringLiteral("thumbnailStatus"), data(itemIndex, ThumbnailStatusRole)},
-        };
-    }
-
-signals:
-    void visibleRangeChanged(int first, int last);
-
-private:
-    QStringList m_ids;
-    int m_thumbnailStatus;
-    QString m_absolutePath;
-    QList<int> m_refreshedRows;
-    int m_nextPrependedId = 0;
-};
-
 } // namespace
+
+using pimio::tests::app_support::findVisualItem;
+using pimio::tests::app_support::SyntheticMediaModel;
 
 class TestAppSmoke : public QObject
 {

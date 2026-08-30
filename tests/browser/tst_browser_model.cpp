@@ -1,5 +1,6 @@
 #include "pimio/browser/media_library_model.h"
 
+#include "browser_test_support.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 
 #include "pimio/projection/projection_database.h"
@@ -18,42 +19,7 @@ using namespace pimio::browser;
 using namespace pimio::core;
 using namespace pimio::projection;
 using namespace pimio::testing;
-
-namespace {
-
-MediaRecord makeRecord(const QString &id, qint64 captureMSecs,
-                       const QString &digest = QString())
-{
-    MediaRecord record;
-    record.id = MediaId(id);
-    record.fingerprint = ContentFingerprint(
-            QStringLiteral("sha256"), digest.isEmpty() ? id : digest);
-    record.identity.absolutePath = QStringLiteral("/library/%1.jpg").arg(id);
-    record.identity.volumeId = QStringLiteral("vol-1");
-    record.identity.fileId = id;
-    record.identity.sizeBytes = 4096;
-    record.identity.lastModified = QDateTime::fromMSecsSinceEpoch(captureMSecs, Qt::UTC);
-
-    record.metadata.kind = MediaKind::Image;
-    record.metadata.fileName = id + QStringLiteral(".jpg");
-    record.metadata.folderPath = QStringLiteral("/library");
-    record.metadata.captureTime = CaptureTime::fromOffset(
-            QDateTime::fromMSecsSinceEpoch(captureMSecs, Qt::UTC), 0);
-    record.metadata.captureTimeOrigin = MetadataOrigin::Embedded;
-    record.metadata.cameraMake = QStringLiteral("TestCam");
-    record.metadata.cameraModel = QStringLiteral("Model X");
-    record.metadata.lensModel = QStringLiteral("Lens 1");
-    record.metadata.pixelWidth = 1920;
-    record.metadata.pixelHeight = 1080;
-    record.metadata.rotationDegrees = 0;
-    record.metadata.durationMs = 0;
-    record.metadata.hasAudio = false;
-    record.metadata.rating = 0;
-    record.metadata.caption = QStringLiteral("");
-    return record;
-}
-
-} // namespace
+using pimio::tests::browser_support::makeRecord;
 
 class TestBrowserModel : public QObject
 {

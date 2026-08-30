@@ -139,101 +139,20 @@ Window {
     }
 
     // Top bar
-    Rectangle {
+    TopBar {
         id: toolbar
         anchors { top: parent.top; left: parent.left; right: parent.right }
         height: 48
-        color: "#2b2b2b"
-
-        Row {
-            anchors { left: parent.left; leftMargin: 12; verticalCenter: parent.verticalCenter }
-            spacing: 8
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                color: "#ffffff"
-                font.pixelSize: 16
-                text: qsTr("pimio %1").arg(Qt.application.version)
-                objectName: "placeholderLabel"
-            }
-
-            // Indexing a large library takes long enough that a window with
-            // no visible activity looks like one that has stopped answering.
-            BusyIndicator {
-                objectName: "scanBusyIndicator"
-                anchors.verticalCenter: parent.verticalCenter
-                height: 24
-                width: 24
-                running: root.scanning
-                visible: root.scanning
-            }
-
-            Text {
-                objectName: "scanStatusLabel"
-                anchors.verticalCenter: parent.verticalCenter
-                color: "#bbbbbb"
-                font.pixelSize: 12
-                visible: root.scanning
-                text: qsTr("Scanning… %1 found").arg(root.indexedCount)
-            }
-        }
-
-        // The two controls a user reaches for constantly sit in the bar
-        // itself; everything else is one click away behind the button.
-        Row {
-            anchors {
-                right: parent.right
-                rightMargin: 12
-                verticalCenter: parent.verticalCenter
-            }
-            spacing: 8
-
-            ComboBox {
-                objectName: "sortComboBox"
-                width: 150
-                anchors.verticalCenter: parent.verticalCenter
-                textRole: "label"
-                valueRole: "key"
-                model: root.sortOptions()
-                currentIndex: root.settings ? root.indexOfSortKey(root.settings.sortKey) : 0
-                onActivated: if (root.settings)
-                                 root.settings.sortKey = valueAt(currentIndex)
-            }
-
-            ToolButton {
-                objectName: "sortDirectionButton"
-                anchors.verticalCenter: parent.verticalCenter
-                // An arrow rather than a word: the button sits next to the
-                // field it applies to, and it carries an accessible name.
-                text: root.settings && root.settings.sortDescending ? "\u2193" : "\u2191"
-                Accessible.name: root.settings && root.settings.sortDescending
-                                 ? qsTr("Sort descending") : qsTr("Sort ascending")
-                onClicked: if (root.settings)
-                               root.settings.sortDescending = !root.settings.sortDescending
-            }
-
-            Slider {
-                objectName: "tileSizeSlider"
-                width: 120
-                anchors.verticalCenter: parent.verticalCenter
-                from: root.settings ? root.settings.minimumTileSize : 96
-                to: root.settings ? root.settings.maximumTileSize : 256
-                stepSize: 1
-                snapMode: Slider.SnapAlways
-                value: root.tileSize
-                // Live while the handle moves, the way Picasa's thumbnail
-                // slider behaved.
-                onMoved: if (root.settings)
-                             root.settings.tileSize = Math.round(value)
-            }
-
-            ToolButton {
-                objectName: "settingsButton"
-                anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("Settings")
-                onClicked: settingsDialog.open()
-            }
-        }
+        settings: root.settings
+        scanning: root.scanning
+        indexedCount: root.indexedCount
+        tileSize: root.tileSize
+        minimumTileSize: root.settings ? root.settings.minimumTileSize : 96
+        maximumTileSize: root.settings ? root.settings.maximumTileSize : 256
+        sortOptions: root.sortOptions()
+        sortKey: root.settings ? root.settings.sortKey : 0
+        sortDescending: root.settings ? root.settings.sortDescending : false
+        settingsDialog: settingsDialog
     }
 
     // Media grid
@@ -526,9 +445,8 @@ Window {
     // Picasa-style scroll controller: the center handle is a velocity control,
     // not a position indicator. Pull it away from center to scroll, farther for
     // faster movement; releasing it returns it to rest.
-    Item {
+    ScrollController {
         id: scrollController
-        objectName: "scrollController"
         anchors {
             top: toolbar.bottom
             right: parent.right
@@ -538,145 +456,10 @@ Window {
             bottomMargin: 8
         }
         width: 28
-
-        readonly property bool canScroll: grid.maximumContentY() > grid.minimumContentY()
-        readonly property real maximumTilesPerTick: 0.12
-        readonly property int tickIntervalMs: 16
-        property real handleOffset: 0
-
-        function jumpToStart() {
-            grid.contentY = grid.minimumContentY()
-            grid.updateVisibleRange()
-            root.restoreGridFocus()
-        }
-
-        function jumpToEnd() {
-            grid.contentY = grid.maximumContentY()
-            grid.updateVisibleRange()
-            root.restoreGridFocus()
-        }
-
-        function scrollFromDisplacement(displacement) {
-            if (!canScroll)
-                return
-            const bounded = Math.max(-1, Math.min(1, displacement))
-            const deadZone = 0.06
-            if (Math.abs(bounded) <= deadZone)
-                return
-            const velocity = (Math.abs(bounded) - deadZone) / (1 - deadZone)
-            const distance = Math.sign(bounded) * velocity
-                    * grid.cellHeight * maximumTilesPerTick * root.scrollSpeed
-            grid.contentY = grid.boundedContentY(grid.contentY + distance)
-            grid.updateVisibleRange()
-        }
-
-        function scrollFromHandle() {
-            const halfTravel = Math.max(1, (scrollTrack.height - scrollHandle.height) / 2)
-            const displacement = handleOffset / halfTravel
-            scrollFromDisplacement(displacement)
-        }
-
-        function returnHandleToCenter() {
-            returnAnimation.stop()
-            returnAnimation.start()
-        }
-
-        ToolButton {
-            id: jumpToStartButton
-            objectName: "jumpToStartButton"
-            anchors { top: parent.top; left: parent.left; right: parent.right }
-            height: width
-            text: "\u25b2"
-            enabled: scrollController.canScroll
-                     && grid.contentY > grid.minimumContentY()
-            Accessible.name: qsTr("Jump to beginning")
-            onClicked: scrollController.jumpToStart()
-        }
-
-        Item {
-            id: scrollTrack
-            objectName: "scrollControllerTrack"
-            anchors {
-                top: jumpToStartButton.bottom
-                bottom: jumpToEndButton.top
-                left: parent.left
-                right: parent.right
-                topMargin: 4
-                bottomMargin: 4
-            }
-
-            Rectangle {
-                anchors.horizontalCenter: parent.horizontalCenter
-                width: 4
-                height: parent.height
-                radius: 2
-                color: "#d0d0d0"
-            }
-
-            Rectangle {
-                id: scrollHandle
-                objectName: "scrollControllerHandle"
-                readonly property real restingY: (scrollTrack.height - height) / 2
-                x: 2
-                y: restingY + scrollController.handleOffset
-                width: scrollTrack.width - 4
-                height: Math.min(48, Math.max(28, scrollTrack.height / 5))
-                radius: 5
-                color: handleDrag.active ? "#707070" : "#909090"
-                border.color: "#555555"
-
-                DragHandler {
-                    id: handleDrag
-                    target: null
-                    xAxis.enabled: false
-                    enabled: scrollController.canScroll && root.browsingContextActive
-                    onActiveTranslationChanged: {
-                        const halfTravel = Math.max(
-                                0, (scrollTrack.height - scrollHandle.height) / 2)
-                        scrollController.handleOffset = Math.max(
-                                -halfTravel, Math.min(halfTravel, activeTranslation.y))
-                    }
-                    onActiveChanged: {
-                        if (active) {
-                            returnAnimation.stop()
-                            scrollTimer.start()
-                        } else {
-                            scrollTimer.stop()
-                            scrollController.returnHandleToCenter()
-                            root.restoreGridFocus()
-                        }
-                    }
-                }
-            }
-        }
-
-        ToolButton {
-            id: jumpToEndButton
-            objectName: "jumpToEndButton"
-            anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
-            height: width
-            text: "\u25bc"
-            enabled: scrollController.canScroll
-                     && grid.contentY < grid.maximumContentY()
-            Accessible.name: qsTr("Jump to end")
-            onClicked: scrollController.jumpToEnd()
-        }
-
-        Timer {
-            id: scrollTimer
-            interval: scrollController.tickIntervalMs
-            repeat: true
-            onTriggered: scrollController.scrollFromHandle()
-        }
-
-        NumberAnimation {
-            id: returnAnimation
-            target: scrollController
-            property: "handleOffset"
-            to: 0
-            duration: 160
-            easing.type: Easing.OutCubic
-        }
+        grid: grid
+        window: root
+        browsingContextActive: root.browsingContextActive
+        scrollSpeed: root.scrollSpeed
     }
 
     // Wheel events reach this before the GridView's own flick handling, so
