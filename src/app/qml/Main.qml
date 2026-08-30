@@ -317,91 +317,16 @@ Window {
             updateVisibleRange()
         }
 
-        delegate: Rectangle {
+        delegate: MediaTile {
             width: grid.cellWidth - 4
             height: grid.cellHeight - 4
-            color: "#3c3c3c"
-            radius: 4
-
-            TapHandler {
-                onTapped: root.showDetail(index)
-            }
-
-            // Thumbnail or placeholder
-            Image {
-                objectName: "gridThumbnail"
-                anchors.fill: parent
-                anchors.margins: 2
-                cache: false
-                fillMode: Image.PreserveAspectCrop
-                visible: model.thumbnailStatus === 2 // ThumbnailStatus::Ready
-                source: model.thumbnailStatus === 2
-                        ? "image://thumbnail/" + model.mediaId
-                        : ""
-
-                // The model says this row has a thumbnail but the provider
-                // could not serve it. Ask the model to render it again rather
-                // than leaving a grey tile that nothing would ever fix. Once
-                // per delegate: a file that genuinely cannot be rendered must
-                // not turn into an endless re-request loop.
-                property bool retried: false
-                onSourceChanged: retried = false
-                onStatusChanged: {
-                    if (status === Image.Error && !retried && root.mediaModel
-                            && typeof root.mediaModel.refreshThumbnail === "function") {
-                        retried = true
-                        root.mediaModel.refreshThumbnail(index)
-                    }
-                }
-            }
-
-            // Placeholder while loading
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 2
-                color: "transparent"
-                visible: model.thumbnailStatus !== 2
-                Text {
-                    anchors.centerIn: parent
-                    color: "#888888"
-                    font.pixelSize: 11
-                    text: model.thumbnailStatus === 3 ? qsTr("Error") : qsTr("…")
-                }
-            }
-
-            // Video badge
-            Rectangle {
-                anchors { bottom: parent.bottom; right: parent.right; margins: 4 }
-                width: 36; height: 18; radius: 3
-                color: "#cc000000"
-                visible: model.mediaKind === 2 // MediaKind::Video
-                Text {
-                    anchors.centerIn: parent
-                    color: "#ffffff"
-                    font.pixelSize: 10
-                    text: qsTr("Video")
-                }
-            }
-
-            // Session-only diagnostics: which row this is and what state its
-            // thumbnail is in, so a report about "the third tile" can be
-            // matched to a row without counting tiles in a screenshot.
-            Rectangle {
-                objectName: "tileDiagnostics"
-                anchors { top: parent.top; left: parent.left; margins: 4 }
-                width: diagnosticsLabel.implicitWidth + 6
-                height: diagnosticsLabel.implicitHeight + 4
-                radius: 3
-                color: "#cc000000"
-                visible: root.showTileDiagnostics
-                Text {
-                    id: diagnosticsLabel
-                    anchors.centerIn: parent
-                    color: "#ffffff"
-                    font.pixelSize: 10
-                    text: index + " · " + model.thumbnailStatus
-                }
-            }
+            modelIndex: index
+            mediaId: model.mediaId
+            thumbnailStatus: model.thumbnailStatus
+            mediaKind: model.mediaKind
+            mediaModel: root.mediaModel
+            showTileDiagnostics: root.showTileDiagnostics
+            onActivated: function(index) { root.showDetail(index) }
         }
 
         // Notify the model when the visible range changes so it can manage
@@ -506,48 +431,9 @@ Window {
         visible: grid.count === 0 && !root.scanning
         spacing: 12
 
-        // Camera glyph drawn from primitives: a color-emoji glyph ("📷")
-        // renders as an empty box on Linux systems without an emoji font,
-        // so the icon is drawn instead of typed.
-        Item {
+        CameraIcon {
             objectName: "emptyLibraryIcon"
-            width: 72
-            height: 60
             anchors.horizontalCenter: parent.horizontalCenter
-
-            Rectangle { // viewfinder bump
-                x: 12; y: 0
-                width: 22; height: 14
-                radius: 4
-                color: "#666666"
-            }
-            Rectangle { // body
-                y: 8
-                width: parent.width
-                height: parent.height - 8
-                radius: 8
-                color: "#666666"
-
-                Rectangle { // lens outer ring
-                    anchors.centerIn: parent
-                    width: 32; height: 32; radius: 16
-                    color: "#3c3c3c"
-                    border.color: "#999999"
-                    border.width: 3
-
-                    Rectangle { // lens inner
-                        anchors.centerIn: parent
-                        width: 12; height: 12; radius: 6
-                        color: "#999999"
-                    }
-                }
-                Rectangle { // flash dot
-                    x: parent.width - 18; y: 8
-                    width: 8; height: 8; radius: 4
-                    color: "#999999"
-                }
-            }
-
         }
         Text {
             anchors.horizontalCenter: parent.horizontalCenter

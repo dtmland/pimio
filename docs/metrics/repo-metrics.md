@@ -1,27 +1,27 @@
 # pimio repository health metrics
 
-- Generated: 2026-08-30 00:38:19 UTC
+- Generated: 2026-08-30 01:27:48 UTC
 - Repository: pimio
-- Commit: b83f633
+- Commit: c747db9
 
 ## Summary
-- Included files: 223
-- Total lines: 35755
-- Code lines: 26888
-- Blank lines: 5512
-- Comment lines: 3355
+- Included files: 253
+- Total lines: 36177
+- Code lines: 27296
+- Blank lines: 5626
+- Comment lines: 3255
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 82 |
-| C/C++ Header | 58 |
+| C++ | 99 |
+| C/C++ Header | 69 |
 | CMake | 29 |
 | Markdown | 23 |
 | Shell | 8 |
 | PowerShell | 7 |
-| QML | 5 |
+| QML | 7 |
 | Batch | 3 |
 | Text | 3 |
 | YAML | 3 |
@@ -31,9 +31,9 @@
 
 | Directory | Files |
 | --- | ---: |
-| src | 108 |
-| tests | 60 |
-| tools | 20 |
+| src | 122 |
+| tests | 73 |
+| tools | 23 |
 | docs | 18 |
 | packaging | 7 |
 | .github | 4 |
@@ -46,18 +46,18 @@
 
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
-| src/lore/src/lore_durable_store.cpp | 1067 | 841 | 108 | 118 |
-| src/projection/src/projection_database.cpp | 833 | 691 | 72 | 70 |
-| tests/scan/tst_scan_incremental.cpp | 743 | 557 | 147 | 39 |
-| tests/browser/tst_browser_model.cpp | 740 | 579 | 122 | 39 |
-| src/browser/src/media_library_model.cpp | 700 | 579 | 85 | 36 |
-| tests/projection/tst_projection_metadata.cpp | 674 | 508 | 119 | 47 |
-| tests/app/tst_app_smoke.cpp | 649 | 513 | 92 | 44 |
-| tests/lore/tst_lore_faults.cpp | 617 | 467 | 91 | 59 |
-| src/metadata/src/image_reader.cpp | 607 | 528 | 54 | 25 |
-| tools/fixture_generator/main.cpp | 599 | 510 | 71 | 18 |
-| src/app/qml/Main.qml | 581 | 457 | 62 | 62 |
-| src/projection/src/job_queue.cpp | 568 | 508 | 53 | 7 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | .github/workflows/release.yml | 552 | 476 | 37 | 39 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
+| docs/plan/pimio-v1-implementation.md | 532 | 384 | 120 | 28 |
+| docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
+| src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |
+| src/app/qml/Main.qml | 467 | 367 | 52 | 48 |
+| src/app/src/library_session.cpp | 456 | 343 | 57 | 56 |
+| src/metadata/src/tiff_reader.cpp | 455 | 395 | 41 | 19 |
+| tests/scan/tst_scan_incremental_crud.cpp | 447 | 346 | 85 | 16 |
+| tests/app/tst_app_smoke.cpp | 428 | 346 | 61 | 21 |
+| src/lore/src/lore_durable_store.cpp | 426 | 341 | 53 | 32 |
+| src/browser/src/media_library_model.cpp | 415 | 344 | 52 | 19 |
+| tools/fixture_generator/fixtures.cpp | 402 | 329 | 56 | 17 |
+| src/scan/src/scanner.cpp | 402 | 311 | 53 | 38 |

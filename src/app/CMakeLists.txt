@@ -41,7 +41,9 @@ qt_add_qml_module(pimio_app_lib
     OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qml/Pimio
     QML_FILES
         qml/DetailView.qml
+        qml/CameraIcon.qml
         qml/Main.qml
+        qml/MediaTile.qml
         qml/ScrollController.qml
         qml/SettingsDialog.qml
         qml/TopBar.qml

@@ -4,6 +4,8 @@ add_library(pimio_metadata STATIC
     src/field_set.h
     src/image_reader.cpp
     src/image_reader.h
+    src/tiff_reader.cpp
+    src/tiff_reader_private.h
     src/iso_bmff_reader.cpp
     src/iso_bmff_reader.h
     src/media_signature.cpp
