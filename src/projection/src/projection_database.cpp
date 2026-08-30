@@ -16,8 +16,6 @@ using core::MediaId;
 using core::MediaKind;
 using core::MediaRecord;
 
-constexpr auto kStateTokenKey = "durableStateToken";
-
 void setError(Error *error, ErrorCode code, const QString &message)
 {
     if (error != nullptr) {

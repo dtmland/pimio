@@ -424,5 +424,3 @@ void TestAppSmoke::preparedLibraryShowsStartupFeedbackBeforeStorageOpens()
 }
 
 QTEST_MAIN(TestAppSmoke)
-
-#include "tst_app_smoke.moc"

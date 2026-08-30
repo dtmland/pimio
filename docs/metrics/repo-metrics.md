@@ -1,14 +1,14 @@
 # pimio repository health metrics
 
-- Generated: 2026-08-30 01:27:48 UTC
+- Generated: 2026-08-30 01:44:50 UTC
 - Repository: pimio
-- Commit: c747db9
+- Commit: 503fb29
 
 ## Summary
 - Included files: 253
-- Total lines: 36177
+- Total lines: 36156
 - Code lines: 27296
-- Blank lines: 5626
+- Blank lines: 5605
 - Comment lines: 3255
 
 ## By language
@@ -55,8 +55,8 @@
 | src/app/qml/Main.qml | 467 | 367 | 52 | 48 |
 | src/app/src/library_session.cpp | 456 | 343 | 57 | 56 |
 | src/metadata/src/tiff_reader.cpp | 455 | 395 | 41 | 19 |
-| tests/scan/tst_scan_incremental_crud.cpp | 447 | 346 | 85 | 16 |
-| tests/app/tst_app_smoke.cpp | 428 | 346 | 61 | 21 |
+| tests/scan/tst_scan_incremental_crud.cpp | 445 | 346 | 83 | 16 |
+| tests/app/tst_app_smoke.cpp | 426 | 345 | 60 | 21 |
 | src/lore/src/lore_durable_store.cpp | 426 | 341 | 53 | 32 |
 | src/browser/src/media_library_model.cpp | 415 | 344 | 52 | 19 |
 | tools/fixture_generator/fixtures.cpp | 402 | 329 | 56 | 17 |

@@ -26,7 +26,6 @@ void TestBrowserModel::initTestCase()
     QVERIFY2(QSqlDatabase::isDriverAvailable(QStringLiteral("QSQLITE")),
              "the Qt SQLite driver must be present");
 }
-
 void TestBrowserModel::populate(int count)
 {
     MemoryDurableStore store(m_clock);
@@ -130,4 +129,3 @@ void TestBrowserModel::itemAtReturnsDetailRoles()
              static_cast<int>(MediaLibraryModel::ThumbnailStatus::Pending));
     QVERIFY(model.itemAt(-1).isEmpty());
 }
-

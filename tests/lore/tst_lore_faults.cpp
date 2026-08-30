@@ -347,5 +347,3 @@ void TestLoreFaults::largeRecordSetReportsSizeAndLatency()
 }
 
 QTEST_GUILESS_MAIN(TestLoreFaults)
-
-#include "tst_lore_faults.moc"

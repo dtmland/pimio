@@ -17,6 +17,8 @@ using core::Error;
 using core::ErrorCode;
 using core::MediaId;
 
+inline constexpr auto kStateTokenKey = "durableStateToken";
+
 void setError(Error *error, ErrorCode code, const QString &message);
 
 QString notNull(const QString &value);

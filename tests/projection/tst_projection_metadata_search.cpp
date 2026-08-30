@@ -23,7 +23,6 @@ void TestProjectionMetadata::fullTextSearchMatchesCaption()
         QCOMPARE(found.size(), 1);
         PIMIO_COMPARE_ID(found[0], target);
     }
-
 void TestProjectionMetadata::fullTextSearchMatchesFileName()
     {
         auto clock = makeClock();
@@ -181,4 +180,3 @@ void TestProjectionMetadata::fullTextSearchMatchesAllTerms()
         QCOMPARE(found.size(), 1);
         PIMIO_COMPARE_ID(found[0], target);
     }
-

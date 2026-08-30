@@ -43,7 +43,6 @@ void TestBrowserModel::setVisibleRangeRequestsThumbnailsForWindow()
         QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Loading));
     }
 }
-
 void TestBrowserModel::visibleRangeIsInvokableFromQml()
 {
     populate(10);
@@ -259,4 +258,3 @@ void TestBrowserModel::cancelledThumbnailResetsStatusToPending()
     const int status = model.data(model.index(0), MediaLibraryModel::ThumbnailStatusRole).toInt();
     QCOMPARE(status, static_cast<int>(MediaLibraryModel::ThumbnailStatus::Pending));
 }
-

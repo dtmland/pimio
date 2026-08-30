@@ -10,8 +10,6 @@ using core::ErrorCode;
 using core::MediaId;
 using core::MediaRecord;
 
-constexpr auto kWriteStateTokenKey = "durableStateToken";
-
 bool ProjectionDatabase::Private::insertRecord(QSqlDatabase &db, const MediaRecord &record,
                                                Error *error) const
 {
@@ -196,7 +194,7 @@ bool ProjectionDatabase::rebuildFrom(const DurableStore &store, Error *error)
         db.rollback();
         return false;
     }
-    meta.addBindValue(QString::fromLatin1(kWriteStateTokenKey));
+    meta.addBindValue(QString::fromLatin1(kStateTokenKey));
     meta.addBindValue(token);
     if (!meta.exec()) {
         return fail(error, ErrorCode::Internal,

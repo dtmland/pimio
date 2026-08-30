@@ -82,4 +82,3 @@ private slots:
 private:
     QString m_helperPath;
 };
-

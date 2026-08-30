@@ -54,7 +54,6 @@ void TestScanIncremental::scanAddsNewFiles()
         QVERIFY(records[0].fingerprint.isValid());
         QCOMPARE(records[0].metadata.fileName, QStringLiteral("photo.jpg"));
     }
-
 void TestScanIncremental::batchedScanCommitsBeforeItFinishes()
     {
         testing::MemoryFileSystem fs;
@@ -444,4 +443,3 @@ void TestScanIncremental::scanRecordsDuplicatesWithSeparateIds()
         // Same fingerprint.
         QCOMPARE(records[0].fingerprint, records[1].fingerprint);
     }
-

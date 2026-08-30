@@ -1,5 +1,6 @@
 qt_add_executable(tst_app_smoke
     tst_app_smoke.cpp
+    tst_app_smoke_fixture.h
     tst_app_smoke_navigation.cpp
     app_test_support.cpp
 )

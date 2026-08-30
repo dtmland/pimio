@@ -32,7 +32,6 @@ void TestProjectionMetadata::captureTimeSortOrderIsChronological()
         PIMIO_COMPARE_ID(ordered[1], id1);
         PIMIO_COMPARE_ID(ordered[2], id3);
     }
-
 void TestProjectionMetadata::captureTimeEqualTimestampsOrderedById()
     {
         auto clock = makeClock();
@@ -192,4 +191,3 @@ void TestProjectionMetadata::filterByMinimumRatingReturnsCorrectSubset()
         QVERIFY(!err.isError());
         QCOMPARE(atLeast1.size(), 2);
     }
-

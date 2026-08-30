@@ -344,5 +344,3 @@ void TestBrowserModel::insertingReloadKeepsLoadedThumbnailsAndInsertsRows()
 }
 
 QTEST_MAIN(TestBrowserModel)
-
-#include "tst_browser_model.moc"

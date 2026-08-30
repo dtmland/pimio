@@ -214,4 +214,3 @@ void TestProjectionMetadata::videoDurationAndAudioFlagSurviveRebuild()
     }
 
 QTEST_MAIN(TestProjectionMetadata)
-#include "tst_projection_metadata.moc"

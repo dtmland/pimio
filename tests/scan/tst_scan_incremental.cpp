@@ -254,4 +254,3 @@ void TestScanIncremental::largeTreeBenchmark()
     }
 
 QTEST_APPLESS_MAIN(TestScanIncremental)
-#include "tst_scan_incremental.moc"

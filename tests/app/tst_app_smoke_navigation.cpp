@@ -78,7 +78,6 @@ void TestAppSmoke::arrowKeysMoveTheSelectionByRowsAndColumns()
     QTest::keyClick(window, Qt::Key_Home);
     QCOMPARE(grid->property("currentIndex").toInt(), 0);
 }
-
 void TestAppSmoke::gridFocusFollowsTheBrowsingContext()
 {
     SyntheticMediaModel model(100);
@@ -220,4 +219,3 @@ void TestAppSmoke::previewArrowKeysFollowTheGridOrder()
     QTest::keyClick(window, Qt::Key_Escape);
     QTRY_VERIFY(!detail->property("visible").toBool());
 }
-

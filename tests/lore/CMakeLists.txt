@@ -37,6 +37,7 @@ target_link_libraries(pimio_lore_fault_helper PRIVATE
 
 qt_add_executable(tst_lore_faults
     tst_lore_faults.cpp
+    tst_lore_faults_fixture.h
     tst_lore_faults_process.cpp
     lore_test_support.h
 )

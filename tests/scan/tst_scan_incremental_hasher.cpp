@@ -35,7 +35,6 @@ void TestScanIncremental::hasherProducesConsistentFingerprint()
         QCOMPARE(fp1.algorithm(), QStringLiteral("sha256"));
         QCOMPARE(fp1, fp2);
     }
-
 void TestScanIncremental::hasherDifferentDataProducesDifferentFingerprint()
     {
         const core::ContentFingerprint fp1 = MediaHasher::computeFingerprint("aaa");
@@ -54,4 +53,3 @@ void TestScanIncremental::hasherReadFromFileSystem()
         QVERIFY(!err.isError());
         QCOMPARE(fp, MediaHasher::computeFingerprint("content"));
     }
-

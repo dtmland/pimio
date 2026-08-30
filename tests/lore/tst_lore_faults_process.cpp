@@ -36,7 +36,6 @@ void TestLoreFaults::killedProcessBeforeCommitLeavesNoUncommittedStateVisible()
         tokenBefore = store.stateToken();
         store.close();
     }
-
     // A real process death in the window between populating the checkout and
     // committing it. Without recovery the checkout would hold records that
     // history has never seen.
@@ -206,4 +205,3 @@ void TestLoreFaults::killedProcessAfterCommitKeepsTheRevisionItReported()
         QVERIFY(recovered.load(MediaId(QStringLiteral("kept")), nullptr).has_value());
     }
 }
-
