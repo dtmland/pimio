@@ -30,3 +30,12 @@ Projection databases, job queues, and thumbnail caches are derived data and use
 the stable library id in their application-data paths. The current repeated
 `--library` media-root arguments remain a repository locator until Increment
 7.9 adds the Library Manager; they are never exposed as library identity.
+
+## Original media storage
+
+v1 libraries reference original media in configured roots; originals are not
+copied into LORE. The repository is authoritative for library identity,
+metadata, organization, edit recipes, and history, but it is not by itself a
+backup of the media. A complete backup must include every referenced root and
+the information needed to reconnect it after restore. See
+[decision 0005](decisions/0005-managed-versus-referenced-originals.md).

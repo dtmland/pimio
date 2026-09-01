@@ -36,8 +36,9 @@ can support the 2.0.0 rendering frontend without being rewritten.
   one LORE repository with a stable unique identity independent of its
   location on disk. Provide library management — create, open, close, switch,
   rename, move, back up, and restore libraries — so a library is a portable,
-  self-contained object rather than an implicit side effect of scanned
-  folders.
+  explicit object rather than an implicit side effect of scanned folders.
+  v1 references originals in configured media roots, so a portable backup must
+  include those roots as well as the repository.
 - Configure one or more local media roots per library.
 - Scan images and videos incrementally, preserving a stable file identity and
   content fingerprint to recognize moves and renames.

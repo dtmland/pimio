@@ -352,6 +352,14 @@ in place. Decide whether LORE can carry original photo/video content.
 Do not implement managed-mode ingest before this gate passes; the referenced
 model remains the default and is not blocked by this increment.
 
+**Outcome:** Complete — **no-go for managed originals in v1**. LORE 0.8.5
+round-tripped and deduplicated a 256 MiB binary payload, but the checkout plus
+immutable store roughly doubles original-media storage and pimio's required
+pre-commit recovery backup scales with the complete `.lore` corpus. v1 keeps
+referenced originals and requires backups to include or explicitly exclude
+their media roots. See
+[decision 0005](../decisions/0005-managed-versus-referenced-originals.md).
+
 ## Increment 7.9 — Library Manager and Lifecycle
 
 Makes the Library a user-facing first-class object rather than a CLI flag.

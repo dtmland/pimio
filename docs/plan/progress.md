@@ -21,7 +21,7 @@ Update this file in the same change that moves an increment forward.
 | 7.5 | Browsing controls and settings | Complete |
 | 7.6 | Progressive scanning and thumbnail retention | Complete |
 | 7.7 | Library, revision, and author identity | Complete |
-| 7.8 | Library storage-model gate (managed originals) | Not started |
+| 7.8 | Library storage-model gate (managed originals) | Complete (no-go for v1 managed mode) |
 | 7.9 | Library manager and lifecycle | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
@@ -303,3 +303,27 @@ tiles the longer the application is scrolled. Rationale in
   author and application provenance.
 - `lore.adapter` — a moved repository retains its library id, an independent
   repository gets another id, and provenance survives history reload.
+
+## Increment 7.8 — Library storage-model gate — Complete (no-go)
+
+### Deliverables
+
+- A reproducible `lore.binary_content` spike commits, restarts, restores, and
+  SHA-256-verifies deterministic binary content through the pinned LORE CLI.
+  It measures commit/read-back cost, repository size, and identical-content
+  deduplication; `PIMIO_LORE_BINARY_SPIKE_MIB=256` selects the recorded
+  multi-hundred-MB run.
+- [Decision 0005](../decisions/0005-managed-versus-referenced-originals.md)
+  records a no-go for managed originals in v1. LORE passed binary integrity and
+  deduplication, but the checkout and immutable copy roughly double original
+  storage, while pimio's required pre-commit recovery backup scales with the
+  complete durable corpus.
+- v1 retains referenced originals. Complete backup/restore and portability
+  claims must include the configured media roots as well as the LORE repository;
+  repository-only backups preserve organizational state, not original media.
+
+### Automated evidence
+
+- `lore.binary_content` — commits binary content, reloads it in a fresh LORE
+  process, verifies its SHA-256, and demonstrates content deduplication across
+  two paths.
