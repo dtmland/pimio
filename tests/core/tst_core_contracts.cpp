@@ -54,6 +54,7 @@ private slots:
     void failedCommitKeepsStagedChangesRecoverable();
     void externalChangeChangesStateToken();
     void unavailableStoreFailsVisibly();
+    void libraryIdentityAndAuthorizationAreStable();
     void mediaRequestCacheKeysDistinguishOutputs();
     void mediaRequestCancellationIsIdempotent();
     void mediaRequestServiceCancelsScrolledAwayWork();
@@ -285,6 +286,36 @@ void TestCoreContracts::unavailableStoreFailsVisibly()
     Error loadError;
     QVERIFY(!store.load(MediaId(QStringLiteral("m-1")), &loadError).has_value());
     PIMIO_COMPARE_ENUM(loadError.code(), ErrorCode::StorageUnavailable);
+}
+
+void TestCoreContracts::libraryIdentityAndAuthorizationAreStable()
+{
+    FakeClock clock(QDateTime(QDate(2026, 9, 1), QTime(10, 0), Qt::UTC));
+    MemoryDurableStore first(clock);
+    MemoryDurableStore second(clock);
+
+    QVERIFY(first.createLibrary(QStringLiteral("Family"), nullptr));
+    QVERIFY(second.createLibrary(QStringLiteral("Family"), nullptr));
+    const auto firstDescriptor = first.libraryDescriptor(nullptr);
+    const auto secondDescriptor = second.libraryDescriptor(nullptr);
+    QVERIFY(firstDescriptor.has_value());
+    QVERIFY(secondDescriptor.has_value());
+    QVERIFY(firstDescriptor->id != secondDescriptor->id);
+
+    for (LibraryPermission permission :
+         {LibraryPermission::Read, LibraryPermission::Write, LibraryPermission::Administer,
+          LibraryPermission::Share}) {
+        QVERIFY(hasLibraryPermission(*firstDescriptor, firstDescriptor->localUser.id, permission));
+        QVERIFY(!hasLibraryPermission(*firstDescriptor, QStringLiteral("another-user"),
+                                      permission));
+    }
+
+    QVERIFY(first.stage(makeRecord(QStringLiteral("m-1"), QStringLiteral("one")), nullptr));
+    const auto saved = first.commit(QStringLiteral("Import"), nullptr);
+    QVERIFY(saved.has_value());
+    QCOMPARE(saved->authorId, firstDescriptor->localUser.id);
+    QCOMPARE(saved->parentId, first.history(-1, nullptr).at(1).id);
+    QVERIFY(!saved->applicationVersion.isEmpty());
 }
 
 void TestCoreContracts::mediaRequestCacheKeysDistinguishOutputs()

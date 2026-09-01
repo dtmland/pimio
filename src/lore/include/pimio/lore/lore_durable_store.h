@@ -95,6 +95,8 @@ public:
 
     // DurableStore
     bool isAvailable() const override;
+    bool createLibrary(const QString &name, core::Error *error) override;
+    std::optional<core::LibraryDescriptor> libraryDescriptor(core::Error *error) const override;
     bool stage(const core::MediaRecord &record, core::Error *error) override;
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;
     bool discardStaged(core::Error *error) override;

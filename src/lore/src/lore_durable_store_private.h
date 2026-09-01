@@ -148,6 +148,14 @@ public:
     QString repositoryPath() const { return storePath + QStringLiteral("/repository"); }
     QString recordsPath() const { return repositoryPath() + QStringLiteral("/records"); }
     QString stagingPath() const { return storePath + QStringLiteral("/staging"); }
+    QString libraryDescriptorPath() const
+    {
+        return recordsPath() + QStringLiteral("/.pimio-library.json");
+    }
+    QString stagedLibraryDescriptorPath() const
+    {
+        return stagingPath() + QStringLiteral("/.pimio-library.json");
+    }
     QString lorePath() const { return repositoryPath() + QStringLiteral("/.lore"); }
     QString commitBackupPath() const { return storePath + QStringLiteral("/.pimio-lore-backup"); }
     QString commitMarkerPath() const

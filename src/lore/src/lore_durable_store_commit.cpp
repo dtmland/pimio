@@ -1,8 +1,11 @@
 #include "lore_durable_store_private.h"
 
+#include "pimio/core/version.h"
+
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
 
 #include <algorithm>
 #include <cstring>
@@ -134,7 +137,30 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     Operation commitOperation;
     lore_revision_commit_args_t commitArgs;
     std::memset(&commitArgs, 0, sizeof(commitArgs));
-    const QByteArray messageUtf8 = message.toUtf8();
+    core::LibraryDescriptor descriptor;
+    {
+        const QString descriptorPath = QFileInfo::exists(d->stagedLibraryDescriptorPath())
+                ? d->stagedLibraryDescriptorPath()
+                : d->libraryDescriptorPath();
+        QFile descriptorFile(descriptorPath);
+        if (descriptorFile.open(QIODevice::ReadOnly)) {
+            descriptor = core::LibraryDescriptor::fromJson(
+                    QJsonDocument::fromJson(descriptorFile.readAll()).object());
+        }
+    }
+    const QList<core::Checkpoint> previous = history(1, nullptr);
+    const QString parentId = previous.isEmpty() ? QString() : previous.constFirst().id;
+    const QJsonObject provenance{
+        {QStringLiteral("message"), message},
+        {QStringLiteral("authorId"), descriptor.isValid()
+                                             ? descriptor.localUser.id
+                                             : QString(core::kUnknownAuthorId)},
+        {QStringLiteral("applicationVersion"), core::versionString()},
+        {QStringLiteral("parentId"), parentId},
+    };
+    const QByteArray messageUtf8 =
+            QByteArrayLiteral("pimio-checkpoint-v1:")
+            + QJsonDocument(provenance).toJson(QJsonDocument::Compact);
     commitArgs.message = loreString(messageUtf8);
     api.revisionCommit(&args, &commitArgs, commitOperation.config());
     if (commitOperation.status != 0 || commitOperation.checkpoints.isEmpty()) {
@@ -161,6 +187,9 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
 
     core::Checkpoint checkpoint = commitOperation.checkpoints.constFirst();
     checkpoint.message = message;
+    checkpoint.authorId = provenance.value(QStringLiteral("authorId")).toString();
+    checkpoint.applicationVersion = core::versionString();
+    checkpoint.parentId = parentId;
 
     if (!d->clearCommitRecovery()) {
         detail::setError(error, ErrorCode::Internal,

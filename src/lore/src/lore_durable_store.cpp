@@ -3,6 +3,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
 #include <QSaveFile>
 
 #include <algorithm>
@@ -364,6 +365,9 @@ QList<core::MediaId> LoreDurableStore::listIds(Error *error) const
                           QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
     while (iterator.hasNext()) {
         const QString path = iterator.next();
+        if (QFileInfo(path).fileName() == QLatin1String(".pimio-library.json")) {
+            continue;
+        }
         const auto record = detail::readRecordFile(path, nullptr);
         if (record && record->id.isValid()) {
             values.append(record->id.value());
@@ -406,6 +410,26 @@ QList<core::Checkpoint> LoreDurableStore::history(int limit, Error *error) const
     // LORE reports the newest revision first, which is the order the contract
     // requires.
     QList<core::Checkpoint> checkpoints = operation.checkpoints;
+    for (core::Checkpoint &checkpoint : checkpoints) {
+        constexpr QLatin1StringView prefix{"pimio-checkpoint-v1:"};
+        if (!checkpoint.message.startsWith(prefix)) {
+            checkpoint.authorId = QString(core::kUnknownAuthorId);
+            continue;
+        }
+        const QByteArray encoded = checkpoint.message.sliced(prefix.size()).toUtf8();
+        const QJsonDocument document = QJsonDocument::fromJson(encoded);
+        if (!document.isObject()) {
+            checkpoint.authorId = QString(core::kUnknownAuthorId);
+            continue;
+        }
+        const QJsonObject provenance = document.object();
+        checkpoint.message = provenance.value(QStringLiteral("message")).toString();
+        checkpoint.authorId = provenance.value(QStringLiteral("authorId"))
+                                      .toString(QString(core::kUnknownAuthorId));
+        checkpoint.applicationVersion =
+                provenance.value(QStringLiteral("applicationVersion")).toString();
+        checkpoint.parentId = provenance.value(QStringLiteral("parentId")).toString();
+    }
     if (limit >= 0 && limit < checkpoints.size()) {
         checkpoints = checkpoints.first(limit);
     }

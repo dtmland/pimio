@@ -10,6 +10,7 @@ add_library(pimio_lore STATIC
     src/lore_api.h
     src/lore_durable_store.cpp
     src/lore_durable_store_commit.cpp
+    src/lore_durable_store_identity.cpp
     src/lore_durable_store_private.h
     src/lore_store_helpers.cpp
     src/lore_store_helpers.h

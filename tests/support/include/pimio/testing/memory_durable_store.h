@@ -31,6 +31,8 @@ public:
 
     // DurableStore
     bool isAvailable() const override;
+    bool createLibrary(const QString &name, core::Error *error) override;
+    std::optional<core::LibraryDescriptor> libraryDescriptor(core::Error *error) const override;
     bool stage(const core::MediaRecord &record, core::Error *error) override;
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;
     bool discardStaged(core::Error *error) override;
@@ -48,6 +50,7 @@ private:
     core::Clock &m_clock;
     bool m_available = true;
     std::optional<core::ErrorCode> m_nextCommitFailure;
+    std::optional<core::LibraryDescriptor> m_library;
 
     QHash<QString, core::MediaRecord> m_committed;
     QHash<QString, core::MediaRecord> m_staged;

@@ -31,6 +31,7 @@ These conventions apply to all implementation increments described in
 | `packaging/` | Files shipped at the root of each release archive: the launcher, the per-platform `README.txt`, and the `pimio-doctor` diagnostic script. Installed by `cmake --install`, so a local install matches a release. |
 | `cmake/` | Reusable CMake modules, such as the pinned, checksum-verified LORE acquisition. |
 | `docs/` | All project documentation. The repository root holds only files a project normally keeps there, such as `README.md` and build configuration. |
+| `docs/library-model.md` | Stable library/author identity, checkpoint provenance, and the service authorization boundary. |
 | `docs/decisions/` | Numbered decision records. Written when a choice is made, not reconstructed afterwards. |
 | `docs/plan/` | Product vision, release plans, and the implementation plan, plus `progress.md`, the record of which increments are complete. |
 | `.cache/` | Verified third-party downloads, keyed by version. Never committed; safe to delete. |

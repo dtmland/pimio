@@ -28,6 +28,7 @@ private slots:
     void stagedWorkIsNotVisibleAsCommittedState();
     void discardStagedLeavesCommittedStateIntact();
     void historyIsNewestFirstAndCarriesCommitMessages();
+    void libraryIdentitySurvivesMoveAndCheckpointsCarryProvenance();
     void externalCliCommitChangesTheStateToken();
     void unicodeAndOpaqueIdentifiersRoundTrip();
     void commitCostGrowsWithBatchSize();
@@ -230,6 +231,66 @@ void TestLoreAdapter::historyIsNewestFirstAndCarriesCommitMessages()
     const QList<Checkpoint> limited = store.history(1, &error);
     QCOMPARE(limited.size(), 1);
     QCOMPARE(limited.constFirst().id, second->id);
+}
+
+void TestLoreAdapter::libraryIdentitySurvivesMoveAndCheckpointsCarryProvenance()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const QString originalPath = temporary.filePath(QStringLiteral("original"));
+    QString libraryId;
+    QString authorId;
+    QString creationCheckpointId;
+    {
+        LoreDurableStore store(originalPath);
+        Error error;
+        QVERIFY2(store.open(&error), qPrintable(error.message()));
+        QVERIFY2(store.createLibrary(QStringLiteral("Family archive"), &error),
+                 qPrintable(error.message()));
+        const auto descriptor = store.libraryDescriptor(&error);
+        QVERIFY2(descriptor.has_value(), qPrintable(error.message()));
+        libraryId = descriptor->id;
+        authorId = descriptor->localUser.id;
+
+        const QList<Checkpoint> createdHistory = store.history(-1, &error);
+        QCOMPARE(createdHistory.size(), 1);
+        creationCheckpointId = createdHistory.constFirst().id;
+        QCOMPARE(createdHistory.constFirst().authorId, authorId);
+        QVERIFY(!createdHistory.constFirst().applicationVersion.isEmpty());
+        QVERIFY(createdHistory.constFirst().parentId.isEmpty());
+
+        QVERIFY(store.stage(makeLoreRecord(QStringLiteral("m-1"), QStringLiteral("one")), &error));
+        const auto imported = store.commit(QStringLiteral("Import"), &error);
+        QVERIFY2(imported.has_value(), qPrintable(error.message()));
+        QCOMPARE(imported->authorId, authorId);
+        QCOMPARE(imported->parentId, creationCheckpointId);
+        QCOMPARE(store.listIds(&error), QList<MediaId>{MediaId(QStringLiteral("m-1"))});
+    }
+
+    const QString movedPath = temporary.filePath(QStringLiteral("moved"));
+    QVERIFY(QDir().rename(originalPath, movedPath));
+    LoreDurableStore moved(movedPath);
+    Error error;
+    QVERIFY2(moved.open(&error), qPrintable(error.message()));
+    const auto movedDescriptor = moved.libraryDescriptor(&error);
+    QVERIFY2(movedDescriptor.has_value(), qPrintable(error.message()));
+    QCOMPARE(movedDescriptor->id, libraryId);
+
+    LoreDurableStore independent(temporary.filePath(QStringLiteral("independent")));
+    QVERIFY2(independent.open(&error), qPrintable(error.message()));
+    QVERIFY2(independent.createLibrary(QStringLiteral("Family archive"), &error),
+             qPrintable(error.message()));
+    const auto independentDescriptor = independent.libraryDescriptor(&error);
+    QVERIFY(independentDescriptor.has_value());
+    QVERIFY(independentDescriptor->id != libraryId);
+
+    const QList<Checkpoint> movedHistory = moved.history(-1, &error);
+    QCOMPARE(movedHistory.size(), 2);
+    QCOMPARE(movedHistory.constFirst().message, QStringLiteral("Import"));
+    QCOMPARE(movedHistory.constFirst().authorId, authorId);
+    QCOMPARE(movedHistory.constFirst().parentId, creationCheckpointId);
 }
 
 void TestLoreAdapter::externalCliCommitChangesTheStateToken()

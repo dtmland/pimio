@@ -6,6 +6,7 @@ add_library(pimio_core STATIC
     include/pimio/core/file_system.h
     include/pimio/core/geolocation.h
     include/pimio/core/job.h
+    include/pimio/core/library.h
     include/pimio/core/media_request.h
     include/pimio/core/metadata.h
     include/pimio/core/metadata_reader.h
@@ -19,6 +20,7 @@ add_library(pimio_core STATIC
     src/error.cpp
     src/geolocation.cpp
     src/job.cpp
+    src/library.cpp
     src/media_request.cpp
     src/metadata.cpp
     src/serialization.cpp
