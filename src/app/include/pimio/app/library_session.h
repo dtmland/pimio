@@ -26,8 +26,9 @@ namespace pimio::app {
 /// repeatable): every path is scanned and watched independently, but all of
 /// them are indexed into one shared durable store, projection, and browser
 /// model. Derived data is rooted at a per-user path keyed by the stable
-/// repository descriptor id rather than by the media paths. Keeping it outside every watched tree
-/// is deliberate: writing pimio's own cache files inside a watched library
+/// repository descriptor id rather than by the media paths. Keeping derived
+/// data outside every watched tree is deliberate: writing pimio's own cache
+/// files inside a watched library
 /// would make the watcher observe its own writes.
 ///
 /// All of the pieces start() creates live for the lifetime of this object
