@@ -266,6 +266,7 @@ void TestLoreAdapter::libraryIdentitySurvivesMoveAndCheckpointsCarryProvenance()
         QVERIFY2(imported.has_value(), qPrintable(error.message()));
         QCOMPARE(imported->authorId, authorId);
         QCOMPARE(imported->parentId, creationCheckpointId);
+        QCOMPARE(store.listIds(&error), QList<MediaId>{MediaId(QStringLiteral("m-1"))});
     }
 
     const QString movedPath = temporary.filePath(QStringLiteral("moved"));
