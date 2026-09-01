@@ -1,24 +1,24 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-01 10:40:04 UTC
+- Generated: 2026-09-01 11:45:02 UTC
 - Repository: pimio
-- Commit: 59b636d
+- Commit: 0378bc2
 
 ## Summary
-- Included files: 257
-- Total lines: 36760
-- Code lines: 27810
-- Blank lines: 5681
-- Comment lines: 3269
+- Included files: 259
+- Total lines: 37114
+- Code lines: 28089
+- Blank lines: 5744
+- Comment lines: 3281
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 101 |
+| C++ | 102 |
 | C/C++ Header | 70 |
 | CMake | 29 |
-| Markdown | 24 |
+| Markdown | 25 |
 | Shell | 8 |
 | PowerShell | 7 |
 | QML | 7 |
@@ -32,9 +32,9 @@
 | Directory | Files |
 | --- | ---: |
 | src | 125 |
-| tests | 73 |
+| tests | 74 |
 | tools | 23 |
-| docs | 19 |
+| docs | 20 |
 | packaging | 7 |
 | .github | 4 |
 | cmake | 3 |
@@ -49,7 +49,7 @@
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | .github/workflows/release.yml | 552 | 476 | 37 | 39 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
-| docs/plan/pimio-v1-implementation.md | 532 | 384 | 120 | 28 |
+| docs/plan/pimio-v1-implementation.md | 540 | 391 | 121 | 28 |
 | docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
 | src/app/src/library_session.cpp | 488 | 372 | 61 | 55 |
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |

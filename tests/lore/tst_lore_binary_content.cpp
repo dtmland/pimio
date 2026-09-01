@@ -37,15 +37,14 @@ bool writeBinaryFile(const QString &path, qint64 size)
 
     QByteArray block(1024 * 1024, Qt::Uninitialized);
     quint32 state = 0x9e3779b9U;
-    for (char &byte : block) {
-        state ^= state << 13;
-        state ^= state >> 17;
-        state ^= state << 5;
-        byte = static_cast<char>(state);
-    }
-
     qint64 remaining = size;
     while (remaining > 0) {
+        for (char &byte : block) {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            byte = static_cast<char>(state);
+        }
         const qint64 count = std::min(remaining, static_cast<qint64>(block.size()));
         if (file.write(block.constData(), count) != count) {
             return false;
@@ -72,8 +71,7 @@ QByteArray fileHash(const QString &path)
 qint64 directorySize(const QString &path)
 {
     qint64 total = 0;
-    QDirIterator entries(path, QDir::Files | QDir::NoDotAndDotDot,
-                         QDirIterator::Subdirectories);
+    QDirIterator entries(path, QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
     while (entries.hasNext()) {
         total += QFileInfo(entries.next()).size();
     }
@@ -159,24 +157,25 @@ void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
     const qint64 loreSizeAfterDuplicate = directorySize(repository + QStringLiteral("/.lore"));
     const qint64 duplicateStoreGrowth = loreSizeAfterDuplicate - loreSizeAfterOriginal;
 
-    QVERIFY2(duplicateStoreGrowth < contentSize / 4,
-             qPrintable(QStringLiteral("Identical content grew .lore by %1 bytes for a %2-byte file.")
-                            .arg(duplicateStoreGrowth)
-                            .arg(contentSize)));
+    QVERIFY2(
+        duplicateStoreGrowth < contentSize / 4,
+        qPrintable(QStringLiteral("Identical content grew .lore by %1 bytes for a %2-byte file.")
+                       .arg(duplicateStoreGrowth)
+                       .arg(contentSize)));
     QCOMPARE(fileHash(duplicate), expectedHash);
 
-    qInfo().noquote()
-        << QStringLiteral("LORE binary spike: bytes=%1 stage_ms=%2 commit_ms=%3 reload_ms=%4 "
-                          "repository_bytes=%5 lore_bytes=%6 duplicate_commit_ms=%7 "
-                          "duplicate_lore_growth_bytes=%8")
-               .arg(contentSize)
-               .arg(stageMilliseconds)
-               .arg(commitMilliseconds)
-               .arg(reloadMilliseconds)
-               .arg(repositorySizeAfterOriginal)
-               .arg(loreSizeAfterOriginal)
-               .arg(duplicateCommitMilliseconds)
-               .arg(duplicateStoreGrowth);
+    qInfo().noquote() << QStringLiteral("LORE binary spike: bytes=%1 stage_ms=%2 commit_ms=%3 "
+                                        "reload_ms=%4 "
+                                        "repository_bytes=%5 lore_bytes=%6 duplicate_commit_ms=%7 "
+                                        "duplicate_lore_growth_bytes=%8")
+                             .arg(contentSize)
+                             .arg(stageMilliseconds)
+                             .arg(commitMilliseconds)
+                             .arg(reloadMilliseconds)
+                             .arg(repositorySizeAfterOriginal)
+                             .arg(loreSizeAfterOriginal)
+                             .arg(duplicateCommitMilliseconds)
+                             .arg(duplicateStoreGrowth);
 }
 
 QTEST_GUILESS_MAIN(TestLoreBinaryContent)
