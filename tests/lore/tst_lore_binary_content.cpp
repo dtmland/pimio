@@ -39,13 +39,13 @@ bool writeBinaryFile(const QString &path, qint64 size)
     quint32 state = 0x9e3779b9U;
     qint64 remaining = size;
     while (remaining > 0) {
-        for (char &byte : block) {
+        const qint64 count = std::min(remaining, static_cast<qint64>(block.size()));
+        for (qint64 index = 0; index < count; ++index) {
             state ^= state << 13;
             state ^= state >> 17;
             state ^= state << 5;
-            byte = static_cast<char>(state);
+            block[index] = static_cast<char>(state);
         }
-        const qint64 count = std::min(remaining, static_cast<qint64>(block.size()));
         if (file.write(block.constData(), count) != count) {
             return false;
         }
