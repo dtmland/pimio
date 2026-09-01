@@ -2,6 +2,7 @@
 
 #include "pimio/core/edit_recipe.h"
 #include "pimio/core/error.h"
+#include "pimio/core/library.h"
 #include "pimio/core/metadata.h"
 #include "pimio/core/types.h"
 
@@ -19,6 +20,13 @@ struct Checkpoint
     QString id;
     QString message;
     QDateTime createdAtUtc;
+    QString authorId = QString(kUnknownAuthorId);
+    QString applicationVersion;
+    QString parentId;
+    QJsonObject unrecognizedFields;
+
+    QJsonObject toJson() const;
+    static Checkpoint fromJson(const QJsonObject &object);
 
     bool operator==(const Checkpoint &other) const = default;
 };
@@ -52,6 +60,13 @@ public:
     virtual ~DurableStore();
 
     virtual bool isAvailable() const = 0;
+
+    /// Creates the reserved descriptor record for a fresh repository.
+    /// Returns Conflict when the repository already has a descriptor.
+    virtual bool createLibrary(const QString &name, Error *error) = 0;
+
+    /// Loads the reserved descriptor record. It is not included in listIds().
+    virtual std::optional<LibraryDescriptor> libraryDescriptor(Error *error) const = 0;
 
     /// Stages a record without publishing it. Staged changes survive in the
     /// working area but are not part of history until commit().

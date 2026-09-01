@@ -3,6 +3,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
 #include <QSaveFile>
 
 #include <algorithm>
@@ -301,6 +302,63 @@ bool LoreDurableStore::isAvailable() const
     return d->available();
 }
 
+bool LoreDurableStore::createLibrary(const QString &name, Error *error)
+{
+    if (!d->available()) {
+        detail::setError(error, ErrorCode::StorageUnavailable,
+                         QStringLiteral("The durable store is unavailable."));
+        return false;
+    }
+    if (libraryDescriptor(nullptr)) {
+        detail::setError(error, ErrorCode::Conflict,
+                         QStringLiteral("The repository already has a library descriptor."));
+        return false;
+    }
+
+    const core::LibraryDescriptor descriptor =
+            core::createLibraryDescriptor(name, QDateTime::currentDateTimeUtc());
+    QSaveFile file(d->stagedLibraryDescriptorPath());
+    const QByteArray bytes = QJsonDocument(descriptor.toJson()).toJson(QJsonDocument::Compact);
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
+        detail::setError(error, ErrorCode::PermissionDenied,
+                         QStringLiteral("Could not stage the library descriptor."));
+        return false;
+    }
+    return commit(QStringLiteral("Create library"), error).has_value();
+}
+
+std::optional<core::LibraryDescriptor>
+LoreDurableStore::libraryDescriptor(Error *error) const
+{
+    if (!d->available()) {
+        detail::setError(error, ErrorCode::StorageUnavailable,
+                         QStringLiteral("The durable store is unavailable."));
+        return std::nullopt;
+    }
+    QFile file(d->libraryDescriptorPath());
+    if (!file.exists()) {
+        detail::setError(error, ErrorCode::NotFound,
+                         QStringLiteral("The repository has no library descriptor."));
+        return std::nullopt;
+    }
+    if (!file.open(QIODevice::ReadOnly)) {
+        detail::setError(error, ErrorCode::PermissionDenied,
+                         QStringLiteral("Could not read the library descriptor."));
+        return std::nullopt;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
+    const core::LibraryDescriptor descriptor =
+            core::LibraryDescriptor::fromJson(document.object());
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()
+        || !descriptor.isValid()) {
+        detail::setError(error, ErrorCode::CorruptData,
+                         QStringLiteral("The library descriptor is invalid."));
+        return std::nullopt;
+    }
+    return descriptor;
+}
+
 bool LoreDurableStore::needsRepairAfterInterruptedWrite() const
 {
     return !detail::emptyPendingMarkers(d->repositoryPath()).isEmpty();
@@ -406,6 +464,26 @@ QList<core::Checkpoint> LoreDurableStore::history(int limit, Error *error) const
     // LORE reports the newest revision first, which is the order the contract
     // requires.
     QList<core::Checkpoint> checkpoints = operation.checkpoints;
+    for (core::Checkpoint &checkpoint : checkpoints) {
+        constexpr QLatin1StringView prefix{"pimio-checkpoint-v1:"};
+        if (!checkpoint.message.startsWith(prefix)) {
+            checkpoint.authorId = QString(core::kUnknownAuthorId);
+            continue;
+        }
+        const QByteArray encoded = checkpoint.message.sliced(prefix.size()).toUtf8();
+        const QJsonDocument document = QJsonDocument::fromJson(encoded);
+        if (!document.isObject()) {
+            checkpoint.authorId = QString(core::kUnknownAuthorId);
+            continue;
+        }
+        const QJsonObject provenance = document.object();
+        checkpoint.message = provenance.value(QStringLiteral("message")).toString();
+        checkpoint.authorId = provenance.value(QStringLiteral("authorId"))
+                                      .toString(QString(core::kUnknownAuthorId));
+        checkpoint.applicationVersion =
+                provenance.value(QStringLiteral("applicationVersion")).toString();
+        checkpoint.parentId = provenance.value(QStringLiteral("parentId")).toString();
+    }
     if (limit >= 0 && limit < checkpoints.size()) {
         checkpoints = checkpoints.first(limit);
     }

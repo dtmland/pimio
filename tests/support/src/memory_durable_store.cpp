@@ -1,5 +1,7 @@
 #include "pimio/testing/memory_durable_store.h"
 
+#include "pimio/core/version.h"
+
 #include <algorithm>
 
 namespace pimio::testing {
@@ -45,6 +47,46 @@ void MemoryDurableStore::applyExternalChange(const core::MediaRecord &record)
 bool MemoryDurableStore::isAvailable() const
 {
     return m_available;
+}
+
+bool MemoryDurableStore::createLibrary(const QString &name, core::Error *error)
+{
+    if (!m_available) {
+        setError(error, core::ErrorCode::StorageUnavailable,
+                 QStringLiteral("The durable store is unavailable."));
+        return false;
+    }
+    if (m_library) {
+        setError(error, core::ErrorCode::Conflict,
+                 QStringLiteral("The repository already has a library descriptor."));
+        return false;
+    }
+    m_library = core::createLibraryDescriptor(name, m_clock.nowUtc());
+
+    core::Checkpoint checkpoint;
+    checkpoint.id = QStringLiteral("checkpoint-%1").arg(m_history.size() + 1);
+    checkpoint.message = QStringLiteral("Create library");
+    checkpoint.createdAtUtc = m_clock.nowUtc();
+    checkpoint.authorId = m_library->localUser.id;
+    checkpoint.applicationVersion = core::versionString();
+    m_history.prepend(checkpoint);
+    bumpStateToken();
+    return true;
+}
+
+std::optional<core::LibraryDescriptor>
+MemoryDurableStore::libraryDescriptor(core::Error *error) const
+{
+    if (!m_available) {
+        setError(error, core::ErrorCode::StorageUnavailable,
+                 QStringLiteral("The durable store is unavailable."));
+        return std::nullopt;
+    }
+    if (!m_library) {
+        setError(error, core::ErrorCode::NotFound,
+                 QStringLiteral("The repository has no library descriptor."));
+    }
+    return m_library;
 }
 
 bool MemoryDurableStore::stage(const core::MediaRecord &record, core::Error *error)
@@ -99,6 +141,10 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
     checkpoint.id = QStringLiteral("checkpoint-%1").arg(m_history.size() + 1);
     checkpoint.message = message;
     checkpoint.createdAtUtc = m_clock.nowUtc();
+    checkpoint.authorId =
+            m_library ? m_library->localUser.id : QString(core::kUnknownAuthorId);
+    checkpoint.applicationVersion = core::versionString();
+    checkpoint.parentId = m_history.isEmpty() ? QString() : m_history.constFirst().id;
     m_history.prepend(checkpoint);
 
     bumpStateToken();

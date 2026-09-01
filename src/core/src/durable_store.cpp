@@ -11,8 +11,43 @@ constexpr QLatin1StringView kFingerprintDigestKey{"fingerprintDigest"};
 constexpr QLatin1StringView kIdentityKey{"identity"};
 constexpr QLatin1StringView kMetadataKey{"metadata"};
 constexpr QLatin1StringView kRecipeKey{"recipe"};
+constexpr QLatin1StringView kMessageKey{"message"};
+constexpr QLatin1StringView kCreatedAtUtcKey{"createdAtUtc"};
+constexpr QLatin1StringView kAuthorIdKey{"authorId"};
+constexpr QLatin1StringView kApplicationVersionKey{"applicationVersion"};
+constexpr QLatin1StringView kParentIdKey{"parentId"};
 
 } // namespace
+
+QJsonObject Checkpoint::toJson() const
+{
+    QJsonObject object = unrecognizedFields;
+    object.insert(kSchemaVersionKey, kRecordSchemaVersion);
+    object.insert(kIdKey, id);
+    object.insert(kMessageKey, message);
+    object.insert(kCreatedAtUtcKey, createdAtUtc.toUTC().toString(Qt::ISODateWithMs));
+    object.insert(kAuthorIdKey, authorId);
+    object.insert(kApplicationVersionKey, applicationVersion);
+    object.insert(kParentIdKey, parentId);
+    return object;
+}
+
+Checkpoint Checkpoint::fromJson(const QJsonObject &object)
+{
+    Checkpoint checkpoint;
+    checkpoint.id = object.value(kIdKey).toString();
+    checkpoint.message = object.value(kMessageKey).toString();
+    checkpoint.createdAtUtc =
+            QDateTime::fromString(object.value(kCreatedAtUtcKey).toString(), Qt::ISODateWithMs)
+                    .toUTC();
+    checkpoint.authorId = object.value(kAuthorIdKey).toString(QString(kUnknownAuthorId));
+    checkpoint.applicationVersion = object.value(kApplicationVersionKey).toString();
+    checkpoint.parentId = object.value(kParentIdKey).toString();
+    checkpoint.unrecognizedFields =
+            unknownFields(object, {kIdKey, kMessageKey, kCreatedAtUtcKey, kAuthorIdKey,
+                                   kApplicationVersionKey, kParentIdKey});
+    return checkpoint;
+}
 
 QJsonObject MediaRecord::toJson() const
 {

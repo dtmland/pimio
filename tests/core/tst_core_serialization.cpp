@@ -87,6 +87,8 @@ private slots:
     void jobOrderingIsDeterministic();
     void errorRoundTripPreservesCodeAndContext();
     void mediaRecordRoundTrip();
+    void libraryAndCheckpointRoundTrip();
+    void legacyCheckpointUsesCompatibleDefaults();
     void everyRecordWritesSchemaVersion();
 };
 
@@ -360,13 +362,52 @@ void TestCoreSerialization::mediaRecordRoundTrip()
     QCOMPARE(restored.recipe, record.recipe);
 }
 
+void TestCoreSerialization::libraryAndCheckpointRoundTrip()
+{
+    const QDateTime created(QDate(2026, 9, 1), QTime(10, 0), Qt::UTC);
+    LibraryDescriptor library = createLibraryDescriptor(QStringLiteral("Family archive"), created);
+    library.unrecognizedFields.insert(QStringLiteral("futureLibraryField"), 42);
+
+    const LibraryDescriptor restoredLibrary =
+            LibraryDescriptor::fromJson(reparse(library.toJson()));
+    QCOMPARE(restoredLibrary, library);
+    QVERIFY(restoredLibrary.isValid());
+
+    Checkpoint checkpoint;
+    checkpoint.id = QStringLiteral("revision-2");
+    checkpoint.message = QStringLiteral("Save captions");
+    checkpoint.createdAtUtc = created.addSecs(60);
+    checkpoint.authorId = library.localUser.id;
+    checkpoint.applicationVersion = QStringLiteral("1.0.0");
+    checkpoint.parentId = QStringLiteral("revision-1");
+    checkpoint.unrecognizedFields.insert(QStringLiteral("futureCheckpointField"), true);
+
+    QCOMPARE(Checkpoint::fromJson(reparse(checkpoint.toJson())), checkpoint);
+}
+
+void TestCoreSerialization::legacyCheckpointUsesCompatibleDefaults()
+{
+    const Checkpoint checkpoint = Checkpoint::fromJson(
+            QJsonObject{{QStringLiteral("id"), QStringLiteral("old-revision")},
+                        {QStringLiteral("message"), QStringLiteral("Old save")},
+                        {QStringLiteral("createdAtUtc"), QStringLiteral("2024-01-01T00:00:00Z")}});
+
+    QCOMPARE(checkpoint.authorId, QString(kUnknownAuthorId));
+    QVERIFY(checkpoint.applicationVersion.isEmpty());
+    QVERIFY(checkpoint.parentId.isEmpty());
+}
+
 void TestCoreSerialization::everyRecordWritesSchemaVersion()
 {
+    const LibraryDescriptor library = createLibraryDescriptor(
+            QStringLiteral("Library"), QDateTime(QDate(2026, 9, 1), QTime(10, 0), Qt::UTC));
     const QList<QJsonObject> records = {
         sampleMetadata().toJson(),
         sampleRecipe().toJson(),
         JobRecord().toJson(),
         MediaRecord().toJson(),
+        library.toJson(),
+        Checkpoint().toJson(),
     };
 
     for (const QJsonObject &record : records) {

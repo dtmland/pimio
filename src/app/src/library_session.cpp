@@ -47,10 +47,9 @@ namespace pimio::app {
 namespace {
 Q_LOGGING_CATEGORY(lcLibrary, "pimio.app.library")
 
-/// Directory name derived from the set of library paths, so different sets
-/// of --library arguments get independent indexes rather than silently
-/// sharing or clobbering one another's projection and job queue.
-QString indexDirectoryFor(const QStringList &libraryPaths)
+/// Locates the repository created for the current path-based v1.0 command-line
+/// entry point. The repository's descriptor, not this locator, is its identity.
+QString repositoryDirectoryFor(const QStringList &libraryPaths)
 {
     QStringList sorted = libraryPaths;
     std::sort(sorted.begin(), sorted.end());
@@ -61,6 +60,18 @@ QString indexDirectoryFor(const QStringList &libraryPaths)
     const QString base =
             QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     return base + QStringLiteral("/libraries/") + digest;
+}
+
+QString indexDirectoryFor(const QString &libraryId)
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+           + QStringLiteral("/library-indexes/") + libraryId;
+}
+
+QString thumbnailDirectoryFor(const QString &libraryId)
+{
+    return QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+           + QStringLiteral("/libraries/") + libraryId + QStringLiteral("/thumbnails");
 }
 
 /// How often, at most, the grid is refreshed while a scan is running. Four
@@ -291,10 +302,11 @@ void LibrarySession::start()
     return;
 #else
     settings::Settings &userSettings = applicationSettings();
-    const QString indexDir = indexDirectoryFor(normalizedPaths);
-    QDir().mkpath(indexDir);
+    const QString repositoryDir = repositoryDirectoryFor(normalizedPaths);
+    QDir().mkpath(repositoryDir);
 
-    d->loreStore = std::make_unique<lore::LoreDurableStore>(indexDir + QStringLiteral("/store"));
+    d->loreStore =
+            std::make_unique<lore::LoreDurableStore>(repositoryDir + QStringLiteral("/store"));
     core::Error storeError;
     if (!d->loreStore->open(&storeError)) {
         qCWarning(lcLibrary) << "Cannot open durable storage for" << normalizedPaths << ":"
@@ -304,6 +316,28 @@ void LibrarySession::start()
         return;
     }
     d->store = d->loreStore.get();
+
+    core::Error descriptorError;
+    auto descriptor = d->store->libraryDescriptor(&descriptorError);
+    if (!descriptor && descriptorError.code() == core::ErrorCode::NotFound) {
+        const QString defaultName = QFileInfo(normalizedPaths.constFirst()).fileName();
+        if (!d->store->createLibrary(defaultName, &descriptorError)) {
+            qCWarning(lcLibrary) << "Cannot create the library descriptor:"
+                                 << descriptorError.message();
+            d->activity->setScanning(false);
+            return;
+        }
+        descriptor = d->store->libraryDescriptor(&descriptorError);
+    }
+    if (!descriptor || !descriptor->isValid()) {
+        qCWarning(lcLibrary) << "Cannot load the library descriptor:"
+                             << descriptorError.message();
+        d->activity->setScanning(false);
+        return;
+    }
+
+    const QString indexDir = indexDirectoryFor(descriptor->id);
+    QDir().mkpath(indexDir);
 
     d->projectionDb = std::make_unique<projection::ProjectionDatabase>();
     core::Error projectionError;
@@ -337,9 +371,7 @@ void LibrarySession::start()
     // request service. CompositeRenderer tries the image renderer first and
     // falls back to decoding a video frame through Qt Multimedia, so the
     // model never needs to know which kind of file it asked for.
-    const QString thumbnailCacheDir =
-            QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
-            + QStringLiteral("/thumbnails");
+    const QString thumbnailCacheDir = thumbnailDirectoryFor(descriptor->id);
     d->thumbnailCache = std::make_unique<thumbnail::ThumbnailDiskCache>(thumbnailCacheDir);
     d->imageRenderer = std::make_unique<thumbnail::ImageRenderer>();
     d->videoRenderer = std::make_unique<thumbnail::VideoFrameRenderer>();
