@@ -122,3 +122,29 @@ target_compile_definitions(tst_lore_projection PRIVATE
 
 add_test(NAME lore.projection COMMAND tst_lore_projection)
 set_tests_properties(lore.projection PROPERTIES TIMEOUT 600)
+
+if(PIMIO_ENABLE_LORE_SERVER_TESTS)
+    qt_add_executable(tst_lore_server_promotion
+        tst_lore_server_promotion.cpp
+        lore_server_test_support.h
+        lore_test_support.h
+    )
+
+    target_link_libraries(tst_lore_server_promotion PRIVATE
+        pimio::core
+        pimio::lore
+        Qt6::Test
+    )
+
+    target_compile_definitions(tst_lore_server_promotion PRIVATE
+        PIMIO_LORE_CLI_PATH="${PIMIO_LORE_CLI}"
+        PIMIO_LORE_SERVER_PATH="${PIMIO_LORE_SERVER}"
+    )
+
+    add_test(NAME lore.server_promotion COMMAND tst_lore_server_promotion)
+    set_tests_properties(lore.server_promotion PROPERTIES
+        LABELS "lore-server-gate"
+        RUN_SERIAL TRUE
+        TIMEOUT 600
+    )
+endif()

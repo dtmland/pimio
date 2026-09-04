@@ -39,6 +39,10 @@ set(_pimio_lore_checksums_0.9.0
     "lore|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|a2568a8f6962d9c9d05db87c462aaaebb1e888536912eaec1cc4cc0289f640e1"
     "lore|aarch64-apple-darwin|tar.gz|f3ede7e9c73a1750543bc5e63d36e173aa5e784e412115abb4464fc430b60336"
     "lore|x86_64-pc-windows-msvc|zip|a75728486e8c93e1dd0eba4fb428f701cb17150a9ec00fac4be634146e793f22"
+    "loreserver|x86_64-unknown-linux-gnu|tar.gz|d30324ce10f5498a749e6dea65100d01103474a5373cb5db0f270831c967a1d7"
+    "loreserver|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|8128f7b581b6a82abbd4a39c4c0a563e7323c31b3f6c3dd26593397cab326260"
+    "loreserver|aarch64-apple-darwin|tar.gz|af85642edb4cc929b82f247de05f372372105b5a37283560e8e874f8e156a2ea"
+    "loreserver|x86_64-pc-windows-msvc|zip|c316285f191e38be8942ecaf10f6f352bf5689c978b6b3fc74bb52e4431b3f09"
 )
 
 # Maps the host to the LORE target triple. An unmapped host is not an error:
@@ -174,12 +178,14 @@ endfunction()
 #   PIMIO_LORE_INCLUDE_DIR         directory holding lore.h
 #   PIMIO_LORE_SHARED_LIBRARY      liblore.so / liblore.dylib / lore.dll
 #   PIMIO_LORE_CLI                 the lore CLI, or empty when unavailable
+#   PIMIO_LORE_SERVER              loreserver, when its opt-in tests are enabled
 #   PIMIO_LORE_UNAVAILABLE_REASON  human-readable reason when not found
 function(pimio_acquire_lore)
     set(PIMIO_LORE_FOUND FALSE PARENT_SCOPE)
     set(PIMIO_LORE_INCLUDE_DIR "" PARENT_SCOPE)
     set(PIMIO_LORE_SHARED_LIBRARY "" PARENT_SCOPE)
     set(PIMIO_LORE_CLI "" PARENT_SCOPE)
+    set(PIMIO_LORE_SERVER "" PARENT_SCOPE)
 
     if(NOT PIMIO_WITH_LORE)
         set(PIMIO_LORE_UNAVAILABLE_REASON "PIMIO_WITH_LORE is OFF" PARENT_SCOPE)
@@ -250,6 +256,31 @@ function(pimio_acquire_lore)
             endif()
             set(PIMIO_LORE_CLI "${cli_path}" PARENT_SCOPE)
         endif()
+    endif()
+
+    if(PIMIO_ENABLE_LORE_SERVER_TESTS)
+        _pimio_lore_acquire("loreserver" "${triple}" server_dir server_reason)
+        if(server_dir STREQUAL "")
+            message(FATAL_ERROR "LORE server tests requested but loreserver is unavailable: "
+                "${server_reason}")
+        endif()
+        if(WIN32)
+            set(server_path "${server_dir}/loreserver.exe")
+        else()
+            set(server_path "${server_dir}/loreserver")
+        endif()
+        if(NOT EXISTS "${server_path}")
+            message(FATAL_ERROR "No loreserver executable in ${server_dir}")
+        endif()
+        if(NOT WIN32)
+            file(CHMOD "${server_path}"
+                PERMISSIONS
+                    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                    GROUP_READ GROUP_EXECUTE
+                    WORLD_READ WORLD_EXECUTE
+            )
+        endif()
+        set(PIMIO_LORE_SERVER "${server_path}" PARENT_SCOPE)
     endif()
 
     set(PIMIO_LORE_FOUND TRUE PARENT_SCOPE)
