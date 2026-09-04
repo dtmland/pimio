@@ -101,6 +101,7 @@ public:
             }
             return false;
         }
+        // Keep the endpoint stable because offline origins persist this URL.
         QString output;
         if (launch(&output)) {
             return true;

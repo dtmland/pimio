@@ -1,22 +1,22 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-04 20:12:46 UTC
+- Generated: 2026-09-04 21:40:59 UTC
 - Repository: pimio
-- Commit: d5803ce
+- Commit: bfe0298
 
 ## Summary
-- Included files: 262
-- Total lines: 37652
-- Code lines: 28495
-- Blank lines: 5864
-- Comment lines: 3293
+- Included files: 264
+- Total lines: 38376
+- Code lines: 29138
+- Blank lines: 5942
+- Comment lines: 3296
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 103 |
-| C/C++ Header | 70 |
+| C++ | 104 |
+| C/C++ Header | 71 |
 | CMake | 29 |
 | Markdown | 27 |
 | Shell | 8 |
@@ -32,7 +32,7 @@
 | Directory | Files |
 | --- | ---: |
 | src | 125 |
-| tests | 75 |
+| tests | 77 |
 | tools | 23 |
 | docs | 22 |
 | packaging | 7 |
@@ -46,7 +46,7 @@
 
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
-| docs/plan/pimio-v1-implementation.md | 651 | 479 | 141 | 31 |
+| docs/plan/pimio-v1-implementation.md | 677 | 501 | 145 | 31 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | .github/workflows/release.yml | 552 | 476 | 37 | 39 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
