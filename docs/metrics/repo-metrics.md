@@ -1,15 +1,15 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-04 15:23:54 UTC
+- Generated: 2026-09-04 16:21:15 UTC
 - Repository: pimio
-- Commit: bdabdf0
+- Commit: c0dba5f
 
 ## Summary
 - Included files: 262
-- Total lines: 37467
-- Code lines: 28368
-- Blank lines: 5814
-- Comment lines: 3285
+- Total lines: 37537
+- Code lines: 28428
+- Blank lines: 5822
+- Comment lines: 3287
 
 ## By language
 
