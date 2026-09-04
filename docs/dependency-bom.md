@@ -23,7 +23,7 @@ Legal review is a release gate. CI cannot certify it.
 | libheif | 1.23.1 | HEIF parsing and grid composition; HEIC read only | Dynamically linked through the HEIC Qt image plugin | LGPL-3.0-or-later | https://github.com/strukturag/libheif/releases/tag/v1.23.1 | No | Yes |
 | libde265 | 1.1.1 | HEVC decoder only | Dynamically linked into libheif | LGPL-3.0-or-later | https://github.com/strukturag/libde265/releases/tag/v1.1.1 | Yes (build-only CMake target rename) | Yes |
 | qt-heic-image-plugin | 0.7.1 | Qt 6 HEIC/HEIF image I/O adapter, read capability enabled | Dynamically loaded Qt image plugin | LGPL-2.0-or-later | https://github.com/novomesk/qt-heic-image-plugin/releases/tag/v0.7.1 | No | Yes |
-| LORE (`liblore`) | 0.8.5 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.8.5 | No | Yes |
+| LORE (`liblore`) | 0.9.0 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.9.0 | No | Yes |
 
 Qt is used under the LGPL dynamic-linking path. The application must keep Qt
 replaceable by the user, ship the required license text and notices, and avoid
@@ -66,19 +66,17 @@ bump is therefore contained to `cmake/PimioLore.cmake` and `src/lore/src/`.
 
 | Component | Version | Purpose | License | Redistributed? |
 | --- | --- | --- | --- | --- |
-| LORE CLI (`lore`) | 0.8.5 | Independent verification that pimio's repositories are readable by the reference implementation | MIT | No |
+| LORE CLI (`lore`) | 0.9.0 | Independent verification that pimio's repositories are readable by the reference implementation | MIT | No |
 | CMake | >= 3.24 | Build system | BSD-3-Clause | No |
 | Ninja | any recent | Build backend | Apache-2.0 | No |
 | NASM | any recent | Assemble libaom's optimized AV1 routines | BSD-2-Clause | No |
 | Qt Test | 6.8.3 | Unit and smoke tests | LGPL-3.0 | No |
 | Xvfb | distribution version | Linux X11 test display | MIT | No |
 
-LORE 0.8.5 remains the dependency actually integrated in this revision.
-Increment 7.8a plans the coordinated move to
-[LORE 0.9.0](https://github.com/EpicGames/lore/releases/tag/v0.9.0), including
-C API adaptation, artifact checksums, cross-context pin checks, repository
-migration, and full fault regression. This table changes to 0.9.0 only when
-those artifacts become the codebase's real build and test dependency.
+Increment 7.8a moved every build context to LORE 0.9.0 with release-published
+SHA-256 checksums. The adapter accounts for the stable metadata type
+discriminants introduced by the 0.9 C API, and a copied 0.8.5 repository fixture
+guards read and write compatibility.
 
 ## GitHub Actions dependencies (CI only)
 

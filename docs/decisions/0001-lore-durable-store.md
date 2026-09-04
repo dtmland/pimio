@@ -136,8 +136,7 @@ whole-store snapshot in the first rule; the other safeguards remain:
 
 1. **A commit is not finished until it is flushed.** Before decision 0006,
    `commit()` also snapshotted the clean repository and wrote a rollback marker.
-   The flush remains required; the snapshot and marker are scheduled for
-   removal.
+   The flush remains required; Increment 7.8a removed the snapshot and marker.
 2. **Always restore the checkout.** An interrupted commit leaves untracked
    files, and LORE's dirty check does not see untracked files, so a cheap
    status cannot be trusted to decide whether recovery is needed. The full
@@ -263,11 +262,11 @@ batch, and the job queue in Increment 3b has to be designed with that in mind.
 - No on-disk format owned by pimio changes when LORE changes, because records
   are pimio JSON. A LORE upgrade that changes its own repository format would
   need its own migration test before the pin moves.
-- Increment 7.8a moves the pin to 0.9.0 across every build context. Its release
+- Increment 7.8a moved the pin to 0.9.0 across every build context. Its release
   notes include C API changes, a new asynchronous I/O engine, and storage fixes,
   but do not name the three observations above. The move therefore requires
-  compile/API adaptation, 0.8.5-repository migration checks, the full adapter
-  suite, and repeated interruption testing on Linux, Windows, and macOS.
+  compile/API adaptation, a copied 0.8.5-repository migration check, the full
+  adapter suite, and repeated interruption testing on Linux, Windows, and macOS.
 
 ## Conditions
 

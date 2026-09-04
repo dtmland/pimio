@@ -25,7 +25,7 @@ supported product matrix.
 ### macOS x86-64 is not supported in v1
 
 The durable store depends on LORE, and the upstream project publishes no
-macOS x86-64 build: release 0.8.5 ships `aarch64-apple-darwin` only, alongside
+macOS x86-64 build: release 0.9.0 ships `aarch64-apple-darwin` only, alongside
 `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu-neoverse-512tvb`, and
 `x86_64-pc-windows-msvc`. Supporting Intel Macs would mean building LORE from
 source as part of pimio's release pipeline, which is disproportionate for the
@@ -36,9 +36,8 @@ artifact.
 artifact exists rather than guessing a triple, so a build there configures
 cleanly with LORE disabled instead of failing obscurely.
 
-LORE 0.9.0 publishes the same four `liblore` target triples, so its planned
-adoption does not change this platform decision. Increment 7.8a must still run
-the adapter and fault suites on each supported host before the pin moves.
+LORE 0.9.0 publishes the same four `liblore` target triples, so its adoption
+does not change this platform decision.
 
 ### Linux arm64
 

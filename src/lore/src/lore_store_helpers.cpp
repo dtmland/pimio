@@ -139,33 +139,4 @@ bool removeDirectoryContents(const QString &path)
     return removed;
 }
 
-bool copyDirectory(const QString &sourcePath, const QString &targetPath)
-{
-    if (!removeDirectoryContents(targetPath) || !QDir().mkpath(targetPath)) {
-        return false;
-    }
-
-    const QDir source(sourcePath);
-    QDirIterator iterator(sourcePath, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot,
-                          QDirIterator::Subdirectories);
-    while (iterator.hasNext()) {
-        const QString sourceFilePath = iterator.next();
-        const QString targetFilePath = targetPath + QLatin1Char('/')
-                                       + source.relativeFilePath(sourceFilePath);
-        const QFileInfo sourceFile(sourceFilePath);
-        if (sourceFile.isDir()) {
-            if (!QDir().mkpath(targetFilePath)) {
-                return false;
-            }
-        } else if (sourceFile.fileName() == QLatin1String("lock")) {
-            // LORE recreates these transient files when it opens the restored store.
-            continue;
-        } else if (!QDir().mkpath(QFileInfo(targetFilePath).absolutePath())
-                   || !QFile::copy(sourceFilePath, targetFilePath)) {
-            return false;
-        }
-    }
-    return true;
-}
-
 } // namespace pimio::lore::detail

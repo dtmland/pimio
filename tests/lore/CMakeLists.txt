@@ -24,6 +24,25 @@ target_compile_definitions(tst_lore_adapter PRIVATE
 
 add_test(NAME lore.adapter COMMAND tst_lore_adapter)
 
+qt_add_executable(tst_lore_migration
+    tst_lore_migration.cpp
+    lore_test_support.h
+)
+
+target_link_libraries(tst_lore_migration PRIVATE
+    pimio::core
+    pimio::lore
+    Qt6::Test
+)
+
+target_compile_definitions(tst_lore_migration PRIVATE
+    PIMIO_CMAKE_COMMAND="${CMAKE_COMMAND}"
+    PIMIO_LORE_CLI_PATH="${PIMIO_LORE_CLI}"
+    PIMIO_LORE_085_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/lore-0.8.5-store.tar.gz"
+)
+
+add_test(NAME lore.migration COMMAND tst_lore_migration)
+
 qt_add_executable(tst_lore_binary_content
     tst_lore_binary_content.cpp
     lore_test_support.h

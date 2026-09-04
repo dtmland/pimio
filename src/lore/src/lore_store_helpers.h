@@ -24,7 +24,6 @@ std::optional<core::MediaRecord> readRecordFile(const QString &path, core::Error
 QStringList emptyPendingMarkers(const QString &repositoryPath);
 
 bool removeDirectoryContents(const QString &path);
-bool copyDirectory(const QString &sourcePath, const QString &targetPath);
 
 QByteArray nativePath(const QString &path);
 

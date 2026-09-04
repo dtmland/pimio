@@ -1,6 +1,6 @@
 # 0006 — Local-first LORE topology and recovery ownership
 
-Status: **accepted direction; implementation pending.**
+Status: **accepted direction; local recovery change implemented, promotion gate pending.**
 
 ## Decision
 

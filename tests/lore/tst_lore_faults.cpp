@@ -231,9 +231,8 @@ void TestLoreFaults::concurrentWriterNeverProducesAPartialResult()
     QVERIFY2(store.commit(QStringLiteral("Baseline"), &error).has_value(),
              qPrintable(error.message()));
 
-    // A second writer is refused rather than allowed to race. LORE 0.8.5 does
-    // not serialise concurrent committers safely, so the contention has to be
-    // resolved before it reaches LORE at all.
+    // A second writer is refused rather than allowed to race. This preserves
+    // pimio's single-writer contract independently of LORE's implementation.
     {
         LoreDurableStore second(storePath);
         Error secondError;
