@@ -6,6 +6,7 @@
 #include "pimio/testing/qtest_printers.h"
 
 #include <QCoreApplication>
+#include <QDirIterator>
 #include <QElapsedTimer>
 #include <QProcess>
 #include <QTemporaryDir>
@@ -14,6 +15,26 @@
 using namespace pimio::core;
 using namespace pimio::lore;
 using namespace pimio::testing;
+
+#ifdef Q_OS_WIN
+namespace {
+
+bool hasUnmarkedFanOutGroup(const QString &repositoryPath)
+{
+    const QString indexRoot = repositoryPath + QStringLiteral("/.lore/immutable/index");
+    QDirIterator buckets(indexRoot, QStringList{QStringLiteral("index_*")}, QDir::Files,
+                         QDirIterator::Subdirectories);
+    while (buckets.hasNext()) {
+        const QFileInfo bucket(buckets.next());
+        if (!QFileInfo::exists(bucket.absolutePath() + QStringLiteral("/level"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+#endif
 
 void TestLoreFaults::initTestCase()
 {
@@ -129,7 +150,8 @@ void TestLoreFaults::corruptCheckoutFileIsRecoverable()
 
     QTemporaryDir temporary;
     QVERIFY(temporary.isValid());
-    LoreDurableStore store(temporary.filePath(QStringLiteral("store")));
+    const QString storePath = temporary.filePath(QStringLiteral("store"));
+    LoreDurableStore store(storePath);
     Error error;
     QVERIFY2(store.open(&error), qPrintable(error.message()));
     QVERIFY(store.stage(makeLoreRecord(QStringLiteral("rec-1"), QStringLiteral("intact")),
@@ -152,7 +174,9 @@ void TestLoreFaults::corruptCheckoutFileIsRecoverable()
 
     if (!store.restoreFromDurableState(&error)) {
 #ifdef Q_OS_WIN
-        if (error.message().contains(QLatin1String("Address not found:"))) {
+        if (loadedLibraryVersion() == QLatin1String("0.9.0")
+            && error.message().contains(QLatin1String("Address not found:"))
+            && hasUnmarkedFanOutGroup(store.repositoryPath())) {
             QSKIP("LORE 0.9.0 can lose a local-store fan-out marker during its delayed flush "
                   "on Windows; fixed upstream after 0.9.0 by lore commit e9d056fb.");
         }

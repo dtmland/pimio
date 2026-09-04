@@ -43,7 +43,8 @@ prevents new damage but does not repair an affected store.
 
 There is no need to submit a duplicate ticket. Until a release containing that
 fix replaces 0.9.0, the Windows test treats this exact dependency error as a
-skip. Other errors and the same test on Linux and macOS remain failures.
+skip only when the fresh store also contains an unmarked fan-out group. Other
+errors and the same test on Linux and macOS remain failures.
 
 ## Draft 1 — interrupted write can leave an unreadable pending marker
 
