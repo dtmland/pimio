@@ -105,6 +105,25 @@ The 0.9.0 source opens this marker with create-and-truncate before its asynchron
 
 Is a short pending header intended to be recoverable, and can recovery tests cover termination between truncate and completion of the header write?
 
+### Temporary test policy and release follow-up
+
+`lore.faults` continues to run its complete process-kill sweep on every CI
+platform. While pimio pins LORE 0.9.0, an open failure containing the exact
+`level header file is 0 bytes, expected 16` diagnostic is reported as a skipped
+test after the sweep completes instead of failing CI. The allowance is limited
+to that version and diagnostic; every other recovery failure remains blocking.
+
+When a new LORE release is available:
+
+1. Review its release notes and the upstream disposition of this issue.
+2. Update the pin consistently across all build contexts and confirm the drift
+   checks pass.
+3. Run `lore.faults` repeatedly on Linux, Windows, and macOS, retaining the
+   per-delay outcome logs.
+4. Remove the 0.9.0 allowance. Adjust recovery or tests only when the new
+   release's documented behavior and repeated fault results justify it.
+5. Update this finding with the tested version, CI runs, and conclusion.
+
 ## Issue 2 — successful commit is not yet durable without flush
 
 ### Ready for submission to upstream

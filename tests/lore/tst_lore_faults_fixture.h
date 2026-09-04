@@ -70,6 +70,7 @@ private slots:
     void initTestCase();
 
     void killedProcessBeforeCommitLeavesNoUncommittedStateVisible();
+    void knownLoreShortHeaderFailureIsClassifiedNarrowly();
     void killedProcessDuringCommitLeavesAConsistentRepository();
     void killedProcessAfterCommitKeepsTheRevisionItReported();
     void unwritableCheckoutFailsVisiblyAndKeepsStagedWork();
