@@ -58,11 +58,14 @@ The implementation plan separates three pieces of work:
 
 Increment 7.8b completed the third gate. A known-remote origin can make the
 basic create-with-id, push, and clone round trip, preserving current pimio
-identity, records, and bytes. LORE 0.9.0 nevertheless fails the required
-contract in four places: mismatched registration is not rejected, an
-interrupted initial push is not retryable after remote branch creation, a fresh
-clone has no offline history, and no public operation attaches a remote to a
-no-remote origin. Server promotion therefore remains unavailable for v1.
+identity, records, bytes, and revision history. Earlier revision state and
+metadata are fetched lazily by an online history query and remain available to
+pimio offline afterward; neither clone nor history caches every historical file
+payload. LORE 0.9.0 nevertheless fails the required contract in three places:
+mismatched registration is not rejected, an interrupted initial push is not
+retryable after remote branch creation, and no public operation attaches a
+remote to a no-remote origin. Server promotion therefore remains unavailable
+for v1.
 
 LORE 0.9.0's release notes describe a new I/O engine and several storage fixes,
 but do not explicitly identify the three 0.8.5 failures recorded in

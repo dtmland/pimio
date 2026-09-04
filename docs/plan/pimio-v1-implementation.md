@@ -450,24 +450,29 @@ entry gate.
 
 **Outcome (LORE 0.9.0): complete as a negative gate.** The supported
 known-remote path can preserve the pimio library id, records, current bytes, and
-server-visible revision history: create offline with the future URL, create the
-remote repository from a disposable worktree with the same repository id, push,
-and clone. The acceptance contract is not complete:
+revision history: create offline with the future URL, create the remote
+repository from a disposable worktree with the same repository id, push, clone,
+and query history online once to hydrate its revision state and metadata. The
+acceptance contract is not complete:
 
 - a push is accepted after the same remote name was registered with a different
   repository id, rather than visibly rejecting the identity mismatch;
 - killing the client during the initial push after transfer begins can leave
   the remote branch created, and retry then fails because that branch exists;
-- the fresh clone reads the current records and bytes but has no history while
-  offline; and
 - `repository config` is read-only, so a repository created with no remote has
   no public post-creation attach operation.
 
-The retained `lore.server_promotion` gate records these failures as QTest
-expected failures, so an upstream fix becomes an unexpected pass instead of
-silently changing the evidence. v1 must not promise offline-to-server promotion
-until LORE provides the missing identity, retry, history hydration, and attach
-contracts.
+LORE's sparse, lazy design does not proactively hydrate earlier revision state
+or metadata at clone time. An online history query fetches and caches them so
+subsequent pimio history reads work offline. Neither clone nor history caches
+every historical tree and file payload; LORE 0.9.0 has no documented one-shot
+full-history mirror option.
+
+The retained `lore.server_promotion` gate records the two defects as QTest
+expected failures and directly verifies the missing attach command, so an
+upstream change cannot silently alter the evidence. v1 must not promise
+offline-to-server promotion until LORE provides the missing identity, retry,
+and attach contracts.
 
 The opt-in gate generated a 32 MiB deterministic payload and completed five
 consecutive Linux runs in 3.657–3.916 seconds of CTest wall time (median

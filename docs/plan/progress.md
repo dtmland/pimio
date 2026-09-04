@@ -343,13 +343,15 @@ tiles the longer the application is scrolled. Rationale in
 - **7.8b — Complete, promotion blocked on LORE 0.9.0:** an opt-in automated gate
   proves that a known-remote offline Library can be registered with its existing
   repository id, pushed, and cloned with its pimio library id, records, current
-  bytes, and server-visible history intact. The gate also found three blocking
-  contract failures: a mismatched registered id does not reject the push, a
-  client cannot retry an interrupted initial push after the server creates its
-  branch, and a fresh clone has no offline revision history. A fourth blocker
-  is that the 0.9.0 public CLI command surface provides no post-creation attach
-  operation for a repository created without a remote. v1 therefore cannot
-  promise later server promotion on the pinned release.
+  bytes, and revision history intact. A clone obtains prior revision state and
+  metadata lazily through an online history query, after which pimio can read
+  that history offline; this does not cache every historical file payload. The
+  gate found three blocking contract failures: a mismatched registered id does
+  not reject the push, a client cannot retry an interrupted initial push after
+  the server creates its branch, and the 0.9.0 public CLI command surface
+  provides no post-creation attach operation for a repository created without a
+  remote. v1 therefore cannot promise later server promotion on the pinned
+  release.
   `lore.server_promotion` retains the reproducible topology and expected-failure
   evidence as an opt-in test rather than adding a preliminary pimio Server.
 - **7.8c:** repeat storage economics through the production 0.9.0 path and make

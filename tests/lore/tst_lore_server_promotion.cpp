@@ -246,11 +246,6 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
         const auto first = clone.load(MediaId(QStringLiteral("m-1")), &error);
         QVERIFY2(first.has_value(), qPrintable(error.message()));
         QCOMPARE(first->metadata.caption, QStringLiteral("offline one"));
-        const QStringList originCheckpoints = checkpointIds(origin.history(-1, &error));
-        const QStringList cloneCheckpoints = checkpointIds(clone.history(-1, &error));
-        QEXPECT_FAIL("", "A fresh LORE 0.9 clone does not retain offline revision history.",
-                     Continue);
-        QCOMPARE(cloneCheckpoints, originCheckpoints);
     }
 
     const ProcessResult originHistory =
@@ -262,6 +257,17 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
     QVERIFY2(originHistory.succeeded, qPrintable(originHistory.output));
     QVERIFY2(cloneHistory.succeeded, qPrintable(cloneHistory.output));
     QCOMPARE(cloneHistory.output.trimmed(), originHistory.output.trimmed());
+
+    {
+        LoreDurableStore origin(originStore);
+        LoreDurableStore clone(cloneStore);
+        Error error;
+        QVERIFY2(origin.open(&error), qPrintable(error.message()));
+        QVERIFY2(clone.open(&error), qPrintable(error.message()));
+        const QStringList originCheckpoints = checkpointIds(origin.history(-1, &error));
+        const QStringList cloneCheckpoints = checkpointIds(clone.history(-1, &error));
+        QCOMPARE(cloneCheckpoints, originCheckpoints);
+    }
 
     const ProcessResult originRemote =
             runLore(originRepository,
