@@ -8,6 +8,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QRegularExpression>
+#include <QSaveFile>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -30,6 +31,64 @@ QString repositoryId(const QString &repositoryPath)
     }
     const QRegularExpression expression(QStringLiteral(R"(Repository ([0-9a-f]{32}))"));
     return expression.match(status.output).captured(1);
+}
+
+QString remoteRepositoryId(const QString &workingDirectory, const QString &url,
+                           QString *output = nullptr)
+{
+    const ProcessResult info =
+            runLore(workingDirectory,
+                    {QStringLiteral("repository"), QStringLiteral("info"), url});
+    if (output != nullptr) {
+        *output = info.output;
+    }
+    if (!info.succeeded) {
+        return {};
+    }
+    const QRegularExpression expression(QStringLiteral(R"(\(([0-9a-f]{32})\))"));
+    return expression.match(info.output).captured(1);
+}
+
+bool attachRemote(const QString &repositoryPath, const QString &url, QString *error)
+{
+    if (url.contains(QLatin1Char('"')) || url.contains(QLatin1Char('\n'))
+        || url.contains(QLatin1Char('\r'))) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Remote URL cannot be represented safely in config.toml.");
+        }
+        return false;
+    }
+
+    const QString configPath = repositoryPath + QStringLiteral("/.lore/config.toml");
+    QFile source(configPath);
+    if (!source.open(QIODevice::ReadOnly)) {
+        if (error != nullptr) {
+            *error = source.errorString();
+        }
+        return false;
+    }
+    QString config = QString::fromUtf8(source.readAll());
+    source.close();
+
+    const QString setting = QStringLiteral("remote_url = \"%1\"").arg(url);
+    const QRegularExpression remoteLine(QStringLiteral(R"((?m)^remote_url\s*=.*$)"));
+    if (config.contains(remoteLine)) {
+        config.replace(remoteLine, setting);
+    } else {
+        config.prepend(setting + QLatin1Char('\n'));
+    }
+
+    QSaveFile destination(configPath);
+    const QByteArray encoded = config.toUtf8();
+    if (!destination.open(QIODevice::WriteOnly)
+        || destination.write(encoded) != encoded.size()
+        || !destination.commit()) {
+        if (error != nullptr) {
+            *error = destination.errorString();
+        }
+        return false;
+    }
+    return true;
 }
 
 QByteArray fileSha256(const QString &path)
@@ -97,7 +156,7 @@ class TestLoreServerPromotion : public QObject
 
 private slots:
     void knownRemotePromotesAndSurvivesFailures();
-    void noRemoteRequiresAnUpstreamAttachOperation();
+    void noRemoteAttachesThroughDocumentedConfig();
 };
 
 void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
@@ -189,6 +248,12 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
     QVERIFY2(createRemoteRegistration(temporary.filePath(QStringLiteral("mismatch-registration")),
                                       remoteUrl, mismatchedId, &registrationOutput),
              qPrintable(registrationOutput));
+    QString remoteInfo;
+    const QString registeredId = remoteRepositoryId(mismatchRepository, remoteUrl, &remoteInfo);
+    QVERIFY2(!registeredId.isEmpty(), qPrintable(remoteInfo));
+    QCOMPARE(registeredId, mismatchedId);
+    QVERIFY2(registeredId != mismatchOriginId,
+             "Promotion preflight did not detect the repository ID mismatch.");
 
     result = runLore(mismatchRepository, {QStringLiteral("push")});
     const bool mismatchWasAccepted =
@@ -341,13 +406,17 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
     qInfo("PROMOTION_GATE_RUNTIME_MS=%lld", runtime.elapsed());
 }
 
-void TestLoreServerPromotion::noRemoteRequiresAnUpstreamAttachOperation()
+void TestLoreServerPromotion::noRemoteAttachesThroughDocumentedConfig()
 {
     PIMIO_SKIP_WITHOUT_LORE();
     PIMIO_SKIP_WITHOUT_LORE_CLI();
 
     QTemporaryDir temporary;
     QVERIFY(temporary.isValid());
+    LoreTestServer server(temporary.filePath(QStringLiteral("server")));
+    QString serverError;
+    QVERIFY2(server.start(&serverError), qPrintable(serverError));
+
     const QString storePath = temporary.filePath(QStringLiteral("no-remote-store"));
     const QString repositoryPath = storePath + QStringLiteral("/repository");
     QVERIFY(QDir().mkpath(repositoryPath));
@@ -374,17 +443,53 @@ void TestLoreServerPromotion::noRemoteRequiresAnUpstreamAttachOperation()
     QVERIFY2(!result.succeeded,
              "LORE 0.9 unexpectedly exposed a public post-creation config setter.");
 
-    LoreDurableStore store(storePath);
-    Error error;
-    QVERIFY2(store.open(&error), qPrintable(error.message()));
-    QVERIFY2(store.createLibrary(QStringLiteral("No Remote Library"), &error),
-             qPrintable(error.message()));
-    QVERIFY(store.stage(makeLoreRecord(QStringLiteral("m-1"), QStringLiteral("still writable")),
-                        &error));
-    QVERIFY2(store.commit(QStringLiteral("Offline write after attach rejection"), &error).has_value(),
-             qPrintable(error.message()));
-    store.close();
+    {
+        LoreDurableStore store(storePath);
+        Error error;
+        QVERIFY2(store.open(&error), qPrintable(error.message()));
+        QVERIFY2(store.createLibrary(QStringLiteral("No Remote Library"), &error),
+                qPrintable(error.message()));
+        QVERIFY(store.stage(makeLoreRecord(QStringLiteral("m-1"),
+                                          QStringLiteral("attached safely")),
+                           &error));
+        QVERIFY2(store.commit(QStringLiteral("Offline write before attach"), &error).has_value(),
+                qPrintable(error.message()));
+    }
     QCOMPARE(repositoryId(repositoryPath), idBefore);
+
+    const QString remoteUrl = server.repositoryUrl(QStringLiteral("pimio-no-remote"));
+    QString registrationOutput;
+    QVERIFY2(createRemoteRegistration(temporary.filePath(QStringLiteral("registration")),
+                                     remoteUrl, idBefore, &registrationOutput),
+             qPrintable(registrationOutput));
+    QString attachError;
+    QVERIFY2(attachRemote(repositoryPath, remoteUrl, &attachError), qPrintable(attachError));
+
+    result = runLore(repositoryPath,
+                    {QStringLiteral("repository"), QStringLiteral("config"),
+                     QStringLiteral("get"), QStringLiteral("remote_url")});
+    QVERIFY2(result.succeeded, qPrintable(result.output));
+    QCOMPARE(result.output.trimmed(), remoteUrl);
+    QCOMPARE(remoteRepositoryId(repositoryPath, remoteUrl), idBefore);
+
+    result = runLore(repositoryPath, {QStringLiteral("push")}, 300'000);
+    QVERIFY2(result.succeeded, qPrintable(result.output));
+
+    const QString cloneStore = temporary.filePath(QStringLiteral("clone-store"));
+    QVERIFY(QDir().mkpath(cloneStore));
+    const QString clonePath = cloneStore + QStringLiteral("/repository");
+    result = runLore(cloneStore,
+                    {QStringLiteral("--identity"), QString::fromLatin1(kIdentity),
+                     QStringLiteral("clone"), remoteUrl, clonePath},
+                    300'000);
+    QVERIFY2(result.succeeded, qPrintable(result.output));
+    QCOMPARE(repositoryId(clonePath), idBefore);
+    LoreDurableStore clone(cloneStore);
+    Error cloneError;
+    QVERIFY2(clone.open(&cloneError), qPrintable(cloneError.message()));
+    const auto record = clone.load(MediaId(QStringLiteral("m-1")), &cloneError);
+    QVERIFY2(record.has_value(), qPrintable(cloneError.message()));
+    QCOMPARE(record->metadata.caption, QStringLiteral("attached safely"));
 }
 
 QTEST_GUILESS_MAIN(TestLoreServerPromotion)

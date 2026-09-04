@@ -52,11 +52,12 @@ cmake --build --preset default --target tst_lore_server_promotion
 ctest --test-dir build/default -R '^lore.server_promotion$' -V
 ```
 
-Five consecutive Linux measurements took 3.657–3.916 seconds of CTest wall
-time (median 3.778 seconds), so runtime would not prevent adding it to CI. Keep
-it opt-in until the expected failures documented under Increment 7.8b are
-resolved; an upstream fix produces an unexpected pass and forces the evidence
-to be reviewed.
+After adding identity preflight and the no-remote attachment round trip, five
+consecutive Linux measurements took 4.03–4.17 seconds of CTest wall time
+(median 4.06 seconds; internal topology median 3.107 seconds). Runtime would not
+prevent adding it to CI. Keep it opt-in until the expected failures documented
+under Increment 7.8b are resolved; an upstream fix produces an unexpected pass
+and forces the evidence to be reviewed.
 
 ## Tests B — Studio
 

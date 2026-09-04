@@ -61,11 +61,52 @@ basic create-with-id, push, and clone round trip, preserving current pimio
 identity, records, bytes, and revision history. Earlier revision state and
 metadata are fetched lazily by an online history query and remain available to
 pimio offline afterward; neither clone nor history caches every historical file
-payload. LORE 0.9.0 nevertheless fails the required contract in three places:
-mismatched registration is not rejected, an interrupted initial push is not
-retryable after remote branch creation, and no public operation attaches a
-remote to a no-remote origin. Server promotion therefore remains unavailable
-for v1.
+payload.
+
+Two of the three integration gaps have bounded application-level handling.
+Before promotion, pimio can query the registered repository and reject a remote
+whose ID differs from the local ID. For a no-remote origin, LORE's configuration
+reference explicitly permits editing `.lore/config.toml`; an atomic
+`remote_url` update followed by identity preflight, push, and clone succeeds in
+the retained gate. LORE should still validate identity on push and provide a
+public attach operation, so both gaps have upstream issue drafts.
+
+The remaining LORE 0.9.0 defect is interrupted initial-push recovery. If the
+client dies after remote branch creation, retry fails because `main` already
+exists. `--force`, recreating the server registration, and pushing a recovery
+branch did not provide a complete, byte-readable clone. The local origin remains
+writable, but promotion cannot safely continue without server-side repair or an
+upstream fix.
+
+The local-first architecture is therefore accepted: the ordinary path works,
+identity can be guarded, and attachment has a documented-format fallback. This
+is not approval to expose promotion in v1. A user-facing promotion operation
+must remain disabled until interrupted-push retry or a non-destructive recovery
+procedure passes the complete contract gate.
+
+## History hydration and retention
+
+LORE history has three independently relevant layers:
+
+1. revision state and metadata, including IDs, parent links, timestamps, and
+   messages;
+2. each revision's historical tree and file metadata; and
+3. the historical file payload fragments themselves.
+
+A normal clone obtains the selected revision and materializes its current view.
+An online `history` query walks prior revisions and caches enough state and
+metadata for the same history listing to work later offline. It does not walk
+every historical tree or fetch every old file payload. `--cache` retains
+fragments that an operation actually requests; it does not turn clone or
+history into a complete mirror.
+
+LORE exposes bounded repository history and `file history <path> [LENGTH]`.
+That makes future policies such as “discover the latest N revisions for selected
+files” plausible. Offline availability of those versions would still require
+pimio to fetch each selected revision/path explicitly, size the local immutable
+store so those fragments are not evicted, and verify the result offline.
+Renames, deletions, branches, views, and storage limits make this a separate
+retention feature, not a clone flag or a consequence of history listing.
 
 LORE 0.9.0's release notes describe a new I/O engine and several storage fixes,
 but do not explicitly identify the three 0.8.5 failures recorded in

@@ -23,7 +23,7 @@ Update this file in the same change that moves an increment forward.
 | 7.7 | Library, revision, and author identity | Complete |
 | 7.8 | Library storage-model gate (managed originals) | Complete (historical decision reopened) |
 | 7.8a | LORE 0.9 adoption and recovery simplification | Complete |
-| 7.8b | Offline-to-server promotion gate | Complete (promotion blocked on LORE) |
+| 7.8b | Offline-to-server promotion gate | Complete (architecture accepted; operation guarded) |
 | 7.8c | Storage-model decision revisit | Not started |
 | 7.9 | Library manager and lifecycle | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
@@ -340,18 +340,19 @@ tiles the longer the application is scrolled. Rationale in
   proves read and write migration, and the `.pimio-lore-backup` transaction
   workaround is gone without weakening visible failure handling or the
   acknowledged-checkpoint contract.
-- **7.8b — Complete, promotion blocked on LORE 0.9.0:** an opt-in automated gate
+- **7.8b — Complete, architecture accepted with promotion guarded:** an opt-in automated gate
   proves that a known-remote offline Library can be registered with its existing
   repository id, pushed, and cloned with its pimio library id, records, current
   bytes, and revision history intact. A clone obtains prior revision state and
   metadata lazily through an online history query, after which pimio can read
   that history offline; this does not cache every historical file payload. The
-  gate found three blocking contract failures: a mismatched registered id does
-  not reject the push, a client cannot retry an interrupted initial push after
-  the server creates its branch, and the 0.9.0 public CLI command surface
-  provides no post-creation attach operation for a repository created without a
-  remote. v1 therefore cannot promise later server promotion on the pinned
-  release.
+  gate detects a mismatched registered id before invoking LORE's unsafe push and
+  proves that atomically editing LORE's documented `remote_url` setting permits
+  a no-remote origin to attach, push, and clone. Interrupted initial push remains
+  a LORE 0.9.0 defect: retry fails after the server creates its branch, and no
+  tested non-destructive recovery produces a complete clone. The architecture
+  can proceed, but v1 does not expose promotion and a future user-facing
+  operation remains gated on retry or recovery.
   `lore.server_promotion` retains the reproducible topology and expected-failure
   evidence as an opt-in test rather than adding a preliminary pimio Server.
 - **7.8c:** repeat storage economics through the production 0.9.0 path and make

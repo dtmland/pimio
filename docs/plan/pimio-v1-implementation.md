@@ -448,19 +448,23 @@ This gate blocks v1 release architecture acceptance, not ordinary local feature
 work. Mirror/synchronize semantics beyond the initial promotion remain a v2
 entry gate.
 
-**Outcome (LORE 0.9.0): complete as a negative gate.** The supported
+**Outcome (LORE 0.9.0): architecture accepted with a guarded promotion
+path.** The supported
 known-remote path can preserve the pimio library id, records, current bytes, and
 revision history: create offline with the future URL, create the remote
 repository from a disposable worktree with the same repository id, push, clone,
-and query history online once to hydrate its revision state and metadata. The
-acceptance contract is not complete:
+and query history online once to hydrate its revision state and metadata.
 
-- a push is accepted after the same remote name was registered with a different
-  repository id, rather than visibly rejecting the identity mismatch;
+- LORE accepts a push after the same remote name was registered with a different
+  repository id. The future promotion flow must query `repository info`, compare
+  the registered and local IDs, and stop before push on a mismatch;
 - killing the client during the initial push after transfer begins can leave
-  the remote branch created, and retry then fails because that branch exists;
-- `repository config` is read-only, so a repository created with no remote has
-  no public post-creation attach operation.
+  the remote branch created, and retry then fails because that branch exists.
+  This remains the one unmitigated release gate; and
+- `repository config` has no public setter, but LORE documents manual editing of
+  `.lore/config.toml`. Atomically setting `remote_url`, then performing the same
+  identity preflight, push, clone, and content checks succeeds for a no-remote
+  origin.
 
 LORE's sparse, lazy design does not proactively hydrate earlier revision state
 or metadata at clone time. An online history query fetches and caches them so
@@ -468,16 +472,18 @@ subsequent pimio history reads work offline. Neither clone nor history caches
 every historical tree and file payload; LORE 0.9.0 has no documented one-shot
 full-history mirror option.
 
-The retained `lore.server_promotion` gate records the two defects as QTest
-expected failures and directly verifies the missing attach command, so an
-upstream change cannot silently alter the evidence. v1 must not promise
-offline-to-server promotion until LORE provides the missing identity, retry,
-and attach contracts.
+The retained `lore.server_promotion` gate records the two dependency defects as
+QTest expected failures, verifies pimio's identity preflight, and exercises the
+documented-format attach fallback end to end. This is sufficient to accept the
+local-first architecture, because v1 does not expose promotion. A future
+user-facing promotion operation remains blocked until interrupted initial push
+is retryable or has a proven non-destructive recovery path.
 
-The opt-in gate generated a 32 MiB deterministic payload and completed five
-consecutive Linux runs in 3.657–3.916 seconds of CTest wall time (median
-3.778 seconds; internal topology median 3.424 seconds). Runtime is comfortably
-small for CI; correctness blockers, not duration, are why this remains opt-in.
+After adding identity preflight and the no-remote attachment round trip, the
+opt-in gate completed five consecutive Linux runs in 4.03–4.17 seconds of CTest
+wall time (median 4.06 seconds; internal topology median 3.107 seconds). Runtime
+is comfortably small for CI; the unresolved interrupted-push contract, not
+duration, is why this remains opt-in.
 
 ## Increment 7.8c — Storage-Model Decision Revisit
 
