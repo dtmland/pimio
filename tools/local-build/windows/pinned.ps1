@@ -30,7 +30,7 @@ $PimioPinned = @{
 
     # Must match PIMIO_LORE_VERSION in cmake/PimioLore.cmake. The checksums are
     # the recorded Windows entries from that same file.
-    LoreVersion = '0.8.5'
+    LoreVersion = '0.9.0'
     LoreTriple  = 'x86_64-pc-windows-msvc'
     LoreBaseUrl = 'https://github.com/EpicGames/lore/releases/download'
     LoreBundles = @(

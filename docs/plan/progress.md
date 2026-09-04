@@ -22,7 +22,7 @@ Update this file in the same change that moves an increment forward.
 | 7.6 | Progressive scanning and thumbnail retention | Complete |
 | 7.7 | Library, revision, and author identity | Complete |
 | 7.8 | Library storage-model gate (managed originals) | Complete (historical decision reopened) |
-| 7.8a | LORE 0.9 adoption and recovery simplification | Not started |
+| 7.8a | LORE 0.9 adoption and recovery simplification | Complete |
 | 7.8b | Offline-to-server promotion gate | Not started |
 | 7.8c | Storage-model decision revisit | Not started |
 | 7.9 | Library manager and lifecycle | Not started |
@@ -333,12 +333,13 @@ tiles the longer the application is scrolled. Rationale in
   process, verifies its SHA-256, and demonstrates content deduplication across
   two paths.
 
-## Increments 7.8a–7.8c — Architecture correction — Not started
+## Increments 7.8a–7.8c — Architecture correction — In progress
 
-- **7.8a:** upgrade every build context to LORE 0.9.0, adapt and fully retest the
-  private API boundary, verify 0.8.5 repository migration, and remove the
-  `.pimio-lore-backup` transaction workaround without weakening visible failure
-  handling or the acknowledged-checkpoint contract.
+- **7.8a — Complete:** every build context pins checksum-verified LORE 0.9.0.
+  The private API uses 0.9 metadata discriminants, a copied 0.8.5 repository
+  proves read and write migration, and the `.pimio-lore-backup` transaction
+  workaround is gone without weakening visible failure handling or the
+  acknowledged-checkpoint contract.
 - **7.8b:** prove that an offline-origin Library can be registered, pushed to a
   test LORE server, and freshly cloned with identity, history, and bytes intact.
   It explicitly compares a known-but-unreachable remote with a repository

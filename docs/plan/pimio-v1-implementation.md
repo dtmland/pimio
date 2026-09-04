@@ -24,7 +24,7 @@ records that correction.
 | Storage abstraction (LORE behind one adapter) | **Done.** `pimio::core::DurableStore`; only `src/lore/` knows LORE exists | None |
 | Asset identity independent of path/filename | **Done.** `core::MediaId` survives move/rename; duplicates get distinct ids | None |
 | Canonical vs. derived separation, rebuildable indexes | **Done.** SQLite projection and thumbnail cache are disposable and rebuilt from the store; enforced by tests | Keep enforcing for every new index |
-| Immutable, append-only history | **Implemented with an application-level whole-store rollback workaround.** LORE revisions are append-only and pimio flushes before acknowledging a checkpoint | Increment 7.8a upgrades LORE and removes the whole-store copy while preserving the durability contract |
+| Immutable, append-only history | **Done.** LORE revisions are append-only; pimio flushes before acknowledging a checkpoint and preserves staged input until success | Keep enforcing with the Increment 7.8a fault suite |
 | Library identity independent of location | **Missing.** A "library" is a hash of the `--library` paths; the repository carries no identity | Increment 7.7 |
 | Revision identity with author, app version, parent | **Partial.** `Checkpoint` has id, message, timestamp only | Increment 7.7 |
 | Author identity on every revision | **Missing.** No author concept anywhere | Increment 7.7 |
@@ -375,6 +375,12 @@ and backups must include or explicitly exclude the media roots. See
 
 Move from LORE 0.8.5 to 0.9.0 deliberately, then remove the pimio transaction
 workaround that copies the full `.lore` store.
+
+**Outcome:** Complete. All build contexts use checksum-verified 0.9.0 artifacts,
+the adapter uses the revised metadata discriminants, and a copied 0.8.5
+repository proves read/write migration. The full-store snapshot and commit
+marker are gone; the writer lock, explicit flush, staging preservation,
+checkout restoration, and visible narrow repair remain.
 
 **Deliverables**
 

@@ -26,7 +26,7 @@ env:
   PIMIO_QT_VERSION: 6.8.3
   # Pinned LORE release. Must match PIMIO_LORE_VERSION in cmake/PimioLore.cmake;
   # it is repeated here only so the download cache can be keyed by it.
-  PIMIO_LORE_VERSION: 0.8.5
+  PIMIO_LORE_VERSION: 0.9.0
 
 jobs:
   build-and-test:

@@ -96,10 +96,11 @@ private:
         }
         core::Checkpoint &checkpoint = checkpoints.last();
         const QString key = fromLoreString(metadata.key);
-        if (key == QLatin1String("message") && metadata.value.tag == LORE_METADATA_STRING) {
+        if (key == QLatin1String("message")
+            && metadata.value.tag == LORE_METADATA_TYPE_STRING) {
             checkpoint.message = fromLoreString(metadata.value.string);
         } else if (key == QLatin1String("timestamp")
-                   && metadata.value.tag == LORE_METADATA_NUMERIC) {
+                   && metadata.value.tag == LORE_METADATA_TYPE_NUMERIC) {
             checkpoint.createdAtUtc = QDateTime::fromMSecsSinceEpoch(
                 static_cast<qint64>(metadata.value.numeric), Qt::UTC);
         }
@@ -135,8 +136,6 @@ inline QJsonObject failureContext(const Operation &operation, const QString &cal
     return context;
 }
 
-constexpr char kCommitMarkerContents[] = "in-progress";
-
 class LoreDurableStore::Private
 {
 public:
@@ -157,11 +156,6 @@ public:
         return stagingPath() + QStringLiteral("/.pimio-library.json");
     }
     QString lorePath() const { return repositoryPath() + QStringLiteral("/.lore"); }
-    QString commitBackupPath() const { return storePath + QStringLiteral("/.pimio-lore-backup"); }
-    QString commitMarkerPath() const
-    {
-        return storePath + QStringLiteral("/.pimio-lore-commit-in-progress");
-    }
 
     QString committedRecordPath(const core::MediaId &id) const
     {
@@ -200,9 +194,6 @@ public:
     bool available() const { return opened && LoreApi::instance().isLoaded(); }
 
     bool restoreCheckoutToCommittedState(core::Error *error);
-    bool recoverInterruptedCommit(core::Error *error);
-    bool prepareCommitRecovery(core::Error *error);
-    bool clearCommitRecovery();
 
     QString queryStateToken(core::Error *error) const;
     bool runStatus(Operation &operation, bool checkDirty, core::Error *error) const;

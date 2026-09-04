@@ -110,10 +110,9 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
             ++interrupted;
         }
 
-        // Known defect in the pinned LORE release: a kill inside its local
-        // store can leave an empty pending marker that blocks every later
-        // open. open() clears it and says so; no committed data is lost.
-        // See docs/decisions/0001-lore-durable-store.md.
+        // LORE 0.8.5 could leave an empty pending marker here. Keep measuring
+        // the 0.9.0 outcome; open() still clears that narrow residue visibly if
+        // it occurs. See docs/decisions/0001-lore-durable-store.md.
         LoreDurableStore recovered(storePath);
         Error error;
         QVERIFY2(recovered.open(&error),
