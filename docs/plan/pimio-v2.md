@@ -59,7 +59,10 @@ lowest-common-denominator frontend.
 A **pimio Server** is a headless deployment of the pimio application with an
 embedded LORE server, hosting multiple independent libraries — each its own
 LORE repository — for home servers, NAS systems, always-on machines, and
-small studios.
+small studios. This is distinct from standalone v1, which uses local/offline
+`liblore` and runs no server process. The v1 promotion gate proves storage
+continuity only; authentication, remote media services, administration, and
+ordinary remote user experience remain this server track.
 
 Server capabilities:
 
@@ -84,7 +87,8 @@ Desktop capabilities:
 - Move a library between local and remote storage.
 - Optionally connect directly to a bare LORE server (no pimio Server) as an
   advanced path for recovery, migration, and tooling; this mode is more
-  limited and never required for ordinary use.
+  limited and never required for ordinary use. Its local-to-server storage
+  lifecycle is first validated by the v1 promotion feasibility gate.
 
 Even while v2 remains personal/family oriented, this is where the multi-user
 architecture becomes real: user identities on the server, per-library

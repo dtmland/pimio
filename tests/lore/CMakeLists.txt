@@ -24,6 +24,23 @@ target_compile_definitions(tst_lore_adapter PRIVATE
 
 add_test(NAME lore.adapter COMMAND tst_lore_adapter)
 
+qt_add_executable(tst_lore_binary_content
+    tst_lore_binary_content.cpp
+    lore_test_support.h
+)
+
+target_link_libraries(tst_lore_binary_content PRIVATE
+    pimio::core
+    pimio::lore
+    Qt6::Test
+)
+
+target_compile_definitions(tst_lore_binary_content PRIVATE
+    PIMIO_LORE_CLI_PATH="${PIMIO_LORE_CLI}"
+)
+
+add_test(NAME lore.binary_content COMMAND tst_lore_binary_content)
+
 # Fault injection needs a process that can be killed outright, which cannot be
 # done from inside the test executable without taking the test down with it.
 qt_add_executable(pimio_lore_fault_helper
@@ -62,6 +79,7 @@ add_dependencies(tst_lore_faults pimio_lore_fault_helper)
 # it needs more headroom than the default CTest timeout.
 set_tests_properties(lore.faults PROPERTIES TIMEOUT 900)
 set_tests_properties(lore.adapter PROPERTIES TIMEOUT 600)
+set_tests_properties(lore.binary_content PROPERTIES TIMEOUT 600)
 
 qt_add_executable(tst_lore_projection
     tst_lore_projection.cpp

@@ -36,6 +36,10 @@ artifact.
 artifact exists rather than guessing a triple, so a build there configures
 cleanly with LORE disabled instead of failing obscurely.
 
+LORE 0.9.0 publishes the same four `liblore` target triples, so its planned
+adoption does not change this platform decision. Increment 7.8a must still run
+the adapter and fault suites on each supported host before the pin moves.
+
 ### Linux arm64
 
 LORE publishes `aarch64-unknown-linux-gnu-neoverse-512tvb`, so the dependency

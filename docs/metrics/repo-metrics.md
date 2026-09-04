@@ -1,24 +1,24 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-01 10:40:04 UTC
+- Generated: 2026-09-04 04:21:15 UTC
 - Repository: pimio
-- Commit: 59b636d
+- Commit: ff5112a
 
 ## Summary
-- Included files: 257
-- Total lines: 36760
-- Code lines: 27810
-- Blank lines: 5681
-- Comment lines: 3269
+- Included files: 261
+- Total lines: 37487
+- Code lines: 28391
+- Blank lines: 5802
+- Comment lines: 3294
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 101 |
+| C++ | 102 |
 | C/C++ Header | 70 |
 | CMake | 29 |
-| Markdown | 24 |
+| Markdown | 27 |
 | Shell | 8 |
 | PowerShell | 7 |
 | QML | 7 |
@@ -32,9 +32,9 @@
 | Directory | Files |
 | --- | ---: |
 | src | 125 |
-| tests | 73 |
+| tests | 74 |
 | tools | 23 |
-| docs | 19 |
+| docs | 22 |
 | packaging | 7 |
 | .github | 4 |
 | cmake | 3 |
@@ -46,10 +46,10 @@
 
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
+| docs/plan/pimio-v1-implementation.md | 645 | 474 | 140 | 31 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | .github/workflows/release.yml | 552 | 476 | 37 | 39 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
-| docs/plan/pimio-v1-implementation.md | 532 | 384 | 120 | 28 |
 | docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
 | src/app/src/library_session.cpp | 488 | 372 | 61 | 55 |
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |

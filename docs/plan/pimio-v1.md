@@ -13,8 +13,9 @@ indexing, portable metadata, timestamp correction, and responsive everyday
 workflows over a custom graphics engine.
 
 Architecturally, 1.0.0 is the **standalone desktop** stage of the
-[deployment progression](pimio.md#deployment-progression): pimio client and
-embedded LORE on one computer, one user, excellent local libraries. The
+[deployment progression](pimio.md#deployment-progression): pimio loads
+`liblore` in-process and uses a local, offline repository on one computer, for
+one user. It does not run an embedded LORE server. The
 release should be intentionally modest in visible functionality but ambitious
 in architecture — the foundations laid here (library/asset/revision/author
 identity, storage abstraction, canonical-versus-derived separation, service
@@ -36,8 +37,11 @@ can support the 2.0.0 rendering frontend without being rewritten.
   one LORE repository with a stable unique identity independent of its
   location on disk. Provide library management — create, open, close, switch,
   rename, move, back up, and restore libraries — so a library is a portable,
-  self-contained object rather than an implicit side effect of scanned
-  folders.
+  explicit object rather than an implicit side effect of scanned folders.
+  Current code references originals in configured media roots, so a portable
+  backup must include those roots as well as the repository. Increment 7.8c
+  reopens the v1 storage choice after removal of the whole-store rollback copy;
+  Library Manager follows its managed/referenced/both decision.
 - Configure one or more local media roots per library.
 - Scan images and videos incrementally, preserving a stable file identity and
   content fingerprint to recognize moves and renames.
@@ -163,6 +167,11 @@ correctly from the beginning because they are prohibitively hard to retrofit:
   client and services (headless pimio Server, mobile clients) without an
   architectural rewrite. v1 does not implement networking, authentication,
   or user management UI — only the boundaries they will need.
+- **Server promotion path.** Before release, an automated feasibility gate
+  proves that a Library created offline can be registered with a LORE server,
+  pushed with its complete identity and history, and cloned back without
+  changing its pimio library identity. This validates the storage path needed
+  by a future pimio Server; it does not add that server product to v1.
 
 Deliberately postponed (not designed out): complex permissions, team
 administration, approval workflows, asset locking, client portals,
@@ -247,6 +256,9 @@ release.
    reconstructs its index and caches from the repository.
 6. Native builds are tested on supported Windows and macOS versions and a
    representative X11/Wayland Linux environment.
+7. A Library created locally/offline can be promoted to a test LORE server and
+   cloned into a fresh location with the same library identity, revision
+   history, and content.
 
 After 1.0.0, the 1.x series focuses on making the library extremely
 dependable before v2 introduces servers: robust backup and restore
