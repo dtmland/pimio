@@ -14,6 +14,12 @@ standalone Library. Before 1.0 ships, a feasibility gate must nevertheless prove
 that a locally created Library can later be promoted to a LORE server without
 changing its library identity or losing history.
 
+LORE documents offline work when the remote URL is already known, but no public
+0.9.0 command was found for attaching a repository created with no remote at all:
+`repository config` reads configuration, and recreating an existing repository
+is not a migration operation. The gate must resolve this distinction rather than
+assuming that editing `remote_url` is sufficient.
+
 pimio will also remove its whole-`.lore` pre-commit snapshot and rollback marker.
 Storage-engine atomicity and recovery belong in LORE. pimio will retain the
 application-level safeguards that do not copy the repository: single-writer
@@ -45,9 +51,10 @@ The implementation plan separates three pieces of work:
 2. Remove the whole-store rollback implementation while retaining the narrower
    safeguards above. A failure that LORE cannot repair must preserve user input,
    stop further writes, and produce a visible repair path.
-3. Prove local creation, later server registration, initial push of the complete
-   revision graph and fragments, fresh clone, identity preservation, and
-   interrupted/rejected-push recovery.
+3. Prove local creation, later server registration or attachment, initial push
+   of the complete revision graph and fragments, fresh clone, identity
+   preservation, and interrupted/rejected-push recovery. Compare a repository
+   created with a known-but-unreachable remote to one created with no remote.
 
 LORE 0.9.0's release notes describe a new I/O engine and several storage fixes,
 but do not explicitly identify the three 0.8.5 failures recorded in
@@ -67,4 +74,3 @@ upstream reports are in
   explicit product decision.
 - Decisions 0001 and 0005 remain as brief historical evidence, with their
   superseded conclusions clearly marked.
-

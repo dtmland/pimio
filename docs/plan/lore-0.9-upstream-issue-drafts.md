@@ -6,6 +6,19 @@ a new asynchronous I/O engine and multiple storage correctness fixes, but do not
 explicitly say that the three interrupted-commit failures pimio observed with
 0.8.5 were fixed.
 
+Tagged-source review gives a more precise result:
+
+- `level.pending` now participates in explicit roll-forward recovery, but its
+  16-byte header is still written by truncating the destination and a short
+  header is a hard read error. This is not clear evidence that a kill cannot
+  recreate the empty/short-marker failure.
+- A release-noted compare-and-swap fix addresses an AWS store reporting a write
+  that did not land. It does not establish the local-filesystem commit/flush
+  contract pimio exercises.
+- The expected revision path stores fragments and state before advancing the
+  branch. No release note identifies the rare local interruption failure, and a
+  related local-store durability fix landed after the 0.9.0 tag.
+
 These are **drafts, not claims about 0.9.0**. Run the Increment 7.8a fault suite
 against unmodified 0.9.0 first. File only a draft whose behavior still
 reproduces, replacing placeholders with the smallest reproducer, logs, platform,
@@ -14,8 +27,8 @@ relevant change can be identified so pimio can cite it in Decision 0001.
 
 ## Draft 1 — Interrupted local-store write can leave an unreadable pending marker
 
-**Title:** Interrupted local-store write can leave zero-length `level.pending`
-that blocks repository open
+**Title:** Interrupted local-store write can leave short `level.pending` that
+blocks repository open
 
 **Body:**
 
@@ -36,8 +49,9 @@ that blocks repository open
 >
 > Actual: `<0.9.0 logs and resulting store diagnostics>`
 >
-> Is this intended to be covered by the 0.9.0 local-store recovery work? If so,
-> which change defines the supported recovery contract?
+> We see that 0.9.0 adds roll-forward recovery for a valid pending header. Is a
+> short header intended to be recoverable too, and which change defines the
+> supported recovery contract?
 
 ## Draft 2 — Successful commit is lost unless followed by repository flush
 
@@ -89,4 +103,3 @@ state and reject future commits
 > Actual: `<0.9.0 logs, branch/revision diagnostics, and repair attempts>`
 >
 > Is there a supported recovery operation that preserves the readable history?
-

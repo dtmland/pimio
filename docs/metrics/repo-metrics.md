@@ -1,14 +1,14 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-04 04:15:58 UTC
+- Generated: 2026-09-04 04:21:15 UTC
 - Repository: pimio
-- Commit: a71a249
+- Commit: ff5112a
 
 ## Summary
 - Included files: 261
-- Total lines: 37458
-- Code lines: 28363
-- Blank lines: 5801
+- Total lines: 37487
+- Code lines: 28391
+- Blank lines: 5802
 - Comment lines: 3294
 
 ## By language
@@ -46,7 +46,7 @@
 
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
-| docs/plan/pimio-v1-implementation.md | 639 | 468 | 140 | 31 |
+| docs/plan/pimio-v1-implementation.md | 645 | 474 | 140 | 31 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | .github/workflows/release.yml | 552 | 476 | 37 | 39 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |

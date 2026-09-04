@@ -418,6 +418,9 @@ that server product into v1.
   dependence on a pre-existing service.
 - Create and populate a Library with local/offline `liblore`, then establish the
   corresponding remote repository through documented public operations.
+- Test both offline-first forms: a known but temporarily unreachable remote URL,
+  and a repository created with no remote. LORE 0.9.0 documents the former; no
+  public post-creation attach command has yet been identified for the latter.
 - Push the complete local revision graph and fragments, clone to a fresh path,
   and document repository-id, branch, remote registration, and conflict rules.
 - Record which LORE operations the future adapter must expose. Do not add remote
@@ -431,6 +434,9 @@ that server product into v1.
   can be retried without changing identity or duplicating logical history.
 - A conflicting or mismatched remote identity is rejected visibly rather than
   silently creating a different Library.
+- The gate records whether v1 must create every Library with a stable
+  future-resolvable remote identity, can attach a remote later, or requires an
+  upstream capability before server promotion can be promised.
 
 This gate blocks v1 release architecture acceptance, not ordinary local feature
 work. Mirror/synchronize semantics beyond the initial promotion remain a v2

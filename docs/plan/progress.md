@@ -341,7 +341,10 @@ tiles the longer the application is scrolled. Rationale in
   handling or the acknowledged-checkpoint contract.
 - **7.8b:** prove that an offline-origin Library can be registered, pushed to a
   test LORE server, and freshly cloned with identity, history, and bytes intact.
-  This validates a future hosting path; it does not implement pimio Server in v1.
+  It explicitly compares a known-but-unreachable remote with a repository
+  created without any remote, because 0.9.0 documents only the former workflow
+  and exposes no clear post-creation attach command. This validates a future
+  hosting path; it does not implement pimio Server in v1.
 - **7.8c:** repeat storage economics through the production 0.9.0 path and make
   the final managed/referenced/both decision before Library Manager work.
 - Release-note review found no explicit statement that 0.9.0 resolves pimio's

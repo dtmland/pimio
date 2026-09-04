@@ -303,8 +303,9 @@ batch, and the job queue in Increment 3b has to be designed with that in mind.
 The plans were later reoriented around the principle that one pimio Library
 is one LORE repository with a stable identity (see
 `docs/plan/pimio.md` and the reorientation section of
-`docs/plan/pimio-v1-implementation.md`). This decision stands unchanged, and
-two of its findings now carry more weight:
+`docs/plan/pimio-v1-implementation.md`). The durable-store choice stands; its
+whole-store recovery strategy is superseded by decision 0006. Two original
+findings still carry more weight:
 
 - The measurements above cover small JSON records only. Whether the
   repository can also hold *original media content* (a "managed" library) is
