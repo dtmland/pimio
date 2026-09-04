@@ -193,7 +193,26 @@ bool LoreDurableStore::open(Error *error)
     // difference: an interrupted commit leaves untracked files, and untracked
     // files are invisible to a status that does not walk the tree. Paying a
     // full restore once per open is the cost of the invariant.
-    if (!d->restoreCheckoutToCommittedState(error)) {
+    Error restoreError;
+    if (!d->restoreCheckoutToCommittedState(&restoreError)) {
+        // A killed writer can finish creating an empty pending marker while
+        // LORE is first opening its store, after the pre-open check above.
+        // Repair that newly visible residue and retry the checkout restore.
+        if (needsRepairAfterInterruptedWrite()) {
+            Error repairError;
+            if (repairAfterInterruptedWrite(&repairError)) {
+                d->repairedOnOpen = true;
+                restoreError = {};
+                if (d->restoreCheckoutToCommittedState(&restoreError)) {
+                    return true;
+                }
+            } else {
+                restoreError = repairError;
+            }
+        }
+        if (error != nullptr) {
+            *error = restoreError;
+        }
         d->opened = false;
         d->writerLock.reset();
         return false;

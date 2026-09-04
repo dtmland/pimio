@@ -92,7 +92,9 @@ blocks repository open
 
 The full process-kill implementation is in
 `tests/lore/fault_helper_main.cpp` (`crash-during-commit`) and the observing
-loop is in `tests/lore/tst_lore_faults_process.cpp`.
+loop is in `tests/lore/tst_lore_faults_process.cpp`. pimio checks once before
+opening LORE and again after a failed initial checkout restore because the
+asynchronous write can make the empty marker visible between those points.
 
 ## Draft 2 — successful commit is not yet durable without flush
 
