@@ -1,10 +1,11 @@
 #pragma once
 
+#include "lore_test_support.h"
+
 #include <QDir>
 #include <QFile>
 #include <QProcess>
 #include <QRandomGenerator>
-#include <QTemporaryDir>
 #include <QThread>
 
 namespace pimio::testing {

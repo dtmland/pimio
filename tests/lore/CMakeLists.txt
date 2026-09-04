@@ -133,6 +133,7 @@ if(PIMIO_ENABLE_LORE_SERVER_TESTS)
     target_link_libraries(tst_lore_server_promotion PRIVATE
         pimio::core
         pimio::lore
+        pimio::test_support
         Qt6::Test
     )
 
