@@ -38,6 +38,26 @@ QT_QPA_PLATFORM=offscreen ./pimio --self-check   # pimio.bat --self-check on Win
 ./pimio-doctor                                    # pimio-doctor.ps1 on Windows
 ```
 
+### Opt-in LORE server promotion gate
+
+`lore.server_promotion` is retained as an automated client/server contract
+gate, but is not part of the standard Darkroom run while its LORE 0.9.0 expected
+failures remain. It acquires the checksum-verified `loreserver`, launches an
+unauthenticated loopback-only server with isolated configuration and storage,
+and removes the topology after the run:
+
+```
+cmake --preset default -DPIMIO_ENABLE_LORE_SERVER_TESTS=ON
+cmake --build --preset default --target tst_lore_server_promotion
+ctest --test-dir build/default -R '^lore.server_promotion$' -V
+```
+
+Five consecutive Linux measurements took 3.657–3.916 seconds of CTest wall
+time (median 3.778 seconds), so runtime would not prevent adding it to CI. Keep
+it opt-in until the expected failures documented under Increment 7.8b are
+resolved; an upstream fix produces an unexpected pass and forces the evidence
+to be reviewed.
+
 ## Tests B — Studio
 
 Studio tests live in `tests/studio/`. They are ordinary automated CTest

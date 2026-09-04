@@ -45,7 +45,9 @@ they contain.
   [`cmake/PimioImageFormats.cmake`](../cmake/PimioImageFormats.cmake)** — the
   dependency requirements and checksum-verified dependency pins. LORE and the
   bundled image decoders are acquired from the same sources on every platform
-  and in every context.
+  and in every context. The opt-in LORE server promotion gate acquires
+  `loreserver` through this same shared mechanism; normal builds and release
+  archives neither acquire nor package the server.
 - **[`packaging/`](../packaging/)** — the launcher, `README.txt`, and
   `pimio-doctor` that ship at the root of every archive. Installed by
   `cmake --install`, so a local install reproduces the released tree.
@@ -168,6 +170,7 @@ matrix and the macOS x86-64 exclusion are in
 | `default` (offscreen) | CI (all platforms), local Linux, local Windows |
 | `default-x11` (Xvfb) | CI Linux only |
 | `studio` (native-display GUI) | developer machines / field tests only; no hosted runner has a real display |
+| `lore.server_promotion` (opt-in) | Explicit `PIMIO_ENABLE_LORE_SERVER_TESTS=ON` builds only |
 
 CI never runs `studio`; a developer running `studio` exercises tests CI cannot.
 This is expected: see [testing.md](testing.md).

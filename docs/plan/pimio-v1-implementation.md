@@ -448,6 +448,32 @@ This gate blocks v1 release architecture acceptance, not ordinary local feature
 work. Mirror/synchronize semantics beyond the initial promotion remain a v2
 entry gate.
 
+**Outcome (LORE 0.9.0): complete as a negative gate.** The supported
+known-remote path can preserve the pimio library id, records, current bytes, and
+server-visible revision history: create offline with the future URL, create the
+remote repository from a disposable worktree with the same repository id, push,
+and clone. The acceptance contract is not complete:
+
+- a push is accepted after the same remote name was registered with a different
+  repository id, rather than visibly rejecting the identity mismatch;
+- killing the client during the initial push after transfer begins can leave
+  the remote branch created, and retry then fails because that branch exists;
+- the fresh clone reads the current records and bytes but has no history while
+  offline; and
+- `repository config` is read-only, so a repository created with no remote has
+  no public post-creation attach operation.
+
+The retained `lore.server_promotion` gate records these failures as QTest
+expected failures, so an upstream fix becomes an unexpected pass instead of
+silently changing the evidence. v1 must not promise offline-to-server promotion
+until LORE provides the missing identity, retry, history hydration, and attach
+contracts.
+
+The opt-in gate generated a 32 MiB deterministic payload and completed five
+consecutive Linux runs in 3.657–3.916 seconds of CTest wall time (median
+3.778 seconds; internal topology median 3.424 seconds). Runtime is comfortably
+small for CI; correctness blockers, not duration, are why this remains opt-in.
+
 ## Increment 7.8c — Storage-Model Decision Revisit
 
 Reconsider managed originals after 7.8a removes the whole-store copy and 7.8b

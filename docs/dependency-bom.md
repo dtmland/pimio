@@ -67,6 +67,7 @@ bump is therefore contained to `cmake/PimioLore.cmake` and `src/lore/src/`.
 | Component | Version | Purpose | License | Redistributed? |
 | --- | --- | --- | --- | --- |
 | LORE CLI (`lore`) | 0.9.0 | Independent verification that pimio's repositories are readable by the reference implementation | MIT | No |
+| LORE Server (`loreserver`) | 0.9.0 | Opt-in offline-to-server promotion contract gate | MIT | No |
 | CMake | >= 3.24 | Build system | BSD-3-Clause | No |
 | Ninja | any recent | Build backend | Apache-2.0 | No |
 | NASM | any recent | Assemble libaom's optimized AV1 routines | BSD-2-Clause | No |

@@ -23,7 +23,7 @@ Update this file in the same change that moves an increment forward.
 | 7.7 | Library, revision, and author identity | Complete |
 | 7.8 | Library storage-model gate (managed originals) | Complete (historical decision reopened) |
 | 7.8a | LORE 0.9 adoption and recovery simplification | Complete |
-| 7.8b | Offline-to-server promotion gate | Not started |
+| 7.8b | Offline-to-server promotion gate | Complete (promotion blocked on LORE) |
 | 7.8c | Storage-model decision revisit | Not started |
 | 7.9 | Library manager and lifecycle | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
@@ -340,12 +340,17 @@ tiles the longer the application is scrolled. Rationale in
   proves read and write migration, and the `.pimio-lore-backup` transaction
   workaround is gone without weakening visible failure handling or the
   acknowledged-checkpoint contract.
-- **7.8b:** prove that an offline-origin Library can be registered, pushed to a
-  test LORE server, and freshly cloned with identity, history, and bytes intact.
-  It explicitly compares a known-but-unreachable remote with a repository
-  created without any remote, because 0.9.0 documents only the former workflow
-  and exposes no clear post-creation attach command. This validates a future
-  hosting path; it does not implement pimio Server in v1.
+- **7.8b — Complete, promotion blocked on LORE 0.9.0:** an opt-in automated gate
+  proves that a known-remote offline Library can be registered with its existing
+  repository id, pushed, and cloned with its pimio library id, records, current
+  bytes, and server-visible history intact. The gate also found three blocking
+  contract failures: a mismatched registered id does not reject the push, a
+  client cannot retry an interrupted initial push after the server creates its
+  branch, and a fresh clone has no offline revision history. A repository
+  created without a remote has no public post-creation attach operation. v1
+  therefore cannot promise later server promotion on the pinned release.
+  `lore.server_promotion` retains the reproducible topology and expected-failure
+  evidence as an opt-in test rather than adding a preliminary pimio Server.
 - **7.8c:** repeat storage economics through the production 0.9.0 path and make
   the final managed/referenced/both decision before Library Manager work.
 - Release-note review found no explicit statement that 0.9.0 resolves pimio's
