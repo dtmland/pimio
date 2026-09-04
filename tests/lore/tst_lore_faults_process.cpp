@@ -174,7 +174,7 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
     }
 
     qInfo("commit interrupted by a process kill in %d of %lld attempts; %d needed the "
-          "interrupted-write repair; %d hit the accepted LORE 0.9.0 short-header defect",
+          "interrupted-write repair; %d hit accepted LORE 0.9.0 reopen failures",
           interrupted, static_cast<long long>(delaysMs.size()), repaired, knownDependencyFailures);
     QVERIFY2(interrupted > 0, "no attempt actually interrupted a commit");
     if (knownDependencyFailures > 0) {
