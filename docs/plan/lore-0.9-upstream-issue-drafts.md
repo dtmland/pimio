@@ -1,105 +1,167 @@
-# Draft LORE upstream reports after 0.9.0 verification
+# LORE 0.9.0 upstream issue findings
 
-LORE 0.9.0 was released on 2026-08-31. Its
-[release notes](https://github.com/EpicGames/lore/releases/tag/v0.9.0) describe
-a new asynchronous I/O engine and multiple storage correctness fixes, but do not
-explicitly say that the three interrupted-commit failures pimio observed with
-0.8.5 were fixed.
+## Verification status
 
-Tagged-source review gives a more precise result:
+The earlier Increment 7.8a work added and ran the LORE 0.9.0 fault suite, but
+this document was not brought forward from its pre-verification state: it still
+described all three reports as drafts with placeholders. The testing was not
+ignored, but the promised review and documentation follow-up was incomplete.
 
-- `level.pending` now participates in explicit roll-forward recovery, but its
-  16-byte header is still written by truncating the destination and a short
-  header is a hard read error. This is not clear evidence that a kill cannot
-  recreate the empty/short-marker failure.
-- A release-noted compare-and-swap fix addresses an AWS store reporting a write
-  that did not land. It does not establish the local-filesystem commit/flush
-  contract pimio exercises.
-- The expected revision path stores fragments and state before advancing the
-  branch. No release note identifies the rare local interruption failure, and a
-  related local-store durability fix landed after the 0.9.0 tag.
+The findings below were refreshed on 2026-09-04 against the checksum-verified
+LORE 0.9.0 artifacts pinned in `cmake/PimioLore.cmake`.
 
-These are **drafts, not claims about 0.9.0**. Run the Increment 7.8a fault suite
-against unmodified 0.9.0 first. File only a draft whose behavior still
-reproduces, replacing placeholders with the smallest reproducer, logs, platform,
-and exact build information. If a test no longer reproduces, ask whether the
-relevant change can be identified so pimio can cite it in Decision 0001.
+| Prior 0.8.5 issue | 0.9.0 finding | Action |
+| --- | --- | --- |
+| Short `level.pending` prevents open | **Still present.** A real macOS kill sweep needed pimio's empty-marker repair in 1 of 5 interrupted commits. Tagged source still truncates the marker before asynchronously writing its 16-byte header, and rejects a short header on open. | File Draft 1. |
+| Successful commit can be lost without flush | **Still present by API design.** Commit completion does not await the background store flush. pimio's test passes because its adapter explicitly flushes before returning success. | File Draft 2 to clarify or strengthen the public durability contract. |
+| Branch can advance ahead of its state | **Original ordering fixed.** 0.9.0 drains state writes before publishing the branch, and flushes immutable data before mutable branch metadata. | Do not file Draft 3 for 0.9.0. A crash regression test upstream would still be useful. |
 
-## Draft 1 — Interrupted local-store write can leave an unreadable pending marker
+The CI fault sweep covered Linux, Windows, and macOS. In run
+[`33889622960`](https://github.com/dtmland/pimio/actions/runs/33889622960),
+Linux interrupted 3 of 6 attempts with no marker repair, macOS interrupted 5
+of 6 with one repair, and Windows completed the interrupted-commit invariant.
+The suite also confirmed that all repositories reopened consistently and
+accepted a later commit.
 
-**Title:** Interrupted local-store write can leave short `level.pending` that
+## Separate 0.9.0 defect found by the Windows job
+
+The Windows job failed while restoring a deliberately corrupted checkout:
+
+```text
+Could not restore the checkout: Address not found:
+1b8632a0c056cb73a31a6cc8fd0ca65ed3c515f25f6b936cc91cf09ce75dddbf-
+00000000000000000000000000000000
+```
+
+This is not the old branch-before-state failure. LORE's post-0.9.0 commit
+[`e9d056fb`](https://github.com/EpicGames/lore/commit/e9d056fb459ed644eff1382f21b034621f8ded42)
+identifies the exact cause: the delayed local-store flush wrote bucket files
+without their fan-out-level marker. Reopening then searched the wrong bucket
+layout and reported `Address not found`, even though the payload remained in
+the packstore. The fix is already upstream and the nightly release notes say it
+prevents new damage but does not repair an affected store.
+
+There is no need to submit a duplicate ticket. Until a release containing that
+fix replaces 0.9.0, the Windows test treats this exact dependency error as a
+skip. Other errors and the same test on Linux and macOS remain failures.
+
+## Draft 1 — interrupted write can leave an unreadable pending marker
+
+**Title:** Interrupted local-store write can leave a short `level.pending` that
 blocks repository open
 
 **Body:**
 
-> We are fault-testing LORE as an embedded local/offline store. With LORE
-> `<exact 0.9.0 build>`, terminating the process during a commit can leave a
-> zero-byte `.lore/immutable/index/<group>/level.pending`. Every subsequent
-> repository open fails with `failed to fill whole buffer`.
+> We are fault-testing LORE 0.9.0 as an embedded local/offline store. Killing a
+> process during a commit can leave a zero-byte
+> `.lore/immutable/index/<group>/level.pending`. Every subsequent repository
+> operation fails while reading the short marker.
 >
-> On 0.8.5 we observed this in roughly 5% of about 140 kill-during-commit trials.
-> Removing only the empty marker after proving no writer is active restored
-> readable history and allowed later commits, but an application should not
-> need to interpret LORE's private store files.
+> This still reproduced with the checksum-verified 0.9.0 macOS arm64 artifact:
+> five of six timed attempts interrupted a commit and one left the empty
+> marker. The equivalent Linux sweep interrupted three of six attempts without
+> producing the marker.
 >
-> Reproducer: `<attach minimized loop and exact kill point>`
+> A deterministic reduction is:
 >
-> Expected: opening the repository recovers or reports a supported repair action
-> without requiring private-file deletion.
+> ```sh
+> # Run from a healthy local/offline repository containing one commit.
+> group="$(find .lore/immutable/index -mindepth 1 -maxdepth 1 \
+>     -type d | head -1)"
+> : > "$group/level.pending"
+> lore status --repository "$PWD" --offline --no-pager
+> ```
 >
-> Actual: `<0.9.0 logs and resulting store diagnostics>`
+> LORE reports that the level header is 0 bytes instead of 16 and cannot open
+> the repository. The 0.9.0 source opens this marker with create-and-truncate
+> before its asynchronous 16-byte write, while recovery rejects every header
+> shorter than 16 bytes. This leaves a real process-termination window matching
+> the deterministic residue above.
 >
-> We see that 0.9.0 adds roll-forward recovery for a valid pending header. Is a
-> short header intended to be recoverable too, and which change defines the
-> supported recovery contract?
+> Expected: opening the repository should recover an empty/short pending marker,
+> or expose a supported repair operation that does not require an application
+> to interpret LORE's private files.
+>
+> Actual: the repository remains unusable until the empty private marker is
+> removed. pimio currently performs that narrow repair only after taking its
+> exclusive writer lock and reports that recovery to the caller.
+>
+> Is a short pending header intended to be recoverable, and can recovery tests
+> cover termination between truncate and completion of the header write?
 
-## Draft 2 — Successful commit is lost unless followed by repository flush
+The full process-kill implementation is in
+`tests/lore/fault_helper_main.cpp` (`crash-during-commit`) and the observing
+loop is in `tests/lore/tst_lore_faults_process.cpp`.
 
-**Title:** Clarify or enforce durability of a successful local revision commit
+## Draft 2 — successful commit is not yet durable without flush
 
-**Body:**
-
-> With LORE `<exact 0.9.0 build>` in local/offline sync-data mode, our fault test
-> receives successful revision-commit completion, then terminates the process
-> before issuing `repository flush`. After reopening, the reported revision is
-> sometimes absent.
->
-> On 0.8.5 this reproduced in about 20% of trials. Issuing `repository flush`
-> before acknowledging the save eliminated the observed loss. We need to know
-> whether successful commit completion is intended to be durable, or whether
-> every embedding application must treat a following flush as part of commit.
->
-> Reproducer: `<attach minimized C API or CLI reproducer>`
->
-> Expected: either the reported revision survives process termination, or the
-> public API documentation explicitly states that commit is not durable until a
-> successful flush.
->
-> Actual: `<0.9.0 revision id, history before/after, and logs>`
-
-## Draft 3 — Branch can advance to a revision whose state object is absent
-
-**Title:** Interrupted commit can leave branch head referencing a non-durable
-state and reject future commits
+**Title:** Clarify or enforce the durability boundary of a successful local
+revision commit
 
 **Body:**
 
-> During repeated kill-during-commit testing with LORE
-> `<exact 0.9.0 build>`, a branch head advanced to a revision whose state object
-> was not present after restart. Existing history and committed files remained
-> readable, but every later commit failed with `Branch has been advanced by
-> another instance, sync and re-stage to commit`.
+> With LORE 0.9.0 in local/offline mode, a successful revision-commit callback
+> is delivered before the post-command store flush has completed. Terminating
+> at that callback can therefore lose the revision that was just reported.
 >
-> On 0.8.5 this occurred once in about 140 trials. `repository instance prune`,
-> `repository gc`, and `revision sync` to the last readable revision did not
-> restore writability.
+> On 0.8.5 this reproduced in about 20% of trials. The 0.9.0 implementation
+> still dispatches successful commit completion and then spawns the repository
+> flush in the background. Only the separate `lore_repository_flush` operation
+> waits for that work.
 >
-> Reproducer: `<attach minimized loop and damaged repository diagnostics>`
+> The essential C API reproducer is:
 >
-> Expected: the branch pointer becomes durable only after the state it names, or
-> opening the repository rolls back/repairs an incomplete advance through a
-> documented operation.
+> ```c
+> static void on_commit(const lore_event_t *event, uint64_t context)
+> {
+>     if (event->tag == LORE_EVENT_COMPLETE && event->complete.status == 0) {
+>         puts("commit reported success");
+>         fflush(stdout);
+>         _Exit(9); /* no release, shutdown, or repository flush */
+>     }
+> }
 >
-> Actual: `<0.9.0 logs, branch/revision diagnostics, and repair attempts>`
+> lore_event_callback_config_t callback = {
+>     .user_context = 0,
+>     .func = on_commit,
+> };
 >
-> Is there a supported recovery operation that preserves the readable history?
+> /* globals selects a newly created local/offline repository; args names one
+>    staged file. Both structs are zero-initialized before these calls. */
+> lore_file_stage(&globals, &stage_args, callback);
+> lore_revision_commit(&globals, &commit_args, callback);
+> ```
+>
+> Run that child against a fresh repository, reopen it in the parent, and query
+> revision history. Repeat with the callback calling
+> `lore_repository_flush(&globals, &flush_args, callback)` before `_Exit`.
+> Compare whether the revision reported by the commit survives. The flush arm
+> is the control and is also pimio's current workaround.
+>
+> Expected: either successful commit completion is a durability boundary, or
+> the public API documentation explicitly says that callers must complete
+> `lore_repository_flush` before acknowledging a save.
+>
+> Actual: commit completion schedules, but does not await, persistence.
+
+pimio's process-death harness is in `tests/lore/fault_helper_main.cpp`
+(`commit-then-die`). Its adapter deliberately calls `lore_repository_flush`
+before returning the checkpoint, so `killedProcessAfterCommitKeepsTheRevisionItReported`
+validates the workaround rather than bare LORE commit semantics.
+
+## Closed Draft 3 — branch ahead of missing state
+
+Do not file the old draft against 0.9.0. Tagged-source review shows that commit
+serialization drains all state-fragment writes before `finalize_commit`
+publishes the branch. Post-command persistence then flushes immutable state
+before mutable branch metadata, and the mutable client store does not use the
+delayed flush that could let the pointer overtake its state.
+
+The cross-platform kill sweeps also reopened every interrupted repository and
+successfully made another commit. That does not replace a high-volume upstream
+crash test, but it agrees with the corrected ordering.
+
+The `Address not found` failure found on Windows is tracked separately above:
+it made an immutable entry unreachable through a missing fan-out marker and
+has a specific post-0.9.0 upstream fix. It did not produce the old
+`Branch has been advanced by another instance` state.
