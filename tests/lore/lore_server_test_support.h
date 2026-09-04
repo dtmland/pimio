@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QProcess>
 #include <QRandomGenerator>
+#include <QRegularExpression>
+#include <QSaveFile>
 #include <QThread>
 
 namespace pimio::testing {
@@ -50,6 +52,64 @@ inline ProcessResult runLore(const QString &workingDirectory, const QStringList 
     QStringList full{QStringLiteral("--no-pager"), QStringLiteral("--non-interactive")};
     full.append(arguments);
     return runProcess(loreCliPath(), workingDirectory, full, timeoutMs);
+}
+
+inline QString remoteRepositoryId(const QString &workingDirectory, const QString &url,
+                                  QString *output = nullptr)
+{
+    const ProcessResult info =
+            runLore(workingDirectory,
+                    {QStringLiteral("repository"), QStringLiteral("info"), url});
+    if (output != nullptr) {
+        *output = info.output;
+    }
+    if (!info.succeeded) {
+        return {};
+    }
+    const QRegularExpression expression(QStringLiteral(R"(\(([0-9a-f]{32})\))"));
+    return expression.match(info.output).captured(1);
+}
+
+inline bool attachRemote(const QString &repositoryPath, const QString &url, QString *error)
+{
+    if (url.contains(QLatin1Char('"')) || url.contains(QLatin1Char('\n'))
+        || url.contains(QLatin1Char('\r'))) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Remote URL cannot be represented safely in config.toml.");
+        }
+        return false;
+    }
+
+    const QString configPath = repositoryPath + QStringLiteral("/.lore/config.toml");
+    QFile source(configPath);
+    if (!source.open(QIODevice::ReadOnly)) {
+        if (error != nullptr) {
+            *error = source.errorString();
+        }
+        return false;
+    }
+    QString config = QString::fromUtf8(source.readAll());
+    source.close();
+
+    const QString setting = QStringLiteral("remote_url = \"%1\"").arg(url);
+    const QRegularExpression remoteLine(QStringLiteral(R"((?m)^remote_url\s*=.*$)"));
+    if (config.contains(remoteLine)) {
+        config.replace(remoteLine, setting);
+    } else {
+        config.prepend(setting + QLatin1Char('\n'));
+    }
+
+    QSaveFile destination(configPath);
+    const QByteArray encoded = config.toUtf8();
+    if (!destination.open(QIODevice::WriteOnly)
+        || destination.write(encoded) != encoded.size()
+        || !destination.commit()) {
+        if (error != nullptr) {
+            *error = destination.errorString();
+        }
+        return false;
+    }
+    return true;
 }
 
 class LoreTestServer

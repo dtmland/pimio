@@ -1,6 +1,7 @@
 # 0006 — Local-first LORE topology and recovery ownership
 
-Status: **accepted local-first direction; promotion gate completed and blocked on LORE 0.9.0.**
+Status: **accepted local-first direction; promotion architecture accepted with
+the user-facing operation gated on interrupted-push recovery.**
 
 ## Decision
 
@@ -14,11 +15,11 @@ standalone Library. Before 1.0 ships, a feasibility gate must nevertheless prove
 that a locally created Library can later be promoted to a LORE server without
 changing its library identity or losing history.
 
-LORE documents offline work when the remote URL is already known, but no public
-0.9.0 command was found for attaching a repository created with no remote at all:
-`repository config` reads configuration, and recreating an existing repository
-is not a migration operation. The gate must resolve this distinction rather than
-assuming that editing `remote_url` is sufficient.
+LORE documents offline work when the remote URL is already known. It has no
+public 0.9.0 attach command, but its configuration reference explicitly permits
+editing `.lore/config.toml`. The gate therefore verifies an atomic `remote_url`
+edit rather than treating the file format as private or assuming that an
+untested edit is sufficient.
 
 pimio will also remove its whole-`.lore` pre-commit snapshot and rollback marker.
 Storage-engine atomicity and recovery belong in LORE. pimio will retain the

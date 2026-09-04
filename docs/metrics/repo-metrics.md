@@ -1,15 +1,15 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-04 22:29:19 UTC
+- Generated: 2026-09-04 23:25:47 UTC
 - Repository: pimio
-- Commit: f440cc5
+- Commit: 0d3524a
 
 ## Summary
 - Included files: 264
-- Total lines: 38392
-- Code lines: 29152
-- Blank lines: 5944
-- Comment lines: 3296
+- Total lines: 38727
+- Code lines: 29405
+- Blank lines: 6017
+- Comment lines: 3305
 
 ## By language
 
@@ -46,7 +46,7 @@
 
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
-| docs/plan/pimio-v1-implementation.md | 682 | 505 | 146 | 31 |
+| docs/plan/pimio-v1-implementation.md | 688 | 511 | 146 | 31 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | .github/workflows/release.yml | 552 | 476 | 37 | 39 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
@@ -57,7 +57,7 @@
 | src/metadata/src/tiff_reader.cpp | 455 | 395 | 41 | 19 |
 | tests/lore/tst_lore_adapter.cpp | 448 | 349 | 75 | 24 |
 | tests/scan/tst_scan_incremental_crud.cpp | 445 | 346 | 83 | 16 |
+| tests/lore/tst_lore_server_promotion.cpp | 438 | 390 | 48 | 0 |
 | tests/app/tst_app_smoke.cpp | 426 | 345 | 60 | 21 |
 | tests/core/tst_core_serialization.cpp | 421 | 347 | 62 | 12 |
 | tests/core/tst_core_contracts.cpp | 415 | 329 | 75 | 11 |
-| src/browser/src/media_library_model.cpp | 415 | 344 | 52 | 19 |
