@@ -21,7 +21,10 @@ Update this file in the same change that moves an increment forward.
 | 7.5 | Browsing controls and settings | Complete |
 | 7.6 | Progressive scanning and thumbnail retention | Complete |
 | 7.7 | Library, revision, and author identity | Complete |
-| 7.8 | Library storage-model gate (managed originals) | Complete (no-go for v1 managed mode) |
+| 7.8 | Library storage-model gate (managed originals) | Complete (historical decision reopened) |
+| 7.8a | LORE 0.9 adoption and recovery simplification | Not started |
+| 7.8b | Offline-to-server promotion gate | Not started |
+| 7.8c | Storage-model decision revisit | Not started |
 | 7.9 | Library manager and lifecycle | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
@@ -29,7 +32,8 @@ Update this file in the same change that moves an increment forward.
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
 
-Increments 7.7–7.9 were added when the plans were reoriented around the
+Increments 7.7–7.9, including the 7.8a–7.8c correction gates, were added when
+the plans were reoriented around the
 library-centric LORE design; the gap analysis motivating them is recorded in
 [pimio-v1-implementation.md](pimio-v1-implementation.md#reorientation-the-library-centric-direction).
 
@@ -304,7 +308,7 @@ tiles the longer the application is scrolled. Rationale in
 - `lore.adapter` — a moved repository retains its library id, an independent
   repository gets another id, and provenance survives history reload.
 
-## Increment 7.8 — Library storage-model gate — Complete (no-go)
+## Increment 7.8 — Library storage-model gate — Complete (decision reopened)
 
 ### Deliverables
 
@@ -314,16 +318,32 @@ tiles the longer the application is scrolled. Rationale in
   deduplication; `PIMIO_LORE_BINARY_SPIKE_MIB=256` selects the recorded
   multi-hundred-MB run.
 - [Decision 0005](../decisions/0005-managed-versus-referenced-originals.md)
-  records a no-go for managed originals in v1. LORE passed binary integrity and
-  deduplication, but the checkout and immutable copy roughly double original
-  storage, while pimio's required pre-commit recovery backup scales with the
+  recorded an initial no-go for managed originals. LORE passed binary integrity
+  and deduplication, but the checkout and immutable copy roughly doubled
+  original storage while pimio's pre-commit recovery backup scaled with the
   complete durable corpus.
-- v1 retains referenced originals. Complete backup/restore and portability
-  claims must include the configured media roots as well as the LORE repository;
-  repository-only backups preserve organizational state, not original media.
+- [Decision 0006](../decisions/0006-local-first-lore-topology.md) removes that
+  whole-store backup from the target architecture, so the storage conclusion is
+  reopened. Current code still references originals; complete backups must
+  include the configured media roots until Increment 7.8c decides otherwise.
 
 ### Automated evidence
 
 - `lore.binary_content` — commits binary content, reloads it in a fresh LORE
   process, verifies its SHA-256, and demonstrates content deduplication across
   two paths.
+
+## Increments 7.8a–7.8c — Architecture correction — Not started
+
+- **7.8a:** upgrade every build context to LORE 0.9.0, adapt and fully retest the
+  private API boundary, verify 0.8.5 repository migration, and remove the
+  `.pimio-lore-backup` transaction workaround without weakening visible failure
+  handling or the acknowledged-checkpoint contract.
+- **7.8b:** prove that an offline-origin Library can be registered, pushed to a
+  test LORE server, and freshly cloned with identity, history, and bytes intact.
+  This validates a future hosting path; it does not implement pimio Server in v1.
+- **7.8c:** repeat storage economics through the production 0.9.0 path and make
+  the final managed/referenced/both decision before Library Manager work.
+- Release-note review found no explicit statement that 0.9.0 resolves pimio's
+  three 0.8.5 interrupted-commit observations. Reproduce before filing the
+  [prepared upstream issue drafts](lore-0.9-upstream-issue-drafts.md).

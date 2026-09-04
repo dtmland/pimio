@@ -33,9 +33,15 @@ the stable library id in their application-data paths. The current repeated
 
 ## Original media storage
 
-v1 libraries reference original media in configured roots; originals are not
-copied into LORE. The repository is authoritative for library identity,
-metadata, organization, edit recipes, and history, but it is not by itself a
-backup of the media. A complete backup must include every referenced root and
-the information needed to reconnect it after restore. See
+The current implementation references original media in configured roots;
+originals are not copied into LORE. The repository is authoritative for library
+identity, metadata, organization, edit recipes, and history, but it is not by
+itself a backup of the media. A complete referenced-library backup must include
+every referenced root and the information needed to reconnect it after restore.
+
+Increment 7.8 proved large-binary integrity and deduplication. Its v1 no-go for
+managed originals depended principally on pimio's whole-store rollback copy,
+which [decision 0006](decisions/0006-local-first-lore-topology.md) removes from
+the target architecture. The storage-model decision is therefore reopened; the
+current referenced behavior remains in force until the new gate completes. See
 [decision 0005](decisions/0005-managed-versus-referenced-originals.md).

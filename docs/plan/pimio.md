@@ -77,9 +77,11 @@ exploit LORE without being coupled to it:
 The same Library model scales through progressively more capable
 configurations without changing the fundamental architecture:
 
-1. **Standalone desktop (v1)** — pimio client, LORE client, and embedded
-   LORE server all on the user's computer. The default "lone wolf" mode; no
-   external server required.
+1. **Standalone desktop (v1)** — pimio and `liblore` operate in-process against
+   a local, offline repository. No LORE server process or network is required.
+   Before release, a feasibility gate proves that this locally originated
+   Library can later be promoted to a server without changing identity or
+   losing history.
 2. **Home server (v2)** — a headless pimio Server hosting multiple
    independent libraries for a household's desktops, laptops, and phones.
 3. **Studio (v3)** — the same server architecture with user accounts,
@@ -159,9 +161,9 @@ For video specifically:
 
 ## Storage and File Management
 
-The storage question is resolved: the core store is built on the **LORE
-version control system**, running client and (embedded or remote) server
-components while remaining fully abstracted from the user. LORE is accessed
+The core store is built on the **LORE version control system** while remaining
+fully abstracted from the user. Standalone v1 loads `liblore` locally and
+offline; later deployments may use a LORE server behind pimio Server. LORE is accessed
 only through a pimio storage abstraction so LORE-specific concepts do not
 leak into the application, and the dependency remains replaceable. The
 `.ini`-inspired approach is retired; portable sidecar/embedded metadata
@@ -192,5 +194,7 @@ writes remain as an interoperability feature, not the system of record.
 - How much facial recognition and landmark detection can be done effectively offline?
 - Does the LORE repository store original media content directly (a managed
   library), reference media in place (a referenced library), or support
-  both? See the storage-model gate in
+  both? Increment 7.8 proved binary integrity, but its no-go depended on a
+  whole-store rollback workaround that is no longer part of the target
+  architecture. See the reopened storage-model gate in
   [pimio-v1-implementation.md](pimio-v1-implementation.md).

@@ -73,6 +73,13 @@ bump is therefore contained to `cmake/PimioLore.cmake` and `src/lore/src/`.
 | Qt Test | 6.8.3 | Unit and smoke tests | LGPL-3.0 | No |
 | Xvfb | distribution version | Linux X11 test display | MIT | No |
 
+LORE 0.8.5 remains the dependency actually integrated in this revision.
+Increment 7.8a plans the coordinated move to
+[LORE 0.9.0](https://github.com/EpicGames/lore/releases/tag/v0.9.0), including
+C API adaptation, artifact checksums, cross-context pin checks, repository
+migration, and full fault regression. This table changes to 0.9.0 only when
+those artifacts become the codebase's real build and test dependency.
+
 ## GitHub Actions dependencies (CI only)
 
 | Action | Version | Purpose |

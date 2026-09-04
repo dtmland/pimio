@@ -1,17 +1,24 @@
 # 0001 — LORE as pimio's durable store
 
-Status: **accepted with conditions.** Recorded at the end of Increment 2
-(units 2a–2c). This is the go/no-go the increment exists to produce.
+Status: **accepted storage choice; recovery strategy partially superseded by
+[decision 0006](0006-local-first-lore-topology.md).** Recorded at the end of
+Increment 2 (units 2a–2c).
 
 Decision owner: repository maintainer. This record states what was measured,
 what was decided, and what must still be true before v1 ships.
 
 ## Decision
 
-Adopt LORE 0.8.5 as the authoritative durable store behind
-`pimio::core::DurableStore`, subject to the four conditions in
+Adopt LORE as the authoritative durable store behind
+`pimio::core::DurableStore`, subject to the conditions in
 [Conditions](#conditions). Do not promote SQLite to authoritative; it remains a
 disposable projection, as Increment 3 assumes.
+
+The original implementation pinned 0.8.5 and added a whole-`.lore` rollback
+snapshot after the fault observations below. That snapshot is now historical:
+the target architecture removes it, upgrades to 0.9.0, and assigns
+storage-engine atomicity to LORE. The single-writer lock, explicit flush,
+staging preservation, checkout restoration, and visible repair behavior remain.
 
 ## Context
 
@@ -124,14 +131,13 @@ Tested by `lore.faults`, on every CI platform.
 | Checkout made read-only | Commit fails visibly, staged work is preserved |
 | Second process writing concurrently | Refused by the writer lock before reaching LORE |
 
-Three rules follow. The first is on the write path, the other two are
-implemented in `open()`:
+Three rules followed in the 0.8.5 implementation. Decision 0006 supersedes the
+whole-store snapshot in the first rule; the other safeguards remain:
 
-1. **A commit is not finished until it is flushed.** See the defect below.
-   Before changing the checkout or LORE's staged index, `commit()` snapshots the
-   clean committed repository and writes a rollback marker. It calls
-   `repository flush` before it reports a checkpoint, and only then retires the
-   rollback marker and clears the staging area.
+1. **A commit is not finished until it is flushed.** Before decision 0006,
+   `commit()` also snapshotted the clean repository and wrote a rollback marker.
+   The flush remains required; the snapshot and marker are scheduled for
+   removal.
 2. **Always restore the checkout.** An interrupted commit leaves untracked
    files, and LORE's dirty check does not see untracked files, so a cheap
    status cannot be trusted to decide whether recovery is needed. The full
@@ -144,7 +150,12 @@ so a truncated write cannot replace a good record, and the out-of-space error
 path is exercised through the permission-failure test, which takes the same
 branch. A genuine full-volume run stays a documented manual test.
 
-## Known defects in LORE 0.8.5
+## Historical fault observations with LORE 0.8.5
+
+These observations explain the original workaround; they are not claims about
+0.9.0. The 0.9.0 release notes do not explicitly identify their resolution, so
+Increment 7.8a reruns the fault suite before pimio files the prepared
+[upstream reports](../plan/lore-0.9-upstream-issue-drafts.md).
 
 ### Interrupted writes can leave an empty pending marker
 
@@ -184,11 +195,10 @@ outcomes seen in CI are the two directions of that disagreement:
 * `history()` reported one revision while `listIds()` reported 26 records — the
   index had the files, the revision log did not.
 
-`commit()` now flushes before it returns, so the checkpoint it hands back names
-a revision that is on disk, and the marker-and-backup rollback is retired only
-after that flush. Everything the commit touches — the LORE repository, the
-checkout, and the staging area — is therefore either fully before or fully
-after the commit at every instant a process can die.
+The 0.8.5 adapter added a flush before returning and retired its
+marker-and-backup only after that flush. The flush and staging ordering remain
+part of pimio's contract; decision 0006 removes the whole-store backup rather
+than continuing to emulate storage transactions in pimio.
 `killedProcessAfterCommitKeepsTheRevisionItReported` is the regression test; it
 failed on every attempt before the flush was added.
 
@@ -253,6 +263,11 @@ batch, and the job queue in Increment 3b has to be designed with that in mind.
 - No on-disk format owned by pimio changes when LORE changes, because records
   are pimio JSON. A LORE upgrade that changes its own repository format would
   need its own migration test before the pin moves.
+- Increment 7.8a moves the pin to 0.9.0 across every build context. Its release
+  notes include C API changes, a new asynchronous I/O engine, and storage fixes,
+  but do not name the three observations above. The move therefore requires
+  compile/API adaptation, 0.8.5-repository migration checks, the full adapter
+  suite, and repeated interruption testing on Linux, Windows, and macOS.
 
 ## Conditions
 
@@ -262,8 +277,9 @@ batch, and the job queue in Increment 3b has to be designed with that in mind.
 2. **`commit()` stays a durability boundary.** It must flush before it reports
    a checkpoint and before it clears staged work. A caller that gets a
    `Checkpoint` is entitled to assume a power cut changes nothing.
-3. **The interrupted-write repair stays visible.** It may be automatic, but it
-   must be reported, and it must never widen beyond removing empty markers.
+3. **Interrupted-write failure stays visible.** Automatic repair must be
+   narrowly justified and reported; otherwise pimio preserves staged input,
+   stops writes, and directs the user to a supported repair path.
 4. **The branch-advance defect must be closed before v1 ships.** Either
    upstream fixes it, or pimio gains a durable-store rebuild path that reads
    the surviving records and rewrites them into a fresh repository, losing
@@ -282,7 +298,7 @@ batch, and the job queue in Increment 3b has to be designed with that in mind.
 - The adapter is the only code that knows LORE exists. Replacing the durable
   store means writing another `DurableStore`, not touching the application.
 
-## Addendum — the library-centric reorientation
+## Addenda
 
 The plans were later reoriented around the principle that one pimio Library
 is one LORE repository with a stable identity (see
@@ -296,6 +312,11 @@ two of its findings now carry more weight:
 - The single-writer condition shapes the multi-user future: v2/v3
   collaboration serializes writes in the pimio Server above LORE; nothing
   may rely on LORE tolerating concurrent committers.
+
+Decision 0006 later clarified that standalone v1 runs `liblore` locally and
+offline, without `loreserver`. The v2 pimio Server remains responsible for
+remote services and serialization. A separate v1 gate proves that an
+offline-origin repository can be promoted before that product exists.
 
 ## Alternatives considered
 

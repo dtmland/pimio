@@ -1,16 +1,19 @@
 # 0005 — Referenced originals for v1
 
-Status: **accepted.** Recorded at the end of Increment 7.8.
+Status: **superseded as a v1 conclusion by
+[decision 0006](0006-local-first-lore-topology.md); evidence retained.**
+Recorded at the end of Increment 7.8.
 
 ## Decision
 
-pimio v1 uses referenced libraries: LORE stores the library descriptor,
-metadata, organization, edit recipes, and history, while original media remains
-in configured media roots. Managed originals inside LORE are a **no-go for v1**.
+pimio initially chose referenced libraries for v1: LORE stores the library
+descriptor, metadata, organization, edit recipes, and history, while original
+media remains in configured media roots.
 
-This does not rule out a managed mode in a later version. Reconsidering it
-requires a storage design that does not copy the complete durable corpus as
-part of every commit's recovery strategy.
+This conclusion is reopened because pimio will remove the whole-store recovery
+copy that was its principal no-go reason. The current implementation remains
+referenced until Increment 7.8c decides whether v1 uses managed originals,
+referenced originals, or both.
 
 ## Context
 
@@ -49,7 +52,7 @@ The restored SHA-256 exactly matched the committed payload. LORE deduplicated
 the identical content in its immutable store: the second path added another
 256 MiB checkout file but did not add another full payload under `.lore`.
 
-## Why managed originals are a no-go
+## Why managed originals were a no-go
 
 Binary correctness and LORE's content deduplication passed. The current pimio
 durability strategy makes the full design unsuitable for a photo/video library:
@@ -66,7 +69,7 @@ durability strategy makes the full design unsuitable for a photo/video library:
    Requiring its immutable content to be copied for each metadata checkpoint is
    incompatible with interactive saves and predictable low-space behavior.
 
-The gate is intentionally about the complete pimio storage path, not whether
+The gate was intentionally about the complete pimio storage path, not whether
 LORE can read one large file in isolation. Passing byte integrity while failing
 the required commit/recovery economics is a no-go.
 
@@ -108,3 +111,7 @@ corpora, low-space and interrupted-write behavior, backup/restore, and all
 supported platforms. Candidate designs may use immutable blobs outside the
 LORE checkout or a newer LORE transaction model, but must preserve content
 integrity without a whole-corpus copy on ordinary metadata commits.
+
+Increment 7.8c performs that revisit after the 0.9.0 migration and rollback
+removal. The remaining checkout-plus-immutable-store duplication must be
+measured and accepted or mitigated independently of the removed workaround.
