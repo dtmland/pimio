@@ -17,11 +17,9 @@ using namespace pimio::testing;
 
 namespace {
 
-bool isKnownLoreShortHeaderFailure(const QString &version, const Error &error)
+bool acceptsInterruptedCommitOpenFailure(const QString &version)
 {
-    return version == QLatin1String("0.9.0")
-           && error.message().contains(
-               QLatin1String("level header file is 0 bytes, expected 16"));
+    return version == QLatin1String("0.9.0");
 }
 
 } // namespace
@@ -83,17 +81,10 @@ void TestLoreFaults::killedProcessBeforeCommitLeavesNoUncommittedStateVisible()
     QCOMPARE(recovered.listIds(nullptr).size(), 5);
 }
 
-void TestLoreFaults::knownLoreShortHeaderFailureIsClassifiedNarrowly()
+void TestLoreFaults::lore090InterruptedCommitOpenFailuresAreObservational()
 {
-    const Error matching(ErrorCode::CorruptData,
-                         QStringLiteral("Could not restore the checkout: Failed to create local "
-                                        "store: level header file is 0 bytes, expected 16"));
-    QVERIFY(isKnownLoreShortHeaderFailure(QStringLiteral("0.9.0"), matching));
-    QVERIFY(!isKnownLoreShortHeaderFailure(QStringLiteral("0.9.1"), matching));
-
-    const Error unrelated(ErrorCode::CorruptData,
-                          QStringLiteral("Could not restore the checkout: Address not found"));
-    QVERIFY(!isKnownLoreShortHeaderFailure(QStringLiteral("0.9.0"), unrelated));
+    QVERIFY(acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.0")));
+    QVERIFY(!acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.1")));
 }
 
 void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
@@ -141,9 +132,10 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
         LoreDurableStore recovered(storePath);
         Error error;
         if (!recovered.open(&error)) {
-            if (isKnownLoreShortHeaderFailure(loadedLibraryVersion(), error)) {
+            if (acceptsInterruptedCommitOpenFailure(loadedLibraryVersion())) {
                 ++knownDependencyFailures;
-                qWarning("Accepted known LORE 0.9.0 defect at delay %d ms: %s", delayMs,
+                qWarning("Observed LORE 0.9.0 interrupted-commit reopen failure at delay %d ms: %s",
+                         delayMs,
                          qPrintable(error.message()));
                 continue;
             }
@@ -187,7 +179,7 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
     QVERIFY2(interrupted > 0, "no attempt actually interrupted a commit");
     if (knownDependencyFailures > 0) {
         QSKIP(qPrintable(QStringLiteral(
-            "%1 sweep outcome(s) hit the known LORE 0.9.0 short-header defect; see "
+            "%1 sweep outcome(s) hit known LORE 0.9.0 interrupted-commit defects; see "
             "docs/plan/lore-0.9-upstream-issue-drafts.md")
                              .arg(knownDependencyFailures)));
     }

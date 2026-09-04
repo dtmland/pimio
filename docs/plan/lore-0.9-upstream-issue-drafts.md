@@ -108,10 +108,14 @@ Is a short pending header intended to be recoverable, and can recovery tests cov
 ### Temporary test policy and release follow-up
 
 `lore.faults` continues to run its complete process-kill sweep on every CI
-platform. While pimio pins LORE 0.9.0, an open failure containing the exact
-`level header file is 0 bytes, expected 16` diagnostic is reported as a skipped
-test after the sweep completes instead of failing CI. The allowance is limited
-to that version and diagnostic; every other recovery failure remains blocking.
+platform. While pimio pins LORE 0.9.0, repository reopen failures immediately
+following the deliberate mid-commit process kill are logged with their delay and
+diagnostic, then reported as a skipped test after the sweep completes instead of
+failing CI. Observed diagnostics include the zero-byte level header documented
+above and `Could not restore the checkout: Not found`. The allowance is limited
+to LORE 0.9.0 and this fault-injection boundary: setup failures and every
+consistency or subsequent-commit failure after a successful reopen remain
+blocking.
 
 When a new LORE release is available:
 
