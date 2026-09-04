@@ -32,6 +32,7 @@ private slots:
     void externalCliCommitChangesTheStateToken();
     void unicodeAndOpaqueIdentifiersRoundTrip();
     void commitCostGrowsWithBatchSize();
+    void commitsDoNotCopyTheRepository();
 };
 
 void TestLoreAdapter::libraryReportsItsVersion()
@@ -422,6 +423,24 @@ void TestLoreAdapter::commitCostGrowsWithBatchSize()
 
     QCOMPARE(store.listIds(nullptr).size(), kBatchSize + 1);
     QCOMPARE(store.history(-1, nullptr).size(), 2);
+}
+
+void TestLoreAdapter::commitsDoNotCopyTheRepository()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const QString storePath = temporary.filePath(QStringLiteral("store"));
+    LoreDurableStore store(storePath);
+    Error error;
+    QVERIFY2(store.open(&error), qPrintable(error.message()));
+    QVERIFY(store.stage(makeLoreRecord(QStringLiteral("m-1"), QStringLiteral("saved")), &error));
+    QVERIFY2(store.commit(QStringLiteral("Save"), &error).has_value(), qPrintable(error.message()));
+
+    QVERIFY(!QFileInfo::exists(storePath + QStringLiteral("/.pimio-lore-backup")));
+    QVERIFY(!QFileInfo::exists(
+        storePath + QStringLiteral("/.pimio-lore-commit-in-progress")));
 }
 
 QTEST_GUILESS_MAIN(TestLoreAdapter)

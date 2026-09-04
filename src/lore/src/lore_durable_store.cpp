@@ -4,7 +4,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
-#include <QSaveFile>
 
 #include <algorithm>
 
@@ -82,64 +81,6 @@ bool LoreDurableStore::Private::restoreCheckoutToCommittedState(Error *error)
     return true;
 }
 
-bool LoreDurableStore::Private::recoverInterruptedCommit(Error *error)
-{
-    if (!QFileInfo::exists(commitMarkerPath())) {
-        return true;
-    }
-    if (!QFileInfo::exists(commitBackupPath())) {
-        detail::setError(error, ErrorCode::CorruptData,
-                 QStringLiteral("The interrupted-commit backup is missing at %1.")
-                     .arg(commitBackupPath()));
-        return false;
-    }
-    if (!detail::withTransientRetries([this] { return QDir(lorePath()).removeRecursively(); })
-        || !detail::withTransientRetries(
-            [this] { return QDir().rename(commitBackupPath(), lorePath()); })
-        || !detail::withTransientRetries([this] { return QFile::remove(commitMarkerPath()); })) {
-        detail::setError(error, ErrorCode::PermissionDenied,
-                 QStringLiteral("Could not restore the repository after an interrupted commit."));
-        return false;
-    }
-    repairedOnOpen = true;
-    return true;
-}
-
-bool LoreDurableStore::Private::prepareCommitRecovery(Error *error)
-{
-    const bool backedUp =
-        detail::withTransientRetries([this] { return detail::copyDirectory(lorePath(), commitBackupPath()); });
-    if (!backedUp) {
-        detail::setError(error, ErrorCode::Internal,
-                 QStringLiteral("Could not back up the repository before committing."));
-        return false;
-    }
-
-    QSaveFile marker(commitMarkerPath());
-    if (!marker.open(QIODevice::WriteOnly)
-        || marker.write(kCommitMarkerContents) != qint64(sizeof(kCommitMarkerContents) - 1)
-        || !marker.commit()) {
-        detail::removeDirectoryContents(commitBackupPath());
-        detail::setError(error, ErrorCode::Internal,
-                 QStringLiteral("Could not mark the repository commit as in progress."));
-        return false;
-    }
-    return true;
-}
-
-bool LoreDurableStore::Private::clearCommitRecovery()
-{
-    // The marker goes first and its removal is the part that matters: while it
-    // exists, the next open rolls the repository back to the backup taken
-    // before this commit. A commit that is already durable must never be undone
-    // because a scanner held the marker open for a moment.
-    const bool markerRemoved =
-        detail::withTransientRetries([this] { return !QFileInfo::exists(commitMarkerPath())
-                                             || QFile::remove(commitMarkerPath()); });
-    detail::withTransientRetries([this] { return QDir(commitBackupPath()).removeRecursively(); });
-    return markerRemoved;
-}
-
 LoreDurableStore::LoreDurableStore(QString storePath)
     : d(std::make_unique<Private>(std::move(storePath)))
 {
@@ -181,11 +122,8 @@ bool LoreDurableStore::open(Error *error)
 
     d->repositoryPathUtf8 = detail::nativePath(d->repositoryPath());
 
-    // Exactly one process may write a library. LORE 0.8.5 does not serialise
-    // concurrent writers safely on its own: two processes committing at once
-    // can leave its local store needing repair, so pimio keeps them apart
-    // instead of discovering the damage afterwards. A second process gets a
-    // clear conflict rather than a corrupt library.
+    // Exactly one pimio process may write a library. A second process gets a
+    // clear conflict rather than racing repository and staging-area changes.
     d->writerLock = std::make_unique<QLockFile>(d->storePath + QStringLiteral("/.pimio-writer.lock"));
     d->writerLock->setStaleLockTime(0);
     if (!d->writerLock->tryLock(0)) {
@@ -201,11 +139,6 @@ bool LoreDurableStore::open(Error *error)
                  QStringLiteral("Another process is already using the library at %1.")
                      .arg(d->storePath),
                  context);
-        return false;
-    }
-
-    if (!d->recoverInterruptedCommit(error)) {
-        d->writerLock.reset();
         return false;
     }
 

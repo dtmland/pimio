@@ -74,11 +74,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     std::sort(stagedFiles.begin(), stagedFiles.end());
     std::sort(tombstoneFiles.begin(), tombstoneFiles.end());
 
-    // The rollback snapshot must describe the last committed state.
-    if (!d->prepareCommitRecovery(error)) {
-        return std::nullopt;
-    }
-
     // Apply tombstone deletions to the checkout first so that fileStage(scan=1)
     // picks them up as removals.
     const QDir staging(d->stagingPath());
@@ -97,7 +92,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         const QFileInfo targetInfo(target);
         if (!QDir().mkpath(targetInfo.absolutePath())) {
             d->restoreCheckoutToCommittedState(nullptr);
-            d->clearCommitRecovery();
             detail::setError(error, ErrorCode::PermissionDenied,
                      QStringLiteral("Could not create %1.").arg(targetInfo.absolutePath()));
             return std::nullopt;
@@ -105,7 +99,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
         QFile::remove(target);
         if (!QFile::copy(stagedFile, target)) {
             d->restoreCheckoutToCommittedState(nullptr);
-            d->clearCommitRecovery();
             detail::setError(error, ErrorCode::OutOfSpace,
                      QStringLiteral("Could not copy the staged record %1 into the checkout.")
                          .arg(relative));
@@ -127,7 +120,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     api.fileStage(&args, &stageArgs, stageOperation.config());
     if (stageOperation.status != 0) {
         d->restoreCheckoutToCommittedState(nullptr);
-        d->clearCommitRecovery();
         detail::setError(error, mapFailure(stageOperation),
                  QStringLiteral("Could not stage the records: %1").arg(stageOperation.message),
                  failureContext(stageOperation, QStringLiteral("file_stage")));
@@ -165,7 +157,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     api.revisionCommit(&args, &commitArgs, commitOperation.config());
     if (commitOperation.status != 0 || commitOperation.checkpoints.isEmpty()) {
         d->restoreCheckoutToCommittedState(nullptr);
-        d->clearCommitRecovery();
         detail::setError(error, mapFailure(commitOperation),
                  QStringLiteral("The commit failed: %1").arg(commitOperation.message),
                  failureContext(commitOperation, QStringLiteral("revision_commit")));
@@ -190,14 +181,6 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     checkpoint.authorId = provenance.value(QStringLiteral("authorId")).toString();
     checkpoint.applicationVersion = core::versionString();
     checkpoint.parentId = parentId;
-
-    if (!d->clearCommitRecovery()) {
-        detail::setError(error, ErrorCode::Internal,
-                 QStringLiteral("The commit succeeded but the rollback marker at %1 could not be "
-                                "removed.")
-                     .arg(d->commitMarkerPath()));
-        return checkpoint;
-    }
 
     if (!detail::removeDirectoryContents(d->stagingPath())) {
         detail::setError(error, ErrorCode::Internal,

@@ -15,7 +15,7 @@
 # See docs/dependency-bom.md for the licence and redistribution record, and
 # docs/decisions/0001-lore-durable-store.md for the decisions this supports.
 
-set(PIMIO_LORE_VERSION "0.8.5" CACHE STRING
+set(PIMIO_LORE_VERSION "0.9.0" CACHE STRING
     "Pinned LORE release consumed by pimio. Changing this requires new checksums.")
 
 set(PIMIO_LORE_CACHE_DIR "${CMAKE_SOURCE_DIR}/.cache/lore" CACHE PATH
@@ -39,6 +39,17 @@ set(_pimio_lore_checksums_0.8.5
     "lore|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|c6fc47d0fa0706f8d979d039a665bc7fb5ed7a8a23e9e69abcd9cab052781134"
     "lore|aarch64-apple-darwin|tar.gz|fba4eafb123afe599b5d752121fb6a5da722f33b2a3da3390324b654d31dc74d"
     "lore|x86_64-pc-windows-msvc|zip|c213169d251b73feb3fdf1655b9b5e6717a6a862762825918cc318a570018ded"
+)
+
+set(_pimio_lore_checksums_0.9.0
+    "liblore|x86_64-unknown-linux-gnu|tar.gz|eb99e7a3deaf624d12fdea5018c98e3f505ee799dbcb9d21a45a1efffc052647"
+    "liblore|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|7bd16b0ee594ee2711af2aa93edd3412268c173ab0fca9362b7e254e66a69671"
+    "liblore|aarch64-apple-darwin|tar.gz|9f7fd72f20391b235c349b35f392c2391a0f5eeb675b7ff9d33656b975311bf7"
+    "liblore|x86_64-pc-windows-msvc|zip|fb70645bacb8c64b4b305ff76fe7ba8ca296a42c866ca3aa61148a8e219e70b4"
+    "lore|x86_64-unknown-linux-gnu|tar.gz|05a1890406ff400d265e43c58afef4da2fdcb23642483766eb35bb0d4b904a5a"
+    "lore|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|a2568a8f6962d9c9d05db87c462aaaebb1e888536912eaec1cc4cc0289f640e1"
+    "lore|aarch64-apple-darwin|tar.gz|f3ede7e9c73a1750543bc5e63d36e173aa5e784e412115abb4464fc430b60336"
+    "lore|x86_64-pc-windows-msvc|zip|a75728486e8c93e1dd0eba4fb428f701cb17150a9ec00fac4be634146e793f22"
 )
 
 # Maps the host to the LORE target triple. An unmapped host is not an error:

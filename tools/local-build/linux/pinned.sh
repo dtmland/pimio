@@ -11,7 +11,7 @@ PIMIO_QT_ARCH=linux_gcc_64
 # required Qt component Multimedia".
 PIMIO_QT_MODULES="qtmultimedia qtimageformats"
 PIMIO_AQTINSTALL_VERSION=3.3.0
-PIMIO_LORE_VERSION=0.8.5
+PIMIO_LORE_VERSION=0.9.0
 PIMIO_LOCAL_IMAGE=pimio-local-build-linux:ubuntu-24.04-qt-6.8.3
 
 pimio_repository_root() {
