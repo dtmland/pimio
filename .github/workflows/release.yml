@@ -360,7 +360,7 @@ jobs:
           exit $status
 
       - name: Upload binary archive artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binary-archive-${{ matrix.name }}
           path: pimio-${{ github.ref_name }}-${{ runner.os }}-binaries.${{ matrix.archive }}
