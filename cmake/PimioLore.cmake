@@ -178,7 +178,7 @@ endfunction()
 #   PIMIO_LORE_INCLUDE_DIR         directory holding lore.h
 #   PIMIO_LORE_SHARED_LIBRARY      liblore.so / liblore.dylib / lore.dll
 #   PIMIO_LORE_CLI                 the lore CLI, or empty when unavailable
-#   PIMIO_LORE_SERVER              loreserver, when its opt-in tests are enabled
+#   PIMIO_LORE_SERVER              loreserver, when its contract test is enabled
 #   PIMIO_LORE_UNAVAILABLE_REASON  human-readable reason when not found
 function(pimio_acquire_lore)
     set(PIMIO_LORE_FOUND FALSE PARENT_SCOPE)

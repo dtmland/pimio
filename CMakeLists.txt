@@ -51,7 +51,7 @@ option(PIMIO_WITH_LORE "Acquire LORE and build the LORE-backed durable store" ON
 option(PIMIO_REQUIRE_LORE
     "Fail configuration when LORE is enabled but cannot be acquired" OFF)
 option(PIMIO_ENABLE_LORE_SERVER_TESTS
-    "Acquire loreserver and register the opt-in client/server promotion gate" OFF)
+    "Acquire loreserver and register the client/server promotion contract test" OFF)
 
 # The supported Qt baseline is recorded in docs/supported-platforms.md.
 set(PIMIO_QT_MINIMUM_VERSION 6.4)

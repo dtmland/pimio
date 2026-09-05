@@ -38,13 +38,13 @@ QT_QPA_PLATFORM=offscreen ./pimio --self-check   # pimio.bat --self-check on Win
 ./pimio-doctor                                    # pimio-doctor.ps1 on Windows
 ```
 
-### Opt-in LORE server promotion gate
+### LORE server promotion contract
 
-`lore.server_promotion` is retained as an automated client/server contract
-gate, but is not part of the standard Darkroom run while its LORE 0.9.0 expected
-failures remain. It acquires the checksum-verified `loreserver`, launches an
-unauthenticated loopback-only server with isolated configuration and storage,
-and removes the topology after the run:
+`lore.server_promotion` is part of the standard cross-platform CI run. CI
+enables it with `PIMIO_ENABLE_LORE_SERVER_TESTS=ON`; local builds may enable it
+with the same option. It acquires the checksum-verified `loreserver`, launches
+an unauthenticated loopback-only server with isolated configuration and
+storage, and removes the topology after the run:
 
 ```
 cmake --preset default -DPIMIO_ENABLE_LORE_SERVER_TESTS=ON
@@ -55,9 +55,10 @@ ctest --test-dir build/default -R '^lore.server_promotion$' -V
 After adding identity preflight and the no-remote attachment round trip, five
 consecutive Linux measurements took 4.03–4.17 seconds of CTest wall time
 (median 4.06 seconds; internal topology median 3.107 seconds). Runtime would not
-prevent adding it to CI. Keep it opt-in until the expected failures documented
-under Increment 7.8b are resolved; an upstream fix produces an unexpected pass
-and forces the evidence to be reviewed.
+prevent adding it to CI. The interrupted-push and raw LORE identity defects are
+QTest expected failures, so they preserve evidence without failing the suite.
+An upstream fix produces an unexpected pass and forces the evidence to be
+reviewed.
 
 ## Tests B — Studio
 

@@ -448,8 +448,8 @@ This gate blocks v1 release architecture acceptance, not ordinary local feature
 work. Mirror/synchronize semantics beyond the initial promotion remain a v2
 entry gate.
 
-**Outcome (LORE 0.9.0): architecture accepted with a guarded promotion
-path.** The supported
+**Outcome (LORE 0.9.0): architecture and user-facing promotion accepted with
+an alpha-stage exception.** The supported
 known-remote path can preserve the pimio library id, records, current bytes, and
 revision history: create offline with the future URL, create the remote
 repository from a disposable worktree with the same repository id, push, clone,
@@ -460,7 +460,7 @@ and query history online once to hydrate its revision state and metadata.
   the registered and local IDs, and stop before push on a mismatch;
 - killing the client during the initial push after transfer begins can leave
   the remote branch created, and retry then fails because that branch exists.
-  This remains the one unmitigated release gate; and
+  This remains an upstream defect accepted during pimio's alpha period; and
 - `repository config` has no public setter, but LORE documents manual editing of
   `.lore/config.toml`. Atomically setting `remote_url`, then performing the same
   identity preflight, push, clone, and content checks succeeds for a no-remote
@@ -475,15 +475,16 @@ full-history mirror option.
 The retained `lore.server_promotion` gate records the two dependency defects as
 QTest expected failures, verifies pimio's identity preflight, and exercises the
 documented-format attach fallback end to end. This is sufficient to accept the
-local-first architecture, because v1 does not expose promotion. A future
-user-facing promotion operation remains blocked until interrupted initial push
-is retryable or has a proven non-destructive recovery path.
+local-first architecture and expose promotion now. The application registers
+the local repository identity, verifies the remote identity, atomically attaches
+the remote, and pushes through `liblore`. It disables promotion during scans and
+warns that an interrupted initial push may require server-side repair.
 
 After adding identity preflight and the no-remote attachment round trip, the
-opt-in gate completed five consecutive Linux runs in 4.03–4.17 seconds of CTest
+gate completed five consecutive Linux runs in 4.03–4.17 seconds of CTest
 wall time (median 4.06 seconds; internal topology median 3.107 seconds). Runtime
-is comfortably small for CI; the unresolved interrupted-push contract, not
-duration, is why this remains opt-in.
+is comfortably small for CI. The expected failures preserve the known-defect
+evidence without stopping the standard cross-platform run.
 
 ## Increment 7.8c — Storage-Model Decision Revisit
 

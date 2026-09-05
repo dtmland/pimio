@@ -106,6 +106,7 @@ jobs:
         run: >-
           cmake --preset default
           -DPIMIO_REQUIRE_LORE=ON
+          -DPIMIO_ENABLE_LORE_SERVER_TESTS=ON
           -DPIMIO_ENABLE_FAILING_SELFTEST=${{ inputs.failing_selftest && 'ON' || 'OFF' }}
 
       - name: Report the acquired LORE version

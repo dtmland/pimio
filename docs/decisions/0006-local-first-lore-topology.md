@@ -1,7 +1,7 @@
 # 0006 — Local-first LORE topology and recovery ownership
 
-Status: **accepted local-first direction; promotion architecture accepted with
-the user-facing operation gated on interrupted-push recovery.**
+Status: **accepted; user-facing promotion enabled with the interrupted-push
+defect accepted during alpha.**
 
 ## Decision
 
@@ -79,11 +79,13 @@ branch did not provide a complete, byte-readable clone. The local origin remains
 writable, but promotion cannot safely continue without server-side repair or an
 upstream fix.
 
-The local-first architecture is therefore accepted: the ordinary path works,
-identity can be guarded, and attachment has a documented-format fallback. This
-is not approval to expose promotion in v1. A user-facing promotion operation
-must remain disabled until interrupted-push retry or a non-destructive recovery
-procedure passes the complete contract gate.
+The local-first architecture and user-facing promotion are therefore accepted:
+the ordinary path works, identity is guarded, and attachment has a
+documented-format fallback. During the alpha pre-release period, the remaining
+interrupted-push defect is an explicitly accepted upstream risk rather than a
+shipping gate. The UI warns that an interrupted first push may require
+server-side repair. The contract test retains the expected failure so an
+upstream fix becomes an unexpected pass that must be reviewed.
 
 ## History hydration and retention
 
@@ -120,8 +122,8 @@ upstream reports are in
 
 - The v1 executable and release archive contain `liblore`, not `loreserver`.
 - v2 still introduces the headless pimio Server and ordinary remote operation.
-- The v1 promotion gate validates storage portability, not a preliminary pimio
-  Server product or remote user interface.
+- The desktop UI can promote an idle local Library to a user-supplied LORE URL;
+  it does not package a server or implement background synchronization.
 - The managed-originals decision is reopened because its principal no-go reason
   was the whole-store snapshot. Checkout/store duplication still needs an
   explicit product decision.
