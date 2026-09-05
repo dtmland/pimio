@@ -115,10 +115,14 @@ platform. While pimio pins LORE 0.9.0, repository reopen failures immediately
 following the deliberate mid-commit process kill are logged with their delay and
 diagnostic, then reported as a skipped test after the sweep completes instead of
 failing CI. Observed diagnostics include the zero-byte level header documented
-above and `Could not restore the checkout: Not found`. The allowance is limited
-to LORE 0.9.0 and this fault-injection boundary: setup failures and every
-consistency or subsequent-commit failure after a successful reopen remain
-blocking.
+above and `Could not restore the checkout: Not found`. A macOS arm64 run also
+reopened with one revision but all 26 records from the interrupted batch visible,
+the same revision/index disagreement previously observed with 0.8.5. That exact
+outcome is observational only when the helper was killed; the test still verifies
+that every exposed record is readable and that the repository accepts another
+commit. The allowance is limited to LORE 0.9.0 and this fault-injection boundary:
+setup failures, every other revision/record combination, corruption, and
+subsequent-commit failures remain blocking.
 
 When a new LORE release is available:
 
