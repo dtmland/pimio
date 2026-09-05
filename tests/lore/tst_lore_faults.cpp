@@ -6,7 +6,6 @@
 #include "pimio/testing/qtest_printers.h"
 
 #include <QCoreApplication>
-#include <QDirIterator>
 #include <QElapsedTimer>
 #include <QProcess>
 #include <QTemporaryDir>
@@ -15,26 +14,6 @@
 using namespace pimio::core;
 using namespace pimio::lore;
 using namespace pimio::testing;
-
-#ifdef Q_OS_WIN
-namespace {
-
-bool hasUnmarkedFanOutGroup(const QString &repositoryPath)
-{
-    const QString indexRoot = repositoryPath + QStringLiteral("/.lore/immutable/index");
-    QDirIterator buckets(indexRoot, QStringList{QStringLiteral("index_*")}, QDir::Files,
-                         QDirIterator::Subdirectories);
-    while (buckets.hasNext()) {
-        const QFileInfo bucket(buckets.next());
-        if (!QFileInfo::exists(bucket.absolutePath() + QStringLiteral("/level"))) {
-            return true;
-        }
-    }
-    return false;
-}
-
-} // namespace
-#endif
 
 void TestLoreFaults::initTestCase()
 {

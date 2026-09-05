@@ -42,9 +42,12 @@ the packstore. The fix is already upstream and the nightly release notes say it
 prevents new damage but does not repair an affected store.
 
 There is no need to submit a duplicate ticket. Until a release containing that
-fix replaces 0.9.0, the Windows test treats this exact dependency error as a
-skip only when the fresh store also contains an unmarked fan-out group. Other
-errors and the same test on Linux and macOS remain failures.
+fix replaces 0.9.0, tests tolerate this exact dependency error only when the
+fresh store also contains an unmarked fan-out group. The corrupt-checkout test
+has observed it on Windows, where it skips, and the server-promotion test has
+observed it on Linux after a deliberately invalid raw push, where it records the
+failure and continues the independent valid-promotion checks. Other errors
+remain failures.
 
 ## Issue 1 — interrupted write can leave an unreadable pending marker
 

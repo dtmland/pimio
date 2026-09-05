@@ -1,14 +1,14 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-05 01:12:27 UTC
+- Generated: 2026-09-05 13:49:15 UTC
 - Repository: pimio
-- Commit: e5dd06f
+- Commit: f196788
 
 ## Summary
 - Included files: 266
-- Total lines: 39084
-- Code lines: 29715
-- Blank lines: 6056
+- Total lines: 39091
+- Code lines: 29724
+- Blank lines: 6054
 - Comment lines: 3313
 
 ## By language
@@ -56,8 +56,8 @@
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |
 | tests/lore/tst_lore_adapter.cpp | 462 | 361 | 77 | 24 |
 | src/metadata/src/tiff_reader.cpp | 455 | 395 | 41 | 19 |
+| tests/lore/tst_lore_server_promotion.cpp | 452 | 405 | 47 | 0 |
 | tests/scan/tst_scan_incremental_crud.cpp | 445 | 346 | 83 | 16 |
 | tests/app/tst_app_smoke.cpp | 443 | 360 | 62 | 21 |
-| tests/lore/tst_lore_server_promotion.cpp | 442 | 395 | 47 | 0 |
 | tests/core/tst_core_serialization.cpp | 421 | 347 | 62 | 12 |
 | tests/core/tst_core_contracts.cpp | 415 | 329 | 75 | 11 |

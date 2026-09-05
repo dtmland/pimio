@@ -206,9 +206,11 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
     result = runLore(mismatchRepository, {QStringLiteral("push")});
     const bool mismatchWasAccepted =
             result.exitCode == 0 && result.output.contains(QStringLiteral("Pushed revision"));
-    QEXPECT_FAIL("",
-                 "LORE 0.9 accepts a push whose repository ID differs from the registered ID.",
-                 Continue);
+    if (mismatchWasAccepted && loadedLibraryVersion() == QLatin1String("0.9.0")) {
+        QEXPECT_FAIL("",
+                     "LORE 0.9 accepts a push whose repository ID differs from the registered ID.",
+                     Continue);
+    }
     QVERIFY2(!mismatchWasAccepted, "A remote with a different repository ID accepted the push.");
     QCOMPARE(repositoryId(mismatchRepository), mismatchOriginId);
 
@@ -219,8 +221,16 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
         QVERIFY(mismatchOrigin.stage(
                 makeLoreRecord(QStringLiteral("mismatch-2"), QStringLiteral("after mismatched push")),
                 &error));
-        QVERIFY2(mismatchOrigin.commit(QStringLiteral("Post-mismatch write"), &error).has_value(),
-                 qPrintable(error.message()));
+        const auto checkpoint = mismatchOrigin.commit(QStringLiteral("Post-mismatch write"), &error);
+        if (!checkpoint) {
+            const bool knownFanOutFailure =
+                    loadedLibraryVersion() == QLatin1String("0.9.0")
+                    && error.message().contains(QLatin1String("Address not found:"))
+                    && hasUnmarkedFanOutGroup(mismatchOrigin.repositoryPath());
+            QVERIFY2(knownFanOutFailure, qPrintable(error.message()));
+            qWarning("Observed LORE 0.9.0 delayed-flush fan-out failure after the raw push: %s",
+                     qPrintable(error.message()));
+        }
     }
 
     QVERIFY2(server.reset(&serverError), qPrintable(serverError));
