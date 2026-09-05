@@ -136,7 +136,12 @@ int main(int argc, char **argv)
     if (mode == QLatin1String("crash-during-commit")) {
         auto *watchdog = new Watchdog(delayMs);
         watchdog->start();
-        store.commit(QStringLiteral("Interrupted commit"), &error);
+        const auto checkpoint = store.commit(QStringLiteral("Interrupted commit"), &error);
+        if (!checkpoint) {
+            out << QStringLiteral("commit failed: %1\n").arg(error.message());
+            out.flush();
+            std::_Exit(6);
+        }
         // Reaching this line means the commit finished before the watchdog
         // fired. That is a legitimate outcome; the test tolerates both.
         out << QStringLiteral("commit completed before the watchdog fired\n");
