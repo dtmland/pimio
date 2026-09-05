@@ -44,7 +44,7 @@ jobs:
             runner: macos-15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install Linux native dependencies
         if: matrix.name == 'Linux'
