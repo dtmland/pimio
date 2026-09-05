@@ -25,7 +25,8 @@ bool acceptsInterruptedCommitOpenFailure(const QString &version)
 bool acceptsInterruptedCommitMismatch(const QString &version, qsizetype revisions,
                                       qsizetype records, bool interrupted)
 {
-    return version == QLatin1String("0.9.0") && interrupted && revisions == 1 && records == 26;
+    return version == QLatin1String("0.9.0") && interrupted
+            && ((revisions == 1 && records == 26) || (revisions == 2 && records == 1));
 }
 
 } // namespace
@@ -92,8 +93,9 @@ void TestLoreFaults::lore090InterruptedCommitFailuresAreObservational()
     QVERIFY(acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.0")));
     QVERIFY(!acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.1")));
     QVERIFY(acceptsInterruptedCommitMismatch(QStringLiteral("0.9.0"), 1, 26, true));
+    QVERIFY(acceptsInterruptedCommitMismatch(QStringLiteral("0.9.0"), 2, 1, true));
     QVERIFY(!acceptsInterruptedCommitMismatch(QStringLiteral("0.9.1"), 1, 26, true));
-    QVERIFY(!acceptsInterruptedCommitMismatch(QStringLiteral("0.9.0"), 2, 1, true));
+    QVERIFY(!acceptsInterruptedCommitMismatch(QStringLiteral("0.9.0"), 2, 26, true));
     QVERIFY(!acceptsInterruptedCommitMismatch(QStringLiteral("0.9.0"), 1, 26, false));
 }
 

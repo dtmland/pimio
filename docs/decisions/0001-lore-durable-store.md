@@ -201,12 +201,12 @@ than continuing to emulate storage transactions in pimio.
 `killedProcessAfterCommitKeepsTheRevisionItReported` is the regression test; it
 failed on every attempt before the flush was added.
 
-The `1 revision / 26 records` direction was observed again with LORE 0.9.0 on
-macOS arm64 when the process was killed inside the commit rather than after a
-successful return. While 0.9.0 remains pinned, the fault gate records only that
-exact killed-process outcome as observational and continues checking that every
-record is readable and the repository accepts another commit. Other mismatches
-remain blocking.
+Both directions were observed again with LORE 0.9.0 when the process was killed
+inside the commit rather than after a successful return: `1 revision / 26
+records` on macOS arm64 and `2 revisions / 1 record` on Linux. While 0.9.0
+remains pinned, the fault gate records only those exact killed-process outcomes
+as observational and continues checking that every record is readable and the
+repository accepts another commit. Other mismatches remain blocking.
 
 The ordering of the last two steps was wrong for the same reason. The staging
 area used to be cleared before the rollback marker was removed, so a kill in
