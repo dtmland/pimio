@@ -30,10 +30,24 @@ private slots:
     void historyIsNewestFirstAndCarriesCommitMessages();
     void libraryIdentitySurvivesMoveAndCheckpointsCarryProvenance();
     void externalCliCommitChangesTheStateToken();
+    void promotionRejectsInvalidServerUrl();
     void unicodeAndOpaqueIdentifiersRoundTrip();
     void commitCostGrowsWithBatchSize();
     void commitsDoNotCopyTheRepository();
 };
+
+void TestLoreAdapter::promotionRejectsInvalidServerUrl()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    LoreDurableStore store(temporary.filePath(QStringLiteral("store")));
+    Error error;
+    QVERIFY2(store.open(&error), qPrintable(error.message()));
+    QVERIFY(!store.promoteToServer(QStringLiteral("file:///not-a-server"), &error));
+    PIMIO_COMPARE_ENUM(error.code(), ErrorCode::InvalidArgument);
+}
 
 void TestLoreAdapter::libraryReportsItsVersion()
 {

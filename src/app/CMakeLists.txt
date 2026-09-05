@@ -44,6 +44,7 @@ qt_add_qml_module(pimio_app_lib
         qml/CameraIcon.qml
         qml/Main.qml
         qml/MediaTile.qml
+        qml/PromotionDialog.qml
         qml/ScrollController.qml
         qml/SettingsDialog.qml
         qml/TopBar.qml

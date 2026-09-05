@@ -147,6 +147,7 @@ public:
     QStringList libraryPaths;
     bool prepared = false;
     bool started = false;
+    QString promotionStatus;
 };
 
 LibrarySession::LibrarySession(QObject *parent)
@@ -163,6 +164,45 @@ LibrarySession::LibrarySession(QObject *parent)
 }
 
 LibrarySession::~LibrarySession() = default;
+
+bool LibrarySession::canPromote() const
+{
+#ifdef PIMIO_HAVE_LORE
+    return d->loreStore && d->loreStore->isAvailable() && d->activity
+           && !d->activity->isScanning();
+#else
+    return false;
+#endif
+}
+
+QString LibrarySession::promotionStatus() const
+{
+    return d->promotionStatus;
+}
+
+bool LibrarySession::promoteToServer(const QString &remoteUrl)
+{
+#ifndef PIMIO_HAVE_LORE
+    Q_UNUSED(remoteUrl)
+    d->promotionStatus = tr("This build does not include LORE server support.");
+    emit promotionStatusChanged();
+    return false;
+#else
+    if (!canPromote()) {
+        d->promotionStatus = tr("Wait for the current library scan to finish.");
+        emit promotionStatusChanged();
+        return false;
+    }
+
+    core::Error error;
+    const bool promoted = d->loreStore->promoteToServer(remoteUrl.trimmed(), &error);
+    d->promotionStatus =
+            promoted ? tr("Library promoted successfully.")
+                     : tr("Promotion failed: %1").arg(error.message());
+    emit promotionStatusChanged();
+    return promoted;
+#endif
+}
 
 namespace {
 
@@ -260,6 +300,9 @@ void LibrarySession::prepare(const QStringList &libraryPaths, QQmlApplicationEng
     engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), d->model.get());
     engine.rootContext()->setContextProperty(QStringLiteral("libraryActivity"),
                                              d->activity.get());
+    engine.rootContext()->setContextProperty(QStringLiteral("librarySession"), this);
+    connect(d->activity.get(), &LibraryActivity::scanningChanged, this,
+            &LibrarySession::promotionAvailabilityChanged);
 
     // Settings drive the model directly rather than through QML: the
     // dialog is one way to change a setting, not the only one, and the sort
@@ -316,6 +359,7 @@ void LibrarySession::start()
         return;
     }
     d->store = d->loreStore.get();
+    emit promotionAvailabilityChanged();
 
     core::Error descriptorError;
     auto descriptor = d->store->libraryDescriptor(&descriptorError);

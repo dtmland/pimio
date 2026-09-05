@@ -14,6 +14,7 @@ Rectangle {
     property int sortKey: 0
     property bool sortDescending: false
     property var settingsDialog: null
+    property var promotionDialog: null
 
     height: 48
     color: "#2b2b2b"
@@ -99,6 +100,14 @@ Rectangle {
             value: root.tileSize
             onMoved: if (root.settings)
                          root.settings.tileSize = Math.round(value)
+        }
+
+        ToolButton {
+            objectName: "promotionButton"
+            anchors.verticalCenter: parent.verticalCenter
+            text: qsTr("Promote")
+            enabled: root.promotionDialog && root.promotionDialog.canPromote
+            onClicked: root.promotionDialog.open()
         }
 
         ToolButton {

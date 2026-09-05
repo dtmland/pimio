@@ -195,6 +195,13 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
     QCOMPARE(registeredId, mismatchedId);
     QVERIFY2(registeredId != mismatchOriginId,
              "Promotion preflight did not detect the repository ID mismatch.");
+    {
+        LoreDurableStore mismatchOrigin(mismatchStore);
+        Error error;
+        QVERIFY2(mismatchOrigin.open(&error), qPrintable(error.message()));
+        QVERIFY(!mismatchOrigin.promoteToServer(remoteUrl, &error));
+        QCOMPARE(error.code(), ErrorCode::Conflict);
+    }
 
     result = runLore(mismatchRepository, {QStringLiteral("push")});
     const bool mismatchWasAccepted =
@@ -399,12 +406,12 @@ void TestLoreServerPromotion::noRemoteAttachesThroughDocumentedConfig()
     QCOMPARE(repositoryId(repositoryPath), idBefore);
 
     const QString remoteUrl = server.repositoryUrl(QStringLiteral("pimio-no-remote"));
-    QString registrationOutput;
-    QVERIFY2(createRemoteRegistration(temporary.filePath(QStringLiteral("registration")),
-                                     remoteUrl, idBefore, &registrationOutput),
-             qPrintable(registrationOutput));
-    QString attachError;
-    QVERIFY2(attachRemote(repositoryPath, remoteUrl, &attachError), qPrintable(attachError));
+    {
+        LoreDurableStore store(storePath);
+        Error error;
+        QVERIFY2(store.open(&error), qPrintable(error.message()));
+        QVERIFY2(store.promoteToServer(remoteUrl, &error), qPrintable(error.message()));
+    }
 
     result = runLore(repositoryPath,
                     {QStringLiteral("repository"), QStringLiteral("config"),
@@ -412,9 +419,6 @@ void TestLoreServerPromotion::noRemoteAttachesThroughDocumentedConfig()
     QVERIFY2(result.succeeded, qPrintable(result.output));
     QCOMPARE(result.output.trimmed(), remoteUrl);
     QCOMPARE(remoteRepositoryId(repositoryPath, remoteUrl), idBefore);
-
-    result = runLore(repositoryPath, {QStringLiteral("push")}, 300'000);
-    QVERIFY2(result.succeeded, qPrintable(result.output));
 
     const QString cloneStore = temporary.filePath(QStringLiteral("clone-store"));
     QVERIFY(QDir().mkpath(cloneStore));

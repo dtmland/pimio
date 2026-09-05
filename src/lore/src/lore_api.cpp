@@ -95,6 +95,7 @@ LoreApi::LoreApi()
 
     repositoryCreate = reinterpret_cast<RepositoryCreateFn>(resolve("lore_repository_create"));
     repositoryStatus = reinterpret_cast<RepositoryStatusFn>(resolve("lore_repository_status"));
+    repositoryInfo = reinterpret_cast<RepositoryInfoFn>(resolve("lore_repository_info"));
     repositoryRelease = reinterpret_cast<RepositoryReleaseFn>(resolve("lore_repository_release"));
     repositoryFlush = reinterpret_cast<RepositoryFlushFn>(resolve("lore_repository_flush"));
     fileStage = reinterpret_cast<FileStageFn>(resolve("lore_file_stage"));
@@ -102,6 +103,7 @@ LoreApi::LoreApi()
     fileReset = reinterpret_cast<FileResetFn>(resolve("lore_file_reset"));
     revisionCommit = reinterpret_cast<RevisionCommitFn>(resolve("lore_revision_commit"));
     revisionHistory = reinterpret_cast<RevisionHistoryFn>(resolve("lore_revision_history"));
+    branchPush = reinterpret_cast<BranchPushFn>(resolve("lore_branch_push"));
 
     m_loaded = m_loadError.isEmpty();
 }

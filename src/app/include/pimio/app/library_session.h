@@ -40,6 +40,8 @@ namespace pimio::app {
 class LibrarySession : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(bool canPromote READ canPromote NOTIFY promotionAvailabilityChanged)
+    Q_PROPERTY(QString promotionStatus READ promotionStatus NOTIFY promotionStatusChanged)
 
 public:
     explicit LibrarySession(QObject *parent = nullptr);
@@ -64,6 +66,17 @@ public:
     /// synchronous. The application therefore calls this only after its first
     /// window frame has been presented.
     void start();
+
+    bool canPromote() const;
+    QString promotionStatus() const;
+
+    /// Promotes the open local library to an existing or new LORE server URL.
+    /// This is disabled while a scan is mutating the durable store.
+    Q_INVOKABLE bool promoteToServer(const QString &remoteUrl);
+
+signals:
+    void promotionAvailabilityChanged();
+    void promotionStatusChanged();
 
 private:
     /// Pushes the current user settings (sort order, tile size, and scan

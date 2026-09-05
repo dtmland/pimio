@@ -42,6 +42,9 @@ public:
     using RepositoryStatusFn = int32_t (*)(const lore_global_args_t *,
                                            const lore_repository_status_args_t *,
                                            lore_event_callback_config_t);
+    using RepositoryInfoFn = int32_t (*)(const lore_global_args_t *,
+                                         const lore_repository_info_args_t *,
+                                         lore_event_callback_config_t);
     using RepositoryReleaseFn = int32_t (*)(const lore_global_args_t *,
                                             const lore_repository_release_args_t *,
                                             lore_event_callback_config_t);
@@ -63,9 +66,13 @@ public:
     using RevisionHistoryFn = int32_t (*)(const lore_global_args_t *,
                                           const lore_revision_history_args_t *,
                                           lore_event_callback_config_t);
+    using BranchPushFn = int32_t (*)(const lore_global_args_t *,
+                                     const lore_branch_push_args_t *,
+                                     lore_event_callback_config_t);
 
     RepositoryCreateFn repositoryCreate = nullptr;
     RepositoryStatusFn repositoryStatus = nullptr;
+    RepositoryInfoFn repositoryInfo = nullptr;
     RepositoryReleaseFn repositoryRelease = nullptr;
     RepositoryFlushFn repositoryFlush = nullptr;
     FileStageFn fileStage = nullptr;
@@ -73,6 +80,7 @@ public:
     FileResetFn fileReset = nullptr;
     RevisionCommitFn revisionCommit = nullptr;
     RevisionHistoryFn revisionHistory = nullptr;
+    BranchPushFn branchPush = nullptr;
 
 private:
     LoreApi();

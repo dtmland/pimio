@@ -22,6 +22,7 @@ private slots:
     void tileSizeSettingResizesTheGridCells();
     void gridScrollBoundsFollowLayoutOriginChanges();
     void settingsDialogExposesStoredAndSessionSettings();
+    void promotionDialogExplainsAlphaLimitation();
     void previewArrowKeysFollowTheGridOrder();
     void aThumbnailTheProviderCannotServeIsAskedForAgain();
     void aScanInProgressShowsActivity();
