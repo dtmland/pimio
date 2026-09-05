@@ -46,7 +46,7 @@ void TestLoreAdapter::promotionRejectsInvalidServerUrl()
     Error error;
     QVERIFY2(store.open(&error), qPrintable(error.message()));
     QVERIFY(!store.promoteToServer(QStringLiteral("file:///not-a-server"), &error));
-    PIMIO_COMPARE_ENUM(error.code(), ErrorCode::InvalidArgument);
+    PIMIO_COMPARE_ENUM(error.code(), ErrorCode::Internal);
 }
 
 void TestLoreAdapter::libraryReportsItsVersion()

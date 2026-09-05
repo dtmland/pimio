@@ -27,7 +27,7 @@ Dialog {
             id: serverUrl
             objectName: "promotionServerUrl"
             Layout.fillWidth: true
-            placeholderText: qsTr("https://server.example/library")
+            placeholderText: qsTr("lore://server.example/library")
             inputMethodHints: Qt.ImhUrlCharactersOnly
         }
 

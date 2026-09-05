@@ -200,7 +200,7 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
         Error error;
         QVERIFY2(mismatchOrigin.open(&error), qPrintable(error.message()));
         QVERIFY(!mismatchOrigin.promoteToServer(remoteUrl, &error));
-        QCOMPARE(error.code(), ErrorCode::Conflict);
+        QVERIFY2(error.code() == ErrorCode::Conflict, qPrintable(error.message()));
     }
 
     result = runLore(mismatchRepository, {QStringLiteral("push")});

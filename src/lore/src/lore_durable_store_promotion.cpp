@@ -16,7 +16,7 @@ bool attachRemote(const QString &configPath, const QString &remoteUrl, core::Err
 {
     if (remoteUrl.contains(QLatin1Char('"')) || remoteUrl.contains(QLatin1Char('\n'))
         || remoteUrl.contains(QLatin1Char('\r'))) {
-        detail::setError(error, core::ErrorCode::InvalidArgument,
+        detail::setError(error, core::ErrorCode::Internal,
                          QStringLiteral("The server URL cannot be stored safely."));
         return false;
     }
@@ -71,11 +71,11 @@ bool LoreDurableStore::promoteToServer(const QString &remoteUrl, core::Error *er
     }
 
     const QUrl url(remoteUrl);
-    if (!url.isValid() || (url.scheme() != QLatin1String("http")
+    if (!url.isValid() || (url.scheme() != QLatin1String("lore")
                            && url.scheme() != QLatin1String("https"))
         || url.host().isEmpty()) {
-        detail::setError(error, core::ErrorCode::InvalidArgument,
-                         QStringLiteral("Enter a valid HTTP or HTTPS LORE repository URL."));
+        detail::setError(error, core::ErrorCode::Internal,
+                         QStringLiteral("Enter a valid lore:// or HTTPS LORE repository URL."));
         return false;
     }
 
@@ -88,13 +88,6 @@ bool LoreDurableStore::promoteToServer(const QString &remoteUrl, core::Error *er
             detail::setError(error, core::ErrorCode::Internal,
                              QStringLiteral("LORE did not report the local repository identity."));
         }
-        return false;
-    }
-
-    QTemporaryDir registration;
-    if (!registration.isValid()) {
-        detail::setError(error, core::ErrorCode::Internal,
-                         QStringLiteral("Could not create a temporary registration directory."));
         return false;
     }
 
@@ -118,38 +111,56 @@ bool LoreDurableStore::promoteToServer(const QString &remoteUrl, core::Error *er
         return false;
     }
 
-    const QString temporaryRepositoryPath =
-            registration.path() + QStringLiteral("/repository");
-    QDir().mkpath(temporaryRepositoryPath);
-    const QByteArray temporaryPath = QFile::encodeName(temporaryRepositoryPath);
-    const QByteArray idUtf8 = status.repositoryId.toUtf8();
-    lore_global_args_t registrationGlobals = connectedGlobals(temporaryPath);
-    lore_repository_create_args_t createArgs;
-    std::memset(&createArgs, 0, sizeof(createArgs));
-    createArgs.repository_url = loreString(urlUtf8);
-    createArgs.id = loreString(idUtf8);
+    if (preflight.status != 0) {
+        QTemporaryDir registration;
+        if (!registration.isValid()) {
+            detail::setError(
+                    error, core::ErrorCode::Internal,
+                    QStringLiteral("Could not create a temporary registration directory."));
+            return false;
+        }
 
-    Operation create;
-    api.repositoryCreate(&registrationGlobals, &createArgs, create.config());
-    if (create.status != 0) {
-        detail::setError(error, mapFailure(create),
-                         QStringLiteral("Could not register this library on the server: %1")
-                                 .arg(create.message),
-                         failureContext(create, QStringLiteral("lore_repository_create")));
-        return false;
-    }
+        const QString temporaryRepositoryPath =
+                registration.path() + QStringLiteral("/repository");
+        QDir().mkpath(temporaryRepositoryPath);
+        const QByteArray temporaryPath = QFile::encodeName(temporaryRepositoryPath);
+        const QByteArray idUtf8 = status.repositoryId.toUtf8();
+        lore_global_args_t registrationGlobals = connectedGlobals(temporaryPath);
+        lore_repository_create_args_t createArgs;
+        std::memset(&createArgs, 0, sizeof(createArgs));
+        createArgs.repository_url = loreString(urlUtf8);
+        createArgs.id = loreString(idUtf8);
 
-    Operation info;
-    api.repositoryInfo(&registrationGlobals, &infoArgs, info.config());
-    if (info.status != 0 || info.remoteRepositoryId != status.repositoryId) {
-        QJsonObject context = failureContext(info, QStringLiteral("lore_repository_info"));
-        context.insert(QStringLiteral("localRepositoryId"), status.repositoryId);
-        context.insert(QStringLiteral("remoteRepositoryId"), info.remoteRepositoryId);
-        detail::setError(error, core::ErrorCode::Conflict,
-                         QStringLiteral("The server repository identity does not match this "
-                                        "library."),
-                         context);
-        return false;
+        Operation create;
+        api.repositoryCreate(&registrationGlobals, &createArgs, create.config());
+        if (create.status != 0) {
+            lore_repository_release_args_t releaseArgs;
+            std::memset(&releaseArgs, 0, sizeof(releaseArgs));
+            Operation release;
+            api.repositoryRelease(&registrationGlobals, &releaseArgs, release.config());
+            detail::setError(error, mapFailure(create),
+                             QStringLiteral("Could not register this library on the server: %1")
+                                     .arg(create.message),
+                             failureContext(create, QStringLiteral("lore_repository_create")));
+            return false;
+        }
+
+        Operation info;
+        api.repositoryInfo(&registrationGlobals, &infoArgs, info.config());
+        lore_repository_release_args_t releaseArgs;
+        std::memset(&releaseArgs, 0, sizeof(releaseArgs));
+        Operation release;
+        api.repositoryRelease(&registrationGlobals, &releaseArgs, release.config());
+        if (info.status != 0 || info.remoteRepositoryId != status.repositoryId) {
+            QJsonObject context = failureContext(info, QStringLiteral("lore_repository_info"));
+            context.insert(QStringLiteral("localRepositoryId"), status.repositoryId);
+            context.insert(QStringLiteral("remoteRepositoryId"), info.remoteRepositoryId);
+            detail::setError(error, core::ErrorCode::Conflict,
+                             QStringLiteral("The server repository identity does not match this "
+                                            "library."),
+                             context);
+            return false;
+        }
     }
 
     const QString configPath = d->lorePath() + QStringLiteral("/config.toml");
