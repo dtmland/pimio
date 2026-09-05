@@ -17,9 +17,9 @@ using namespace pimio::testing;
 
 namespace {
 
-bool acceptsInterruptedCommitOpenFailure(const QString &version)
+bool acceptsInterruptedCommitOpenFailure(const QString &version, bool interrupted)
 {
-    return version == QLatin1String("0.9.0");
+    return version == QLatin1String("0.9.0") && interrupted;
 }
 
 bool acceptsInterruptedCommitMismatch(const QString &version, qsizetype revisions,
@@ -90,8 +90,9 @@ void TestLoreFaults::killedProcessBeforeCommitLeavesNoUncommittedStateVisible()
 
 void TestLoreFaults::lore090InterruptedCommitFailuresAreObservational()
 {
-    QVERIFY(acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.0")));
-    QVERIFY(!acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.1")));
+    QVERIFY(acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.0"), true));
+    QVERIFY(!acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.1"), true));
+    QVERIFY(!acceptsInterruptedCommitOpenFailure(QStringLiteral("0.9.0"), false));
     QVERIFY(acceptsInterruptedCommitMismatch(QStringLiteral("0.9.0"), 1, 26, true));
     QVERIFY(acceptsInterruptedCommitMismatch(QStringLiteral("0.9.0"), 2, 1, true));
     QVERIFY(!acceptsInterruptedCommitMismatch(QStringLiteral("0.9.1"), 1, 26, true));
@@ -134,7 +135,14 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
                       QStringLiteral("helper"), QString::number(delayMs)});
         QVERIFY(helper.waitForStarted(30'000));
         QVERIFY(helper.waitForFinished(120'000));
-        const bool wasInterrupted = helper.exitCode() != 0;
+        const bool wasInterrupted =
+                helper.exitStatus() == QProcess::NormalExit && helper.exitCode() == 9;
+        const bool completed =
+                helper.exitStatus() == QProcess::NormalExit && helper.exitCode() == 0;
+        QVERIFY2(wasInterrupted || completed,
+                 qPrintable(QStringLiteral("fault helper failed with exit code %1: %2")
+                                    .arg(helper.exitCode())
+                                    .arg(QString::fromLocal8Bit(helper.readAll()))));
         if (wasInterrupted) {
             ++interrupted;
         }
@@ -145,7 +153,7 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
         LoreDurableStore recovered(storePath);
         Error error;
         if (!recovered.open(&error)) {
-            if (acceptsInterruptedCommitOpenFailure(loadedLibraryVersion())) {
+            if (acceptsInterruptedCommitOpenFailure(loadedLibraryVersion(), wasInterrupted)) {
                 ++knownDependencyFailures;
                 qWarning("Observed LORE 0.9.0 interrupted-commit reopen failure at delay %d ms: %s",
                          delayMs,
