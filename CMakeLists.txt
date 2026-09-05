@@ -50,6 +50,8 @@ option(PIMIO_ENABLE_FAILING_SELFTEST
 option(PIMIO_WITH_LORE "Acquire LORE and build the LORE-backed durable store" ON)
 option(PIMIO_REQUIRE_LORE
     "Fail configuration when LORE is enabled but cannot be acquired" OFF)
+option(PIMIO_ENABLE_LORE_SERVER_TESTS
+    "Acquire loreserver and register the client/server promotion contract test" OFF)
 
 # The supported Qt baseline is recorded in docs/supported-platforms.md.
 set(PIMIO_QT_MINIMUM_VERSION 6.4)
@@ -78,7 +80,8 @@ endif()
 # report the version it used without re-deriving it.
 if(PIMIO_LORE_FOUND)
     file(WRITE "${CMAKE_BINARY_DIR}/lore-acquired.txt"
-        "version=${PIMIO_LORE_VERSION}\nlibrary=${PIMIO_LORE_SHARED_LIBRARY}\ncli=${PIMIO_LORE_CLI}\n")
+        "version=${PIMIO_LORE_VERSION}\nlibrary=${PIMIO_LORE_SHARED_LIBRARY}\n"
+        "cli=${PIMIO_LORE_CLI}\nserver=${PIMIO_LORE_SERVER}\n")
 else()
     file(WRITE "${CMAKE_BINARY_DIR}/lore-acquired.txt"
         "version=none\nreason=${PIMIO_LORE_UNAVAILABLE_REASON}\n")

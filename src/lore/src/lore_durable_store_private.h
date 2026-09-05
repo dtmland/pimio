@@ -47,6 +47,8 @@ public:
 
     QString committedRevision;
     QList<core::Checkpoint> checkpoints;
+    QString repositoryId;
+    QString remoteRepositoryId;
 
 private:
     static void dispatch(const lore_event_t *event, uint64_t context)
@@ -64,10 +66,14 @@ private:
             break;
         case LORE_EVENT_REPOSITORY_STATUS_REVISION:
             sawStatusRevision = true;
+            repositoryId = repositoryIdToHex(event->repository_status_revision.repository);
             currentRevision = hashToHex(event->repository_status_revision.revision);
             stagedRevision = isZeroHash(event->repository_status_revision.revision_staged)
                                  ? QString()
                                  : hashToHex(event->repository_status_revision.revision_staged);
+            break;
+        case LORE_EVENT_REPOSITORY_DATA:
+            remoteRepositoryId = repositoryIdToHex(event->repository_data.id);
             break;
         case LORE_EVENT_REPOSITORY_STATUS_FILE:
             ++reportedFileCount;
@@ -107,6 +113,12 @@ private:
     }
 
     QMutex m_mutex;
+
+    static QString repositoryIdToHex(const lore_repository_id_t &id)
+    {
+        const QByteArray bytes(reinterpret_cast<const char *>(id.data), sizeof(id.data));
+        return QString::fromLatin1(bytes.toHex());
+    }
 };
 
 /// Maps a LORE failure onto the stable pimio error vocabulary.

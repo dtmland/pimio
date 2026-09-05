@@ -93,6 +93,14 @@ public:
     const QString &storePath() const;
     QString repositoryPath() const;
 
+    /// Registers the local repository at \a remoteUrl, verifies that the
+    /// remote has the same immutable repository identity, attaches it
+    /// atomically, and pushes the current branch.
+    ///
+    /// A failed initial push may require server-side repair with LORE 0.9.0.
+    /// The remote remains attached so a future LORE release can retry it.
+    bool promoteToServer(const QString &remoteUrl, core::Error *error);
+
     // DurableStore
     bool isAvailable() const override;
     bool createLibrary(const QString &name, core::Error *error) override;

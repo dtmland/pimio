@@ -355,6 +355,23 @@ void TestAppSmoke::settingsDialogExposesStoredAndSessionSettings()
     QTRY_VERIFY(diagnostics->property("checked").toBool());
 }
 
+void TestAppSmoke::promotionDialogExplainsAlphaLimitation()
+{
+    QQmlApplicationEngine engine;
+    QVERIFY(pimio::app::loadMainQml(engine));
+
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    auto *dialog = window->findChild<QObject *>(QStringLiteral("promotionDialog"));
+    auto *url = window->findChild<QObject *>(QStringLiteral("promotionServerUrl"));
+    auto *button = window->findChild<QObject *>(QStringLiteral("promoteLibraryButton"));
+    QVERIFY(dialog != nullptr);
+    QVERIFY(url != nullptr);
+    QVERIFY(button != nullptr);
+    QVERIFY(!dialog->property("visible").toBool());
+    QVERIFY(!button->property("enabled").toBool());
+}
+
 void TestAppSmoke::aThumbnailTheProviderCannotServeIsAskedForAgain()
 {
     // The row claims a thumbnail but the provider has nothing for it, which is

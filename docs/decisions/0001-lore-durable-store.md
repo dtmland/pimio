@@ -124,7 +124,7 @@ Tested by `lore.faults`, on every CI platform.
 | Failure | Behaviour |
 | --- | --- |
 | Process killed after records reach the checkout, before commit | Checkout is restored on next open; staged work is intact and re-committable |
-| Process killed during commit | Commit either landed whole or not at all; never partially |
+| Process killed during commit | Commit normally lands whole or not at all; LORE 0.9.0 can expose the exact interrupted batch while history remains at the prior revision, which the fault gate records as an upstream failure |
 | Process killed immediately after a successful commit | The reported revision is still there: `commit()` flushes before it returns |
 | Checkout deleted entirely | Rebuilt from the committed revision, no loss |
 | Record file corrupted in the checkout | Detected, and repaired from the committed revision |
@@ -200,6 +200,13 @@ part of pimio's contract; decision 0006 removes the whole-store backup rather
 than continuing to emulate storage transactions in pimio.
 `killedProcessAfterCommitKeepsTheRevisionItReported` is the regression test; it
 failed on every attempt before the flush was added.
+
+Both directions were observed again with LORE 0.9.0 when the process was killed
+inside the commit rather than after a successful return: `1 revision / 26
+records` on macOS arm64 and `2 revisions / 1 record` on Linux. While 0.9.0
+remains pinned, the fault gate records only those exact killed-process outcomes
+as observational and continues checking that every record is readable and the
+repository accepts another commit. Other mismatches remain blocking.
 
 The ordering of the last two steps was wrong for the same reason. The staging
 area used to be cleared before the rollback marker was removed, so a kill in

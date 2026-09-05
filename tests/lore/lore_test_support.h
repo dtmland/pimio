@@ -4,6 +4,7 @@
 #include "pimio/lore/lore_durable_store.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QProcess>
 #include <QString>
 #include <QTemporaryDir>
@@ -32,6 +33,20 @@ inline core::MediaRecord makeLoreRecord(const QString &id, const QString &captio
 inline QString loreCliPath()
 {
     return QString::fromUtf8(PIMIO_LORE_CLI_PATH);
+}
+
+inline bool hasUnmarkedFanOutGroup(const QString &repositoryPath)
+{
+    const QString indexRoot = repositoryPath + QStringLiteral("/.lore/immutable/index");
+    QDirIterator buckets(indexRoot, QStringList{QStringLiteral("index_*")}, QDir::Files,
+                         QDirIterator::Subdirectories);
+    while (buckets.hasNext()) {
+        const QFileInfo bucket(buckets.next());
+        if (!QFileInfo::exists(bucket.absolutePath() + QStringLiteral("/level"))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /// Runs the `lore` CLI against \a repositoryPath and returns true on success.

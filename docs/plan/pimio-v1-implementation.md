@@ -448,6 +448,44 @@ This gate blocks v1 release architecture acceptance, not ordinary local feature
 work. Mirror/synchronize semantics beyond the initial promotion remain a v2
 entry gate.
 
+**Outcome (LORE 0.9.0): architecture and user-facing promotion accepted with
+an alpha-stage exception.** The supported
+known-remote path can preserve the pimio library id, records, current bytes, and
+revision history: create offline with the future URL, create the remote
+repository from a disposable worktree with the same repository id, push, clone,
+and query history online once to hydrate its revision state and metadata.
+
+- LORE accepts a push after the same remote name was registered with a different
+  repository id. The future promotion flow must query `repository info`, compare
+  the registered and local IDs, and stop before push on a mismatch;
+- killing the client during the initial push after transfer begins can leave
+  the remote branch created, and retry then fails because that branch exists.
+  This remains an upstream defect accepted during pimio's alpha period; and
+- `repository config` has no public setter, but LORE documents manual editing of
+  `.lore/config.toml`. Atomically setting `remote_url`, then performing the same
+  identity preflight, push, clone, and content checks succeeds for a no-remote
+  origin.
+
+LORE's sparse, lazy design does not proactively hydrate earlier revision state
+or metadata at clone time. An online history query fetches and caches them so
+subsequent pimio history reads work offline. Neither clone nor history caches
+every historical tree and file payload; LORE 0.9.0 has no documented one-shot
+full-history mirror option.
+
+The retained `lore.server_promotion` gate records the two dependency defects as
+QTest expected failures, verifies pimio's identity preflight, and exercises the
+documented-format attach fallback end to end. This is sufficient to accept the
+local-first architecture and expose promotion now. The application registers
+the local repository identity, verifies the remote identity, atomically attaches
+the remote, and pushes through `liblore`. It disables promotion during scans and
+warns that an interrupted initial push may require server-side repair.
+
+After adding identity preflight and the no-remote attachment round trip, the
+gate completed five consecutive Linux runs in 4.03–4.17 seconds of CTest
+wall time (median 4.06 seconds; internal topology median 3.107 seconds). Runtime
+is comfortably small for CI. The expected failures preserve the known-defect
+evidence without stopping the standard cross-platform run.
+
 ## Increment 7.8c — Storage-Model Decision Revisit
 
 Reconsider managed originals after 7.8a removes the whole-store copy and 7.8b

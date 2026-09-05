@@ -42,9 +42,12 @@ the packstore. The fix is already upstream and the nightly release notes say it
 prevents new damage but does not repair an affected store.
 
 There is no need to submit a duplicate ticket. Until a release containing that
-fix replaces 0.9.0, the Windows test treats this exact dependency error as a
-skip only when the fresh store also contains an unmarked fan-out group. Other
-errors and the same test on Linux and macOS remain failures.
+fix replaces 0.9.0, tests tolerate this exact dependency error only when the
+fresh store also contains an unmarked fan-out group. The corrupt-checkout test
+has observed it on Windows, where it skips, and the server-promotion test has
+observed it on Linux after a deliberately invalid raw push, where it records the
+failure and continues the independent valid-promotion checks. Other errors
+remain failures.
 
 ## Issue 1 — interrupted write can leave an unreadable pending marker
 
@@ -112,10 +115,14 @@ platform. While pimio pins LORE 0.9.0, repository reopen failures immediately
 following the deliberate mid-commit process kill are logged with their delay and
 diagnostic, then reported as a skipped test after the sweep completes instead of
 failing CI. Observed diagnostics include the zero-byte level header documented
-above and `Could not restore the checkout: Not found`. The allowance is limited
-to LORE 0.9.0 and this fault-injection boundary: setup failures and every
-consistency or subsequent-commit failure after a successful reopen remain
-blocking.
+above and `Could not restore the checkout: Not found`. Runs have also reopened
+with either side of the revision/index disagreement previously observed with
+0.8.5: one revision with all 26 records, or two revisions with only the baseline
+record. Those exact outcomes are observational only when the helper was killed;
+the test still verifies that every exposed record is readable and that the
+repository accepts another commit. The allowance is limited to LORE 0.9.0 and
+this fault-injection boundary: setup failures, every other revision/record
+combination, corruption, and subsequent-commit failures remain blocking.
 
 When a new LORE release is available:
 
@@ -206,3 +213,182 @@ The `Address not found` failure found on Windows is tracked separately above:
 it made an immutable entry unreachable through a missing fan-out marker and
 has a specific post-0.9.0 upstream fix. It did not produce the old
 `Branch has been advanced by another instance` state.
+
+## Issue 3 — push does not validate the registered repository identity
+
+### Ready for submission to upstream
+
+**Title:** Push accepts a repository ID that differs from the ID registered for the remote name
+
+**Lore version:**
+lore 0.9.0
+
+**Installation method:**
+Checksum-verified LORE 0.9.0 CLI and loreserver release artifacts.
+
+**Operating system / architecture:**
+Linux x86_64
+
+**Steps to reproduce:**
+
+1. Create an offline repository whose `.lore/id` is `A` and configure its
+   `remote_url` as `lore://127.0.0.1:<port>/library`.
+2. Create the server repository named `library` with explicit repository ID
+   `B`, where `A != B`.
+3. Commit content in the offline repository.
+4. Run `lore push` from the offline repository.
+
+The automated reproduction is
+`TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures` in
+`tests/lore/tst_lore_server_promotion.cpp`.
+
+**Expected vs actual behavior:**
+
+**Expected:** Push rejects the request before transferring or advancing data
+because the repository ID registered for `library` differs from the local
+repository ID.
+
+**Actual:** Push exits successfully and reports that it pushed the revision.
+
+**Component:**
+Client/server repository identity validation
+
+**Server context:**
+Unauthenticated loopback `loreserver` with isolated local immutable and mutable
+stores.
+
+**Regression?**
+Unknown.
+
+**Additional context:**
+
+`repository create` validates name-to-ID consistency, and `repository info`
+returns the registered ID, but the push path does not enforce the same
+invariant. A client can preflight with `repository info`, but that leaves a
+time-of-check/time-of-use window. The server should enforce identity at the
+write boundary.
+
+### Temporary test policy and release follow-up
+
+The promotion gate retains the raw push as an expected failure and separately
+proves that pimio can detect the mismatch through `repository info` before
+invoking push. Remove the client-side requirement only after a pinned LORE
+release rejects the raw push itself.
+
+## Issue 4 — interrupted initial push cannot be retried
+
+### Ready for submission to upstream
+
+**Title:** Retrying an interrupted initial push fails because the remote branch already exists
+
+**Lore version:**
+lore 0.9.0
+
+**Installation method:**
+Checksum-verified LORE 0.9.0 CLI and loreserver release artifacts.
+
+**Operating system / architecture:**
+Linux x86_64
+
+**Steps to reproduce:**
+
+1. Create and populate an offline repository, including a sufficiently large
+   payload to keep the initial transfer active.
+2. Register the corresponding server repository with the same repository ID.
+3. Start `lore push` with one connection.
+4. Terminate the client after it reports `Pushing` and before it completes.
+5. Confirm the offline origin still opens and accepts another commit.
+6. Run `lore push` again.
+
+The automated reproduction is
+`TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures` in
+`tests/lore/tst_lore_server_promotion.cpp`.
+
+**Expected vs actual behavior:**
+
+**Expected:** Repeating the push resumes or safely restarts the transfer and
+advances the existing remote branch.
+
+**Actual:** Retry fails with `Branch main already exists, use switch instead`.
+The partially transferred repository cannot be completed through another
+ordinary push.
+
+**Component:**
+Client/server initial push and branch recovery
+
+**Server context:**
+Unauthenticated loopback `loreserver` with isolated local immutable and mutable
+stores.
+
+**Regression?**
+Unknown.
+
+**Additional context:**
+
+The failure is returned while `branch::push` attempts to recreate `main` after
+the server reports missing state. `--force` does not recover it. Creating and
+pushing a new branch can publish the revision state but may still leave
+previously transferred payload addresses absent, so that is not a safe
+workaround. Server-side removal of the partial repository also requires
+authorization and is not a general client recovery path.
+
+### Temporary test policy and release follow-up
+
+Keep the retry assertion as an expected failure for exactly LORE 0.9.0. Initial
+promotion must remain unavailable as a user-facing operation until a repeated
+push, or a documented non-destructive recovery sequence, passes the complete
+clone-and-byte verification.
+
+## Feature request 5 — attach an existing local repository to a remote
+
+### Ready for submission to upstream
+
+**Title:** Add a public command or API to attach a remote URL to an existing local repository
+
+**Lore version:**
+lore 0.9.0
+
+**Installation method:**
+Checksum-verified LORE 0.9.0 CLI and loreserver release artifacts.
+
+**Operating system / architecture:**
+Cross-platform API request; workaround verified on Linux x86_64.
+
+**Use case:**
+
+An application creates and uses a repository entirely offline, then later lets
+the user promote that same repository to a server without changing its
+repository identity or replaying its history.
+
+**Current behavior:**
+
+`repository config` exposes `get` but no setter or attach operation.
+`repository create` and `clone` initialize new local repositories rather than
+attaching an existing one. The configuration reference permits editing
+`.lore/config.toml` by hand, and setting `remote_url` there works, but every
+embedding application must implement that mutation itself.
+
+**Requested behavior:**
+
+Provide a supported command and C API operation that:
+
+1. accepts a remote URL for an existing local repository;
+2. optionally validates or registers the remote name with the local repository
+   ID;
+3. atomically persists `remote_url`;
+4. rejects mismatched remote identities; and
+5. leaves the previous configuration unchanged on any failure.
+
+**Component:**
+Repository configuration / offline-to-server workflow
+
+**Server context:**
+Applies before the initial push to a Lore Server.
+
+**Additional context:**
+
+pimio's temporary workaround reads the existing configuration, changes only
+`remote_url`, and atomically replaces `config.toml` through a same-directory
+temporary file. Its contract test then performs identity preflight, push, clone,
+and content verification. A public operation would remove duplicated TOML
+handling and allow Lore to evolve the configuration schema safely.
