@@ -76,7 +76,7 @@ void TestLibraryManager::createOpenSwitchRenameAndMove()
     QVERIFY(!manager.move(first->id,
                           QDir(first->location).filePath(QStringLiteral("nested/library")),
                           &error));
-    QCOMPARE(error.code(), core::ErrorCode::Conflict);
+    QCOMPARE(static_cast<int>(error.code()), static_cast<int>(core::ErrorCode::Conflict));
     const QString movedPath = temporary.filePath(QStringLiteral("moved/family"));
     QVERIFY2(manager.move(first->id, movedPath, &error), qPrintable(error.message()));
     const auto moved = manager.open(movedPath, &error);
@@ -94,7 +94,7 @@ void TestLibraryManager::missingAndLockedLibrariesFail()
     core::Error error;
 
     QVERIFY(!manager.open(temporary.filePath(QStringLiteral("missing")), &error));
-    QCOMPARE(error.code(), core::ErrorCode::NotFound);
+    QCOMPARE(static_cast<int>(error.code()), static_cast<int>(core::ErrorCode::NotFound));
 
     const auto library = manager.create(QStringLiteral("Locked"),
                                         temporary.filePath(QStringLiteral("locked")), &error);
@@ -102,7 +102,7 @@ void TestLibraryManager::missingAndLockedLibrariesFail()
     lore::LoreDurableStore holder(QDir(library->location).filePath(QStringLiteral("store")));
     QVERIFY2(holder.open(&error), qPrintable(error.message()));
     QVERIFY(!manager.open(library->location, &error));
-    QCOMPARE(error.code(), core::ErrorCode::Conflict);
+    QCOMPARE(static_cast<int>(error.code()), static_cast<int>(core::ErrorCode::Conflict));
     holder.close();
 }
 
