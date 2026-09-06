@@ -16,6 +16,8 @@
 #include <QStandardPaths>
 #include <QUuid>
 
+#include <cstdio>
+
 namespace pimio::app {
 using namespace library_manager_storage;
 
@@ -143,6 +145,8 @@ bool LibraryManager::close(core::Error *)
 
 bool LibraryManager::rename(const QString &id, const QString &name, core::Error *error)
 {
+    std::fprintf(stderr, "library-manager rename: entered\n");
+    std::fflush(stderr);
 #ifndef PIMIO_HAVE_LORE
     Q_UNUSED(id)
     Q_UNUSED(name)
@@ -150,18 +154,23 @@ bool LibraryManager::rename(const QString &id, const QString &name, core::Error 
     return false;
 #else
     auto library = find(id);
+    std::fprintf(stderr, "library-manager rename: found library\n");
+    std::fflush(stderr);
     if (!library) {
         assignError(error, core::ErrorCode::NotFound, tr("The Library is not known."));
         return false;
     }
     lore::LoreDurableStore store(storePathFor(library->location));
-    qInfo("library-manager rename: opening store");
+    std::fprintf(stderr, "library-manager rename: opening store\n");
+    std::fflush(stderr);
     if (!store.open(error) || !store.renameLibrary(name, error)) {
         return false;
     }
-    qInfo("library-manager rename: reading descriptor");
+    std::fprintf(stderr, "library-manager rename: reading descriptor\n");
+    std::fflush(stderr);
     const auto descriptor = store.libraryDescriptor(error);
-    qInfo("library-manager rename: closing store");
+    std::fprintf(stderr, "library-manager rename: closing store\n");
+    std::fflush(stderr);
     store.close();
     if (!descriptor) {
         return false;
