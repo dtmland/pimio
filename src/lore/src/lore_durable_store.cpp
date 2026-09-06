@@ -6,7 +6,6 @@
 #include <QJsonDocument>
 
 #include <algorithm>
-#include <cstdio>
 
 namespace pimio::lore {
 
@@ -235,18 +234,12 @@ void LoreDurableStore::close()
         Operation flush;
         lore_repository_flush_args_t flushArgs;
         std::memset(&flushArgs, 0, sizeof(flushArgs));
-        std::fprintf(stderr, "store-close: flushing repository\n");
-        std::fflush(stderr);
         api.repositoryFlush(&args, &flushArgs, flush.config());
-        std::fprintf(stderr, "store-close: releasing repository\n");
-        std::fflush(stderr);
 
         Operation release;
         lore_repository_release_args_t releaseArgs;
         std::memset(&releaseArgs, 0, sizeof(releaseArgs));
         api.repositoryRelease(&args, &releaseArgs, release.config());
-        std::fprintf(stderr, "store-close: repository released\n");
-        std::fflush(stderr);
     }
     d->opened = false;
     d->writerLock.reset();

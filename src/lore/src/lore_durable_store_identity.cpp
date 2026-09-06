@@ -4,7 +4,6 @@
 #include <QJsonDocument>
 #include <QSaveFile>
 
-#include <cstdio>
 
 namespace pimio::lore {
 
@@ -84,8 +83,6 @@ bool LoreDurableStore::renameLibrary(const QString &name, Error *error)
         return false;
     }
 
-    std::fprintf(stderr, "rename-library: reading descriptor\n");
-    std::fflush(stderr);
     auto descriptor = libraryDescriptor(error);
     if (!descriptor) {
         return false;
@@ -95,8 +92,6 @@ bool LoreDurableStore::renameLibrary(const QString &name, Error *error)
     }
 
     descriptor->name = trimmedName;
-    std::fprintf(stderr, "rename-library: staging descriptor\n");
-    std::fflush(stderr);
     QSaveFile file(d->stagedLibraryDescriptorPath());
     const QByteArray bytes = QJsonDocument(descriptor->toJson()).toJson(QJsonDocument::Compact);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
@@ -104,8 +99,6 @@ bool LoreDurableStore::renameLibrary(const QString &name, Error *error)
                          QStringLiteral("Could not stage the renamed library descriptor."));
         return false;
     }
-    std::fprintf(stderr, "rename-library: committing descriptor\n");
-    std::fflush(stderr);
     return commit(QStringLiteral("Rename library"), error).has_value();
 }
 

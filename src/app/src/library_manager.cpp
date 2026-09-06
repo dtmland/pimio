@@ -16,8 +16,6 @@
 #include <QStandardPaths>
 #include <QUuid>
 
-#include <cstdio>
-
 namespace pimio::app {
 using namespace library_manager_storage;
 
@@ -145,8 +143,6 @@ bool LibraryManager::close(core::Error *)
 
 bool LibraryManager::rename(const QString &id, const QString &name, core::Error *error)
 {
-    std::fprintf(stderr, "library-manager rename: entered\n");
-    std::fflush(stderr);
 #ifndef PIMIO_HAVE_LORE
     Q_UNUSED(id)
     Q_UNUSED(name)
@@ -154,39 +150,22 @@ bool LibraryManager::rename(const QString &id, const QString &name, core::Error 
     return false;
 #else
     auto library = find(id);
-    std::fprintf(stderr, "library-manager rename: found library\n");
-    std::fflush(stderr);
     if (!library) {
         assignError(error, core::ErrorCode::NotFound, tr("The Library is not known."));
         return false;
     }
     lore::LoreDurableStore store(storePathFor(library->location));
-    std::fprintf(stderr, "library-manager rename: opening store\n");
-    std::fflush(stderr);
     if (!store.open(error) || !store.renameLibrary(name, error)) {
         return false;
     }
-    std::fprintf(stderr, "library-manager rename: reading descriptor\n");
-    std::fflush(stderr);
     const auto descriptor = store.libraryDescriptor(error);
-    std::fprintf(stderr, "library-manager rename: closing store\n");
-    std::fflush(stderr);
     store.close();
-    std::fprintf(stderr, "library-manager rename: store closed\n");
-    std::fflush(stderr);
     if (!descriptor) {
         return false;
     }
     library->name = descriptor->name;
-    std::fprintf(stderr, "library-manager rename: replacing registry entry\n");
-    std::fflush(stderr);
     replaceKnown(*library);
-    std::fprintf(stderr, "library-manager rename: saving registry\n");
-    std::fflush(stderr);
-    const bool saved = saveRegistry(error);
-    std::fprintf(stderr, "library-manager rename: registry saved\n");
-    std::fflush(stderr);
-    return saved;
+    return saveRegistry(error);
 #endif
 }
 
@@ -208,7 +187,7 @@ bool LibraryManager::move(const QString &id, const QString &location, core::Erro
             Qt::CaseSensitive;
 #endif
     const QString sourcePrefix =
-            QDir::cleanPath(library->location) + QDir::separator();
+            QDir::cleanPath(library->location) + QLatin1Char('/');
     if (destination.startsWith(sourcePrefix, pathCase)) {
         assignError(error, core::ErrorCode::Conflict,
                     tr("A Library cannot be moved inside itself."));
@@ -261,7 +240,7 @@ bool LibraryManager::backup(const QString &id, const QString &archivePath, core:
         return false;
     }
     const QString normalizedArchive = normalizedLocation(archivePath);
-    const QString libraryPrefix = QDir::cleanPath(library->location) + QDir::separator();
+    const QString libraryPrefix = QDir::cleanPath(library->location) + QLatin1Char('/');
     if (normalizedArchive.startsWith(libraryPrefix,
 #ifdef Q_OS_WIN
                                      Qt::CaseInsensitive

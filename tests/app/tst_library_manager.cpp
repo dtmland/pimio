@@ -56,38 +56,31 @@ void TestLibraryManager::createOpenSwitchRenameAndMove()
     app::LibraryManager manager(temporary.filePath(QStringLiteral("registry.json")));
     core::Error error;
 
-    qInfo("library-manager: creating first library");
     const auto first = manager.create(QStringLiteral("First"),
                                       temporary.filePath(QStringLiteral("first")), &error);
     QVERIFY2(first.has_value(), qPrintable(error.message()));
     QVERIFY(!first->id.isEmpty());
     QCOMPARE(manager.currentLibraryId(), first->id);
 
-    qInfo("library-manager: creating second library");
     const auto second = manager.create(QStringLiteral("Second"),
                                        temporary.filePath(QStringLiteral("second")), &error);
     QVERIFY2(second.has_value(), qPrintable(error.message()));
     QVERIFY(second->id != first->id);
     QCOMPARE(manager.libraries().size(), 2);
 
-    qInfo("library-manager: reopening first library");
     const auto reopened = manager.open(first->location, &error);
     QVERIFY2(reopened.has_value(), qPrintable(error.message()));
     QCOMPARE(reopened->id, first->id);
     QCOMPARE(manager.currentLibraryId(), first->id);
 
-    qInfo("library-manager: renaming first library");
     QVERIFY2(manager.rename(first->id, QStringLiteral("Family"), &error),
              qPrintable(error.message()));
-    qInfo("library-manager: rejecting nested move");
     QVERIFY(!manager.move(first->id,
                           QDir(first->location).filePath(QStringLiteral("nested/library")),
                           &error));
     QCOMPARE(static_cast<int>(error.code()), static_cast<int>(core::ErrorCode::Conflict));
     const QString movedPath = temporary.filePath(QStringLiteral("moved/family"));
-    qInfo("library-manager: moving first library");
     QVERIFY2(manager.move(first->id, movedPath, &error), qPrintable(error.message()));
-    qInfo("library-manager: opening moved library");
     const auto moved = manager.open(movedPath, &error);
     QVERIFY2(moved.has_value(), qPrintable(error.message()));
     QCOMPARE(moved->id, first->id);
