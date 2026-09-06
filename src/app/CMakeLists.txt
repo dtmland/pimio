@@ -1,9 +1,11 @@
 qt_add_library(pimio_app_lib STATIC
     include/pimio/app/application.h
     include/pimio/app/library_activity.h
+    include/pimio/app/library_manager.h
     include/pimio/app/library_session.h
     src/application.cpp
     src/library_activity.cpp
+    src/library_manager.cpp
     src/library_session.cpp
 )
 
@@ -43,6 +45,7 @@ qt_add_qml_module(pimio_app_lib
         qml/DetailView.qml
         qml/CameraIcon.qml
         qml/Main.qml
+        qml/LibraryManagerDialog.qml
         qml/MediaTile.qml
         qml/PromotionDialog.qml
         qml/ScrollController.qml

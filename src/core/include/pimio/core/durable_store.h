@@ -78,6 +78,11 @@ public:
     /// Loads the reserved descriptor record. It is not included in listIds().
     virtual std::optional<LibraryDescriptor> libraryDescriptor(Error *error) const = 0;
 
+    /// Changes only the display name in the reserved descriptor and records the
+    /// change in canonical history. The stable library and local-user ids are
+    /// preserved.
+    virtual bool renameLibrary(const QString &name, Error *error) = 0;
+
     /// Stages a record without publishing it. Staged changes survive in the
     /// working area but are not part of history until commit().
     virtual bool stage(const MediaRecord &record, Error *error) = 0;

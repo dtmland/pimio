@@ -73,4 +73,32 @@ LoreDurableStore::libraryDescriptor(Error *error) const
     return descriptor;
 }
 
+bool LoreDurableStore::renameLibrary(const QString &name, Error *error)
+{
+    const QString trimmedName = name.trimmed();
+    if (trimmedName.isEmpty()) {
+        detail::setError(error, ErrorCode::Conflict,
+                         QStringLiteral("A library name cannot be empty."));
+        return false;
+    }
+
+    auto descriptor = libraryDescriptor(error);
+    if (!descriptor) {
+        return false;
+    }
+    if (descriptor->name == trimmedName) {
+        return true;
+    }
+
+    descriptor->name = trimmedName;
+    QSaveFile file(d->stagedLibraryDescriptorPath());
+    const QByteArray bytes = QJsonDocument(descriptor->toJson()).toJson(QJsonDocument::Compact);
+    if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
+        detail::setError(error, ErrorCode::PermissionDenied,
+                         QStringLiteral("Could not stage the renamed library descriptor."));
+        return false;
+    }
+    return commit(QStringLiteral("Rename library"), error).has_value();
+}
+
 } // namespace pimio::lore

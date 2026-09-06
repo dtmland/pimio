@@ -33,6 +33,7 @@ public:
     bool isAvailable() const override;
     bool createLibrary(const QString &name, core::Error *error) override;
     std::optional<core::LibraryDescriptor> libraryDescriptor(core::Error *error) const override;
+    bool renameLibrary(const QString &name, core::Error *error) override;
     bool stage(const core::MediaRecord &record, core::Error *error) override;
     bool stageOriginal(const core::MediaRecord &record, const QString &sourcePath,
                        core::Error *error) override;

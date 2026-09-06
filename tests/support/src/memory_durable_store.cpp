@@ -89,6 +89,41 @@ MemoryDurableStore::libraryDescriptor(core::Error *error) const
     return m_library;
 }
 
+bool MemoryDurableStore::renameLibrary(const QString &name, core::Error *error)
+{
+    const QString trimmedName = name.trimmed();
+    if (!m_available) {
+        setError(error, core::ErrorCode::StorageUnavailable,
+                 QStringLiteral("The durable store is unavailable."));
+        return false;
+    }
+    if (!m_library) {
+        setError(error, core::ErrorCode::NotFound,
+                 QStringLiteral("The repository has no library descriptor."));
+        return false;
+    }
+    if (trimmedName.isEmpty()) {
+        setError(error, core::ErrorCode::Conflict,
+                 QStringLiteral("A library name cannot be empty."));
+        return false;
+    }
+    if (m_library->name == trimmedName) {
+        return true;
+    }
+
+    m_library->name = trimmedName;
+    core::Checkpoint checkpoint;
+    checkpoint.id = QStringLiteral("checkpoint-%1").arg(m_history.size() + 1);
+    checkpoint.message = QStringLiteral("Rename library");
+    checkpoint.createdAtUtc = m_clock.nowUtc();
+    checkpoint.authorId = m_library->localUser.id;
+    checkpoint.applicationVersion = core::versionString();
+    checkpoint.parentId = m_history.isEmpty() ? QString() : m_history.constFirst().id;
+    m_history.prepend(checkpoint);
+    bumpStateToken();
+    return true;
+}
+
 bool MemoryDurableStore::stage(const core::MediaRecord &record, core::Error *error)
 {
     if (!m_available) {

@@ -40,6 +40,14 @@ Dialog {
         }
 
         Label {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            text: qsTr("Promotion transfers the Library identity, canonical records, history, "
+                       + "and current managed originals. Older historical file payloads are "
+                       + "loaded lazily by LORE when requested.")
+        }
+
+        Label {
             objectName: "promotionStatusLabel"
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
