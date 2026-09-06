@@ -57,12 +57,32 @@ The restored SHA-256 exactly matched the committed payload. LORE deduplicated
 the identical content in its immutable store: the second path added another
 256 MiB checkout file but did not add another full payload under `.lore`.
 
-The 0.9.0 gate prints machine-readable measurements for the payload size,
-checkout and immutable-store size, metadata commit time and growth, and
-backup/restore size and time on every platform. The large-run values below are
-the decision baseline.
+The 0.9.0 gate prints measurements for the payload size, checkout and
+immutable-store size, metadata commit time and growth, and backup/restore size
+and time on every platform. The 256 MiB run below was performed on 2026-09-06
+on the Linux x86-64 task runner.
 
-<!-- PIMIO_7_8C_LARGE_MEASUREMENTS -->
+| Operation | LORE 0.9.0 result |
+| --- | ---: |
+| Stage first payload | 0.015 s |
+| Commit first payload | 0.311 s |
+| Restore deleted checkout file | 0.175 s |
+| Repository after first payload | 537,324,909 bytes |
+| Checkout after first payload | 268,435,694 bytes |
+| `.lore` after first payload | 268,889,215 bytes |
+| Commit identical content at a second path | 0.272 s |
+| `.lore` growth for duplicate content | 315,911 bytes |
+| Production-adapter metadata commit | 0.091 s |
+| Repository growth for metadata commit | 5,220 bytes |
+| Complete store after duplicate path and metadata | 806,081,496 bytes |
+| Copy complete store for backup | 4.923 s |
+| Restore complete store from backup | 4.746 s |
+
+One unique payload rested at 2.0017 times its source size. The duplicate path
+added a second full checkout copy but only 0.12% of the payload size to
+`.lore`. The metadata commit added 5.1 KiB and created no rollback copy, so its
+space cost did not scale with the 256 MiB corpus. The complete-copy timings are
+environment-specific; their capacity requirement is not.
 
 ## Why managed originals remain out of v1
 

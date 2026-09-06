@@ -124,8 +124,8 @@ upstream reports are in
 - v2 still introduces the headless pimio Server and ordinary remote operation.
 - The desktop UI can promote an idle local Library to a user-supplied LORE URL;
   it does not package a server or implement background synchronization.
-- The managed-originals decision is reopened because its principal no-go reason
-  was the whole-store snapshot. Checkout/store duplication still needs an
-  explicit product decision.
+- Increment 7.8c retests managed originals without the whole-store snapshot and
+  keeps referenced originals for v1. Metadata commits are corpus-independent,
+  but checkout/store and complete-backup duplication remain.
 - Decisions 0001 and 0005 remain as brief historical evidence, with their
   superseded conclusions clearly marked.

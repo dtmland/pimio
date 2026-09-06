@@ -322,10 +322,10 @@ tiles the longer the application is scrolled. Rationale in
   and deduplication, but the checkout and immutable copy roughly doubled
   original storage while pimio's pre-commit recovery backup scaled with the
   complete durable corpus.
-- [Decision 0006](../decisions/0006-local-first-lore-topology.md) removes that
-  whole-store backup from the target architecture, so the storage conclusion is
-  reopened. Current code still references originals; complete backups must
-  include the configured media roots until Increment 7.8c decides otherwise.
+- [Decision 0006](../decisions/0006-local-first-lore-topology.md) removed that
+  whole-store backup from the target architecture, so Increment 7.8c repeated
+  the storage gate. Referenced originals remain the v1 choice, and complete
+  backups must include the configured media roots.
 
 ### Automated evidence
 

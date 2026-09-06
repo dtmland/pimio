@@ -192,9 +192,8 @@ writes remain as an interoperability feature, not the system of record.
 
 - What is the best metadata standard for storing multiple GPS coordinates across a video's timeline?
 - How much facial recognition and landmark detection can be done effectively offline?
-- Does the LORE repository store original media content directly (a managed
-  library), reference media in place (a referenced library), or support
-  both? Increment 7.8 proved binary integrity, but its no-go depended on a
-  whole-store rollback workaround that is no longer part of the target
-  architecture. See the reopened storage-model gate in
-  [pimio-v1-implementation.md](pimio-v1-implementation.md).
+- Version 1 uses referenced libraries: LORE stores canonical state and history
+  while original media remains in configured roots. A complete backup or move
+  must account for both. Managed originals may be reconsidered after v1 only
+  with a new storage-economics gate. See
+  [decision 0005](../decisions/0005-managed-versus-referenced-originals.md).

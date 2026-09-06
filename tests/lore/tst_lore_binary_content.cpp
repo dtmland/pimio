@@ -166,6 +166,8 @@ void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
     const qint64 commitMilliseconds = timer.elapsed();
     const qint64 loreSizeAfterOriginal = directorySize(repository + QStringLiteral("/.lore"));
     const qint64 repositorySizeAfterOriginal = directorySize(repository);
+    const qint64 checkoutSizeAfterOriginal =
+            repositorySizeAfterOriginal - loreSizeAfterOriginal;
 
     QVERIFY(QFile::remove(original));
     timer.restart();
@@ -249,15 +251,16 @@ void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
 
     qInfo().noquote() << QStringLiteral("LORE binary spike: bytes=%1 stage_ms=%2 commit_ms=%3 "
                                         "reload_ms=%4 "
-                                        "repository_bytes=%5 lore_bytes=%6 duplicate_commit_ms=%7 "
-                                        "duplicate_lore_growth_bytes=%8 metadata_commit_ms=%9 "
-                                        "metadata_commit_growth_bytes=%10 backup_bytes=%11 "
-                                        "backup_ms=%12 restore_ms=%13")
+                                        "repository_bytes=%5 checkout_bytes=%6 lore_bytes=%7 "
+                                        "duplicate_commit_ms=%8 duplicate_lore_growth_bytes=%9 "
+                                        "metadata_commit_ms=%10 metadata_commit_growth_bytes=%11 "
+                                        "backup_bytes=%12 backup_ms=%13 restore_ms=%14")
                              .arg(contentSize)
                              .arg(stageMilliseconds)
                              .arg(commitMilliseconds)
                              .arg(reloadMilliseconds)
                              .arg(repositorySizeAfterOriginal)
+                             .arg(checkoutSizeAfterOriginal)
                              .arg(loreSizeAfterOriginal)
                              .arg(duplicateCommitMilliseconds)
                              .arg(duplicateStoreGrowth)
