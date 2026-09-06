@@ -521,11 +521,14 @@ The retained `lore.binary_content` gate creates the Library with
 `LoreDurableStore`, measures and restores deterministic binary content, commits
 a small metadata edit through the same production adapter, then backs up and
 restores the complete candidate repository and verifies identity, metadata, and
-bytes. The referenced model's failure behavior remains covered by the scanner
-and LORE fault suites. A genuinely full volume cannot be manufactured portably
-in hosted CI; the fault suite forces the equivalent checkout write failure,
-requires a visible error and preserved staged work, and proves retry after the
-fault clears.
+bytes. The selected referenced model's interruption behavior remains covered by
+the scanner and LORE metadata fault suites. A genuinely full volume and each
+binary-write interruption point cannot be manufactured portably in hosted CI;
+where filesystem permissions are enforced, the fault suite verifies a visible
+checkout-write error, preserved staged metadata, and retry after the fault
+clears. The managed candidate lacks deterministic cross-platform reservation
+and interrupted-binary-write evidence, which weighs against adding that mode
+rather than being claimed as acceptance evidence for it.
 
 ## Increment 7.9 — Library Manager and Lifecycle
 

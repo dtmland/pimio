@@ -21,10 +21,10 @@ traditional photo managers lack.
 ### Library
 
 The **Library** is pimio's fundamental unit of organization and the only
-storage concept the user needs. A library contains original photographs and
-videos, modified and derived versions, metadata, albums, tags, ratings,
-organizational information, and application-generated derivatives such as
-thumbnails and previews.
+storage concept the user needs. A v1 library encompasses referenced original
+photographs and videos in configured media roots, plus versioned metadata,
+albums, tags, ratings, organizational information, modified versions, and
+application-generated derivatives such as thumbnails and previews.
 
 ### Library = LORE Repository
 
@@ -39,18 +39,20 @@ original photograph and revision 17 is the edit with a crop and exposure
 adjustment. This separation keeps media semantics out of the storage engine.
 
 A library has a **stable unique identity independent of its physical
-location**, so pimio recognizes a library after it is moved, copied, backed
-up, restored, or re-hosted. The library is self-contained and portable: back
-it up, restore it on another machine, and pimio reconstructs the media,
-metadata, organization, and history without the user managing media
-directories, database files, caches, or version-control internals separately.
+location**, so pimio recognizes its repository after it is moved, copied,
+backed up, restored, or re-hosted. A complete portable v1 backup includes the
+repository and every referenced media root, plus their reconnection mapping.
+The Library Manager handles that composition so users do not manage database
+files, caches, or version-control internals separately.
 
 ### Durable versus rebuildable data
 
-The LORE repository holds everything required to reconstruct the library —
-it is the ultimate source of truth. Everything else (SQLite indexes,
-thumbnail caches, search indexes, future face/AI indexes) is derived,
-disposable, and rebuildable from the repository.
+The LORE repository is the source of truth for library identity, canonical
+records, organization, edit recipes, and history. Original bytes remain in
+referenced media roots for v1 and are not reconstructable from the repository.
+SQLite indexes, thumbnail caches, search indexes, and future face/AI indexes
+are derived, disposable, and rebuildable from the repository plus available
+originals.
 
 ### LORE is invisible
 

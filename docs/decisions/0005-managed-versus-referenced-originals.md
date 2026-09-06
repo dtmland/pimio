@@ -80,8 +80,9 @@ on the Linux x86-64 task runner.
 
 One unique payload rested at 2.0017 times its source size. The duplicate path
 added a second full checkout copy but only 0.12% of the payload size to
-`.lore`. The metadata commit added 5.1 KiB and created no rollback copy, so its
-space cost did not scale with the 256 MiB corpus. The complete-copy timings are
+`.lore`. The metadata commit added 5.1 KiB and left no rollback-copy artifact; together
+with the rollback implementation's removal in Increment 7.8a, its space cost
+does not scale with the 256 MiB corpus. The complete-copy timings are
 environment-specific; their capacity requirement is not.
 
 ## Why managed originals remain out of v1
@@ -104,6 +105,9 @@ poor v1 default:
    fragments, or making a backup. The adapter maps write failures to a visible
    error and preserves staged metadata, but LORE exposes no reservation that
    could guarantee a multi-gigabyte original will finish after ingest starts.
+   Hosted cross-platform tests cannot deterministically exhaust a volume or
+   interrupt each binary-write phase, so the managed candidate lacks that
+   evidence; the selected referenced path does not perform those writes.
 4. Managed ingest, lifecycle policy, partial backup, and storage monitoring do
    not otherwise benefit v1's organization workflows enough to justify a
    second storage mode and its cross-platform failure surface.
