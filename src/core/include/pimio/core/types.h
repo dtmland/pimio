@@ -89,6 +89,8 @@ struct FileIdentity
 
     QJsonObject toJson() const;
     static FileIdentity fromJson(const QJsonObject &object);
+
+    bool operator==(const FileIdentity &other) const = default;
 };
 
 } // namespace pimio::core

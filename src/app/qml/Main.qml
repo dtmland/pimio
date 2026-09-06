@@ -16,11 +16,13 @@ Window {
     // build with no durable store, where nothing is ever scanning.
     property var activity: typeof libraryActivity === "undefined" ? null : libraryActivity
     property var session: typeof librarySession === "undefined" ? null : librarySession
+    property var manager: typeof libraryManager === "undefined" ? null : libraryManager
     property bool scanning: activity ? activity.scanning : false
     property int indexedCount: activity ? activity.indexedCount : 0
     property int selectedIndex: -1
     readonly property bool browsingContextActive: !detail.visible && !settingsDialog.visible
                                                    && !promotionDialog.visible
+                                                   && !libraryManagerDialog.visible
 
     readonly property int tileSize: settings ? settings.tileSize : 176
     readonly property real scrollSpeed: settings ? settings.scrollSpeed : 2.0
@@ -156,6 +158,7 @@ Window {
         sortDescending: root.settings ? root.settings.sortDescending : false
         settingsDialog: settingsDialog
         promotionDialog: promotionDialog
+        libraryDialog: libraryManagerDialog
     }
 
     // Media grid
@@ -446,7 +449,9 @@ Window {
             color: "#888888"
             font.pixelSize: 16
             horizontalAlignment: Text.AlignHCenter
-            text: qsTr("No media yet\nLaunch with --library <folder> to scan and browse a library.")
+            text: root.session && !root.session.hasOpenLibrary
+                  ? qsTr("No Library is open\nUse Libraries to create or open one.")
+                  : qsTr("No media yet")
         }
     }
 
@@ -476,6 +481,15 @@ Window {
         anchors.centerIn: Overlay.overlay
         width: Math.min(520, root.width - 48)
         session: root.session
+        onClosed: root.restoreGridFocus()
+    }
+
+    LibraryManagerDialog {
+        id: libraryManagerDialog
+        anchors.centerIn: Overlay.overlay
+        width: Math.min(720, root.width - 48)
+        session: root.session
+        libraryModel: root.manager
         onClosed: root.restoreGridFocus()
     }
 }

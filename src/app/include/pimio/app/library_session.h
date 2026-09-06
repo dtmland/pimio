@@ -42,6 +42,12 @@ class LibrarySession : public QObject
     Q_OBJECT
     Q_PROPERTY(bool canPromote READ canPromote NOTIFY promotionAvailabilityChanged)
     Q_PROPERTY(QString promotionStatus READ promotionStatus NOTIFY promotionStatusChanged)
+    Q_PROPERTY(QString currentLibraryId READ currentLibraryId NOTIFY currentLibraryChanged)
+    Q_PROPERTY(QString currentLibraryName READ currentLibraryName NOTIFY currentLibraryChanged)
+    Q_PROPERTY(QString currentLibraryLocation READ currentLibraryLocation
+                       NOTIFY currentLibraryChanged)
+    Q_PROPERTY(bool hasOpenLibrary READ hasOpenLibrary NOTIFY currentLibraryChanged)
+    Q_PROPERTY(QString lifecycleStatus READ lifecycleStatus NOTIFY lifecycleStatusChanged)
 
 public:
     explicit LibrarySession(QObject *parent = nullptr);
@@ -69,6 +75,19 @@ public:
 
     bool canPromote() const;
     QString promotionStatus() const;
+    QString currentLibraryId() const;
+    QString currentLibraryName() const;
+    QString currentLibraryLocation() const;
+    bool hasOpenLibrary() const;
+    QString lifecycleStatus() const;
+
+    Q_INVOKABLE bool createLibrary(const QString &name, const QString &location);
+    Q_INVOKABLE bool openLibrary(const QString &location);
+    Q_INVOKABLE void closeLibrary();
+    Q_INVOKABLE bool renameLibrary(const QString &name);
+    Q_INVOKABLE bool moveLibrary(const QString &location);
+    Q_INVOKABLE bool backupLibrary(const QString &archivePath);
+    Q_INVOKABLE bool restoreLibrary(const QString &archivePath, const QString &location);
 
     /// Promotes the open local library to an existing or new LORE server URL.
     /// This is disabled while a scan is mutating the durable store.
@@ -77,6 +96,8 @@ public:
 signals:
     void promotionAvailabilityChanged();
     void promotionStatusChanged();
+    void currentLibraryChanged();
+    void lifecycleStatusChanged();
 
 private:
     /// Pushes the current user settings (sort order, tile size, and scan
@@ -97,6 +118,9 @@ private:
     /// A scan commits far more often than a person can read, and each reload
     /// re-queries the whole ordered id list.
     void scheduleModelRefresh();
+    void shutdown();
+    bool activateLibrary(const QString &location);
+    void setLifecycleStatus(const QString &status);
 
     class Private;
     std::unique_ptr<Private> d;

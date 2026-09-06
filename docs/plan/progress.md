@@ -25,7 +25,7 @@ Update this file in the same change that moves an increment forward.
 | 7.8a | LORE 0.9 adoption and recovery simplification | Complete |
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
-| 7.9 | Library manager and lifecycle | Not started |
+| 7.9 | Library manager and lifecycle | Complete |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
@@ -369,3 +369,33 @@ tiles the longer the application is scrolled. Rationale in
 - Release-note review found no explicit statement that 0.9.0 resolves pimio's
   three 0.8.5 interrupted-commit observations. Reproduce before filing the
   [prepared upstream issue drafts](lore-0.9-upstream-issue-drafts.md).
+
+## Increment 7.9 — Library manager and lifecycle — Complete
+
+### Deliverables
+
+- `app::LibraryService` defines the in-process lifecycle boundary, with
+  `LibraryManager` providing the local persistent known-Library model. The
+  application can create, open, close, and switch Libraries by locator while
+  displaying their stable identity separately.
+- Rename commits a changed display name without replacing library or user
+  identity. Move carries the complete repository and verifies identity before
+  deleting the source when a cross-filesystem copy is required.
+- The versioned `.pimio-backup` format contains the complete durable store in
+  one checksummed file. Restore rejects unsafe entries, verifies every payload,
+  restores the LORE checkout, preserves identity and history, and rebuilds the
+  projection while discarding job and thumbnail caches.
+- The Library Manager dialog exposes lifecycle operations. Promotion explains
+  that identity, canonical state, history, and current managed originals move
+  to the server while historical payload hydration remains lazy.
+- [The service boundary](../library-service-api.md) records the v2 transport
+  seam. v1 adds no networking, authentication, or user management.
+
+### Automated evidence
+
+- `app.library_manager` — covers two fresh Libraries, open/switch, missing and
+  locked errors, rename, same-volume move, and stable identity.
+- `app.library_manager` also populates a Library with a managed original,
+  backs it up, removes the source Library, restores it at a different path,
+  and verifies descriptor id, records, history, original bytes, and the rebuilt
+  projection.

@@ -15,6 +15,7 @@ Rectangle {
     property bool sortDescending: false
     property var settingsDialog: null
     property var promotionDialog: null
+    property var libraryDialog: null
 
     height: 48
     color: "#2b2b2b"
@@ -100,6 +101,14 @@ Rectangle {
             value: root.tileSize
             onMoved: if (root.settings)
                          root.settings.tileSize = Math.round(value)
+        }
+
+        ToolButton {
+            objectName: "libraryManagerButton"
+            anchors.verticalCenter: parent.verticalCenter
+            text: qsTr("Libraries")
+            onClicked: if (root.libraryDialog)
+                           root.libraryDialog.open()
         }
 
         ToolButton {

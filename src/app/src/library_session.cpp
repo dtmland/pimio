@@ -2,6 +2,7 @@
 
 #include "pimio/app/application.h"
 #include "pimio/app/library_activity.h"
+#include "pimio/app/library_manager.h"
 #include "pimio/browser/media_library_model.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/core/error.h"
@@ -136,6 +137,7 @@ public:
     browser::ThumbnailImageProvider *imageProvider = nullptr; // owned by QQmlEngine
     std::unique_ptr<browser::MediaLibraryModel> model;
     std::unique_ptr<LibraryActivity> activity;
+    std::unique_ptr<LibraryManager> manager;
 
     std::vector<std::unique_ptr<watch::QtDirectoryWatchAdapter>> watchAdapters;
     std::vector<std::unique_ptr<watch::WatchService>> watchServices;
@@ -145,9 +147,11 @@ public:
     QTimer refreshTimer;
 
     QStringList libraryPaths;
+    QString managedLocation;
     bool prepared = false;
     bool started = false;
     QString promotionStatus;
+    QString lifecycleStatus;
 };
 
 LibrarySession::LibrarySession(QObject *parent)
@@ -178,6 +182,40 @@ bool LibrarySession::canPromote() const
 QString LibrarySession::promotionStatus() const
 {
     return d->promotionStatus;
+}
+
+QString LibrarySession::currentLibraryId() const
+{
+    return d->manager ? d->manager->currentLibraryId() : QString();
+}
+
+QString LibrarySession::currentLibraryName() const
+{
+    return d->manager ? d->manager->currentLibraryName() : QString();
+}
+
+QString LibrarySession::currentLibraryLocation() const
+{
+    return d->manager ? d->manager->currentLibraryLocation() : QString();
+}
+
+bool LibrarySession::hasOpenLibrary() const
+{
+    return !currentLibraryId().isEmpty() && d->store != nullptr;
+}
+
+QString LibrarySession::lifecycleStatus() const
+{
+    return d->lifecycleStatus;
+}
+
+void LibrarySession::setLifecycleStatus(const QString &status)
+{
+    if (d->lifecycleStatus == status) {
+        return;
+    }
+    d->lifecycleStatus = status;
+    emit lifecycleStatusChanged();
 }
 
 bool LibrarySession::promoteToServer(const QString &remoteUrl)
@@ -276,6 +314,184 @@ void LibrarySession::scheduleModelRefresh()
     }
 }
 
+void LibrarySession::shutdown()
+{
+    d->refreshTimer.stop();
+    if (d->dispatcher) {
+        d->dispatcher->stop();
+    }
+    d->watchServices.clear();
+    d->watchAdapters.clear();
+    if (d->model) {
+        d->model->setRequestService(nullptr);
+        d->model->setDurableStore(nullptr);
+        d->model->setDatabase(nullptr);
+    }
+    d->dispatcher.reset();
+    d->scanner.reset();
+    d->thumbnailService.reset();
+    d->compositeRenderer.reset();
+    d->videoRenderer.reset();
+    d->imageRenderer.reset();
+    d->thumbnailCache.reset();
+    d->jobQueue.reset();
+    d->projectionDb.reset();
+#ifdef PIMIO_HAVE_LORE
+    if (d->loreStore) {
+        d->loreStore->close();
+    }
+    d->loreStore.reset();
+#endif
+    d->store = nullptr;
+    d->metadataReader.reset();
+    d->fileSystem.reset();
+    d->libraryPaths.clear();
+    d->managedLocation.clear();
+    d->started = false;
+    if (d->activity) {
+        d->activity->setScanning(false);
+        d->activity->setIndexedCount(0);
+    }
+    emit promotionAvailabilityChanged();
+    emit currentLibraryChanged();
+}
+
+bool LibrarySession::activateLibrary(const QString &location)
+{
+    if (!d->prepared || !d->manager) {
+        setLifecycleStatus(tr("The Library service is not ready."));
+        return false;
+    }
+    core::Error error;
+    const auto library = d->manager->open(location, &error);
+    if (!library) {
+        setLifecycleStatus(tr("Could not open the Library: %1").arg(error.message()));
+        return false;
+    }
+    d->managedLocation = library->location;
+    d->libraryPaths.clear();
+    d->activity->setScanning(true);
+    start();
+    return hasOpenLibrary();
+}
+
+bool LibrarySession::createLibrary(const QString &name, const QString &location)
+{
+    core::Error error;
+    const auto library = d->manager->create(name, location, &error);
+    if (!library) {
+        setLifecycleStatus(tr("Could not create the Library: %1").arg(error.message()));
+        return false;
+    }
+    shutdown();
+    d->manager->select(library->id);
+    d->managedLocation = library->location;
+    d->activity->setScanning(true);
+    start();
+    return hasOpenLibrary();
+}
+
+bool LibrarySession::openLibrary(const QString &location)
+{
+    if (QDir::cleanPath(QFileInfo(location).absoluteFilePath())
+        == QDir::cleanPath(currentLibraryLocation())) {
+        return hasOpenLibrary();
+    }
+    core::Error error;
+    const auto library = d->manager->open(location, &error);
+    if (!library) {
+        setLifecycleStatus(tr("Could not open the Library: %1").arg(error.message()));
+        return false;
+    }
+    shutdown();
+    d->manager->select(library->id);
+    d->managedLocation = library->location;
+    d->activity->setScanning(true);
+    start();
+    return hasOpenLibrary();
+}
+
+void LibrarySession::closeLibrary()
+{
+    shutdown();
+    if (d->manager) {
+        d->manager->close(nullptr);
+    }
+    setLifecycleStatus(tr("Library closed."));
+}
+
+bool LibrarySession::renameLibrary(const QString &name)
+{
+    const QString id = currentLibraryId();
+    const QString location = currentLibraryLocation();
+    if (id.isEmpty()) {
+        setLifecycleStatus(tr("No Library is open."));
+        return false;
+    }
+    shutdown();
+    core::Error error;
+    if (!d->manager->rename(id, name, &error)) {
+        setLifecycleStatus(tr("Could not rename the Library: %1").arg(error.message()));
+        activateLibrary(location);
+        return false;
+    }
+    return activateLibrary(location);
+}
+
+bool LibrarySession::moveLibrary(const QString &location)
+{
+    const QString id = currentLibraryId();
+    const QString oldLocation = currentLibraryLocation();
+    if (id.isEmpty()) {
+        setLifecycleStatus(tr("No Library is open."));
+        return false;
+    }
+    shutdown();
+    core::Error error;
+    if (!d->manager->move(id, location, &error)) {
+        setLifecycleStatus(tr("Could not move the Library: %1").arg(error.message()));
+        activateLibrary(oldLocation);
+        return false;
+    }
+    return activateLibrary(location);
+}
+
+bool LibrarySession::backupLibrary(const QString &archivePath)
+{
+    const QString id = currentLibraryId();
+    const QString location = currentLibraryLocation();
+    if (id.isEmpty()) {
+        setLifecycleStatus(tr("No Library is open."));
+        return false;
+    }
+    shutdown();
+    core::Error error;
+    const bool backedUp = d->manager->backup(id, archivePath, &error);
+    const bool reopened = activateLibrary(location);
+    if (!backedUp) {
+        setLifecycleStatus(tr("Could not back up the Library: %1").arg(error.message()));
+    } else if (reopened) {
+        setLifecycleStatus(tr("Library backup verified."));
+    }
+    return backedUp && reopened;
+}
+
+bool LibrarySession::restoreLibrary(const QString &archivePath, const QString &location)
+{
+    shutdown();
+    core::Error error;
+    const auto library = d->manager->restore(archivePath, location, &error);
+    if (!library) {
+        setLifecycleStatus(tr("Could not restore the Library: %1").arg(error.message()));
+        return false;
+    }
+    const bool opened = activateLibrary(library->location);
+    if (opened) {
+        setLifecycleStatus(tr("Library restored and derived data rebuilt."));
+    }
+    return opened;
+}
+
 void LibrarySession::prepare(const QStringList &libraryPaths, QQmlApplicationEngine &engine)
 {
     if (d->prepared) {
@@ -293,6 +509,7 @@ void LibrarySession::prepare(const QStringList &libraryPaths, QQmlApplicationEng
     // race a context property appearing after QML already bound to it.
     d->model = std::make_unique<browser::MediaLibraryModel>();
     d->activity = std::make_unique<LibraryActivity>();
+    d->manager = std::make_unique<LibraryManager>();
     auto *provider = new browser::ThumbnailImageProvider();
     d->imageProvider = provider;
     engine.addImageProvider(QStringLiteral("thumbnail"), provider);
@@ -301,6 +518,9 @@ void LibrarySession::prepare(const QStringList &libraryPaths, QQmlApplicationEng
     engine.rootContext()->setContextProperty(QStringLiteral("libraryActivity"),
                                              d->activity.get());
     engine.rootContext()->setContextProperty(QStringLiteral("librarySession"), this);
+    engine.rootContext()->setContextProperty(QStringLiteral("libraryManager"), d->manager.get());
+    connect(d->manager.get(), &LibraryManager::currentLibraryChanged, this,
+            &LibrarySession::currentLibraryChanged);
     connect(d->activity.get(), &LibraryActivity::scanningChanged, this,
             &LibrarySession::promotionAvailabilityChanged);
 
@@ -331,8 +551,8 @@ void LibrarySession::start()
     }
     d->started = true;
 
-    const QStringList normalizedPaths = normalizedLibraryPaths(d->libraryPaths);
-    if (normalizedPaths.isEmpty()) {
+    QStringList normalizedPaths = normalizedLibraryPaths(d->libraryPaths);
+    if (normalizedPaths.isEmpty() && d->managedLocation.isEmpty()) {
         d->activity->setScanning(false);
         return;
     }
@@ -345,7 +565,17 @@ void LibrarySession::start()
     return;
 #else
     settings::Settings &userSettings = applicationSettings();
-    const QString repositoryDir = repositoryDirectoryFor(normalizedPaths);
+    QString repositoryDir = d->managedLocation;
+    QStringList scanPaths = normalizedPaths;
+    if (repositoryDir.isEmpty() && normalizedPaths.size() == 1
+        && QFileInfo(QDir(normalizedPaths.constFirst()).filePath(QStringLiteral("store"))).isDir()) {
+        repositoryDir = normalizedPaths.constFirst();
+        scanPaths.clear();
+        d->managedLocation = repositoryDir;
+    }
+    if (repositoryDir.isEmpty()) {
+        repositoryDir = repositoryDirectoryFor(normalizedPaths);
+    }
     QDir().mkpath(repositoryDir);
 
     d->loreStore =
@@ -379,6 +609,9 @@ void LibrarySession::start()
         d->activity->setScanning(false);
         return;
     }
+    d->manager->updateKnown({descriptor->id, descriptor->name, repositoryDir});
+    d->manager->select(descriptor->id);
+    emit currentLibraryChanged();
 
     const QString indexDir = indexDirectoryFor(descriptor->id);
     QDir().mkpath(indexDir);
@@ -427,6 +660,16 @@ void LibrarySession::start()
     d->model->setDatabase(d->projectionDb.get());
     d->model->setDurableStore(d->store);
     d->model->setRequestService(d->thumbnailService.get());
+
+    core::Error rebuildError;
+    if (!d->projectionDb->rebuildFrom(*d->store, &rebuildError)) {
+        qCWarning(lcLibrary) << "Cannot rebuild the projection cache:"
+                             << rebuildError.message();
+        shutdown();
+        setLifecycleStatus(tr("Could not rebuild the Library: %1").arg(rebuildError.message()));
+        return;
+    }
+    d->model->reload();
 
     // The job dispatcher runs ScanRoot/ReconcileRoot workers on its own
     // thread pool. The worker itself only touches the scanner and the
@@ -500,7 +743,7 @@ void LibrarySession::start()
             });
     d->dispatcher->start();
 
-    for (const QString &path : normalizedPaths) {
+    for (const QString &path : scanPaths) {
         scan::LibraryRoot root;
         root.absolutePath = path;
 
@@ -526,6 +769,10 @@ void LibrarySession::start()
         d->watchAdapters.push_back(std::move(adapter));
         d->watchServices.push_back(std::move(service));
     }
+
+    d->activity->setScanning(!scanPaths.isEmpty() && d->dispatcher->runningCount() > 0);
+    setLifecycleStatus(tr("Opened %1.").arg(descriptor->name));
+    emit currentLibraryChanged();
 
 #endif
 }
