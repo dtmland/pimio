@@ -53,7 +53,38 @@ void TestScanIncremental::scanAddsNewFiles()
         QVERIFY(records[0].id.isValid());
         QVERIFY(records[0].fingerprint.isValid());
         QCOMPARE(records[0].metadata.fileName, QStringLiteral("photo.jpg"));
+        QCOMPARE(records[0].originalStorage, core::MediaRecord::OriginalStorage::Managed);
+        QVERIFY(records[0].managedOriginalPath.startsWith(QStringLiteral("originals/")));
     }
+
+void TestScanIncremental::failedScanCommitRetainsManagedImportForRetry()
+{
+    testing::MemoryFileSystem fs;
+    testing::FakeMetadataReader reader;
+    auto clock = makeClock();
+    testing::MemoryDurableStore store(clock);
+
+    fs.addDirectory(kRoot);
+    addFile(fs, kRoot + "/photo.jpg");
+    store.failNextCommit(core::ErrorCode::OutOfSpace);
+
+    Scanner scanner(&fs, &reader, &store);
+    std::atomic<bool> cancel{false};
+    Scanner::Result result;
+    const core::Error scanError = scanner.scan({kRoot}, cancel, &result);
+
+    QVERIFY(scanError.code() == core::ErrorCode::OutOfSpace);
+    QVERIFY(store.hasStagedChanges());
+    QVERIFY(loadAll(store).isEmpty());
+
+    core::Error retryError;
+    QVERIFY2(store.commit(QStringLiteral("Retry managed import"), &retryError).has_value(),
+             qPrintable(retryError.message()));
+    QCOMPARE(loadAll(store).size(), 1);
+    QCOMPARE(loadAll(store).constFirst().originalStorage,
+             core::MediaRecord::OriginalStorage::Managed);
+}
+
 void TestScanIncremental::batchedScanCommitsBeforeItFinishes()
     {
         testing::MemoryFileSystem fs;
@@ -219,8 +250,8 @@ void TestScanIncremental::scanRemovesAPreviouslyIndexedFileThatIsNoLongerMedia()
 
         Scanner::Result second;
         QVERIFY(!scanner.scan({kRoot}, cancel, &second).isError());
-        QCOMPARE(second.removed, 1);
-        QVERIFY(loadAll(store).isEmpty());
+        QCOMPARE(second.removed, 0);
+        QCOMPARE(loadAll(store).size(), 1);
     }
 
 void TestScanIncremental::repeatedUnchangedScanMakesNoUpdates()
@@ -281,7 +312,7 @@ void TestScanIncremental::scanRemovesHistoricalSamePathDuplicates()
         const core::Error error = scanner.scan({kRoot}, cancel, &result);
 
         QVERIFY(!error.isError());
-        QCOMPARE(result.unchanged, 1);
+        QCOMPARE(result.updated, 1);
         QCOMPARE(result.removed, 1);
         QCOMPARE(loadAll(store).size(), 1);
         QCOMPARE(loadAll(store).constFirst().identity.absolutePath, path);
@@ -304,6 +335,7 @@ void TestScanIncremental::scanUpdatesChangedFile()
         scanner.scan({kRoot}, cancel);
         const core::MediaId originalId = loadAll(store)[0].id;
         const core::ContentFingerprint fp1 = loadAll(store)[0].fingerprint;
+        const QString managedPath1 = loadAll(store)[0].managedOriginalPath;
 
         // Replace with different content.
         addFile(fs, path, "version-2", kT0.addSecs(60));
@@ -318,7 +350,36 @@ void TestScanIncremental::scanUpdatesChangedFile()
         const core::MediaRecord updated = loadAll(store)[0];
         QCOMPARE(updated.id, originalId); // stable identity
         QVERIFY(updated.fingerprint != fp1); // fingerprint changed
+        QVERIFY(updated.managedOriginalPath != managedPath1);
     }
+
+void TestScanIncremental::scanReadFailureKeepsManagedOriginal()
+{
+    testing::MemoryFileSystem fs;
+    testing::FakeMetadataReader reader;
+    auto clock = makeClock();
+    testing::MemoryDurableStore store(clock);
+
+    fs.addDirectory(kRoot);
+    const QString path = addFile(fs, kRoot + "/photo.jpg", "version-1", kT0);
+    Scanner scanner(&fs, &reader, &store);
+    std::atomic<bool> cancel{false};
+    QVERIFY(!scanner.scan({kRoot}, cancel).isError());
+    const core::MediaRecord original = loadAll(store).constFirst();
+
+    addFile(fs, path, "version-2", kT0.addSecs(60));
+    fs.injectFailure(path, core::ErrorCode::PermissionDenied);
+    Scanner::Result result;
+    QVERIFY(!scanner.scan({kRoot}, cancel, &result).isError());
+
+    QCOMPARE(result.removed, 0);
+    const QList<core::MediaRecord> records = loadAll(store);
+    QCOMPARE(records.size(), 1);
+    QCOMPARE(records.constFirst().id, original.id);
+    QCOMPARE(records.constFirst().fingerprint, original.fingerprint);
+    QCOMPARE(records.constFirst().managedOriginalPath, original.managedOriginalPath);
+    QCOMPARE(result.warnings.size(), 1);
+}
 
 void TestScanIncremental::scanRemovesDeletedFile()
     {
@@ -344,8 +405,60 @@ void TestScanIncremental::scanRemovesDeletedFile()
         Scanner::Result result;
         scanner.scan({kRoot}, cancel, &result);
 
-        QCOMPARE(result.removed, 1);
-        QCOMPARE(loadAll(store).size(), 0);
+        QCOMPARE(result.removed, 0);
+        QCOMPARE(loadAll(store).size(), 1);
+    }
+
+    void TestScanIncremental::scanMigratesAnAvailableReferencedRecord()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+        fs.addDirectory(kRoot);
+        const QString path = addFile(fs, kRoot + "/legacy.jpg", "legacy");
+
+        core::MediaRecord legacy;
+        legacy.id = core::MediaId(QStringLiteral("legacy"));
+        legacy.identity = fs.identify(path, nullptr);
+        legacy.fingerprint = MediaHasher::computeFingerprint("legacy");
+        QVERIFY(store.stage(legacy, nullptr));
+        QVERIFY(store.commit(QStringLiteral("Referenced record"), nullptr).has_value());
+
+        Scanner scanner(&fs, &reader, &store);
+        std::atomic<bool> cancel{false};
+        Scanner::Result result;
+        QVERIFY(!scanner.scan({kRoot}, cancel, &result).isError());
+        QCOMPARE(result.updated, 1);
+        const auto migrated = store.load(legacy.id, nullptr);
+        QVERIFY(migrated.has_value());
+        QCOMPARE(migrated->originalStorage, core::MediaRecord::OriginalStorage::Managed);
+        QVERIFY(!migrated->managedOriginalPath.isEmpty());
+    }
+
+    void TestScanIncremental::scanRetainsAMissingReferencedRecordForMigration()
+    {
+        testing::MemoryFileSystem fs;
+        testing::FakeMetadataReader reader;
+        auto clock = makeClock();
+        testing::MemoryDurableStore store(clock);
+        fs.addDirectory(kRoot);
+
+        core::MediaRecord legacy;
+        legacy.id = core::MediaId(QStringLiteral("missing-legacy"));
+        legacy.identity.absolutePath = kRoot + QStringLiteral("/missing.jpg");
+        legacy.identity.sizeBytes = 10;
+        QVERIFY(store.stage(legacy, nullptr));
+        QVERIFY(store.commit(QStringLiteral("Referenced record"), nullptr).has_value());
+
+        Scanner scanner(&fs, &reader, &store);
+        std::atomic<bool> cancel{false};
+        Scanner::Result result;
+        QVERIFY(!scanner.scan({kRoot}, cancel, &result).isError());
+        QCOMPARE(result.removed, 0);
+        const auto retained = store.load(legacy.id, nullptr);
+        QVERIFY(retained.has_value());
+        QCOMPARE(retained->originalStorage, core::MediaRecord::OriginalStorage::Referenced);
     }
 
 void TestScanIncremental::scanDetectsRenameInSameDirectory()

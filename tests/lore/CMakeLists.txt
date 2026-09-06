@@ -53,6 +53,7 @@ qt_add_executable(tst_lore_binary_content
 target_link_libraries(tst_lore_binary_content PRIVATE
     pimio::core
     pimio::lore
+    pimio::scan
     Qt6::Test
 )
 

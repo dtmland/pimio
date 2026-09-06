@@ -21,10 +21,10 @@ traditional photo managers lack.
 ### Library
 
 The **Library** is pimio's fundamental unit of organization and the only
-storage concept the user needs. A library contains original photographs and
-videos, modified and derived versions, metadata, albums, tags, ratings,
-organizational information, and application-generated derivatives such as
-thumbnails and previews.
+storage concept the user needs. A v1 library contains managed original
+photographs and videos, plus versioned metadata, albums, tags, ratings,
+organizational information, modified versions, and application-generated
+derivatives such as thumbnails and previews.
 
 ### Library = LORE Repository
 
@@ -39,18 +39,18 @@ original photograph and revision 17 is the edit with a crop and exposure
 adjustment. This separation keeps media semantics out of the storage engine.
 
 A library has a **stable unique identity independent of its physical
-location**, so pimio recognizes a library after it is moved, copied, backed
-up, restored, or re-hosted. The library is self-contained and portable: back
-it up, restore it on another machine, and pimio reconstructs the media,
-metadata, organization, and history without the user managing media
-directories, database files, caches, or version-control internals separately.
+location**, so pimio recognizes its repository after it is moved, copied,
+backed up, restored, or re-hosted. The repository contains the managed
+originals and canonical state needed for a complete portable v1 backup. The
+Library Manager handles that unit so users do not manage media directories,
+database files, caches, or version-control internals separately.
 
 ### Durable versus rebuildable data
 
-The LORE repository holds everything required to reconstruct the library —
-it is the ultimate source of truth. Everything else (SQLite indexes,
-thumbnail caches, search indexes, future face/AI indexes) is derived,
-disposable, and rebuildable from the repository.
+The LORE repository is the source of truth for library identity, canonical
+records, organization, edit recipes, history, and managed original bytes.
+SQLite indexes, thumbnail caches, search indexes, and future face/AI indexes
+are derived, disposable, and rebuildable from the repository.
 
 ### LORE is invisible
 
@@ -192,9 +192,7 @@ writes remain as an interoperability feature, not the system of record.
 
 - What is the best metadata standard for storing multiple GPS coordinates across a video's timeline?
 - How much facial recognition and landmark detection can be done effectively offline?
-- Does the LORE repository store original media content directly (a managed
-  library), reference media in place (a referenced library), or support
-  both? Increment 7.8 proved binary integrity, but its no-go depended on a
-  whole-store rollback workaround that is no longer part of the target
-  architecture. See the reopened storage-model gate in
-  [pimio-v1-implementation.md](pimio-v1-implementation.md).
+- Version 1 uses managed libraries: LORE stores original media with canonical
+  state and history. Increment 7.8c accepts the measured storage amplification
+  in exchange for a self-contained Library lifecycle. See
+  [decision 0005](../decisions/0005-managed-versus-referenced-originals.md).

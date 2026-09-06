@@ -232,7 +232,10 @@ void TestCoreContracts::failedCommitKeepsStagedChangesRecoverable()
     FakeClock clock(QDateTime(QDate(2024, 1, 1), QTime(12, 0), Qt::UTC));
     MemoryDurableStore store(clock);
 
-    QVERIFY(store.stage(makeRecord(QStringLiteral("m-1"), QStringLiteral("draft")), nullptr));
+    MediaRecord record = makeRecord(QStringLiteral("m-1"), QStringLiteral("draft"));
+    record.originalStorage = MediaRecord::OriginalStorage::Managed;
+    record.managedOriginalPath = QStringLiteral("originals/m-/m-1.jpg");
+    QVERIFY(store.stageOriginal(record, QStringLiteral("/import/m-1.jpg"), nullptr));
     const QString tokenBefore = store.stateToken();
 
     store.failNextCommit(ErrorCode::OutOfSpace);
@@ -247,7 +250,10 @@ void TestCoreContracts::failedCommitKeepsStagedChangesRecoverable()
     QVERIFY(store.history(-1, nullptr).isEmpty());
 
     QVERIFY(store.commit(QStringLiteral("Save"), nullptr).has_value());
-    QVERIFY(store.load(MediaId(QStringLiteral("m-1")), nullptr).has_value());
+    const auto loaded = store.load(MediaId(QStringLiteral("m-1")), nullptr);
+    QVERIFY(loaded.has_value());
+    QCOMPARE(store.originalPath(*loaded, nullptr),
+             QStringLiteral("/memory-store/originals/m-/m-1.jpg"));
 }
 
 void TestCoreContracts::externalChangeChangesStateToken()

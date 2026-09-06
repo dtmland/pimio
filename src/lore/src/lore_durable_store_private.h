@@ -158,7 +158,12 @@ public:
 
     QString repositoryPath() const { return storePath + QStringLiteral("/repository"); }
     QString recordsPath() const { return repositoryPath() + QStringLiteral("/records"); }
+    QString originalsPath() const { return repositoryPath() + QStringLiteral("/originals"); }
     QString stagingPath() const { return storePath + QStringLiteral("/staging"); }
+    QString stagedOriginalsPath() const
+    {
+        return stagingPath() + QStringLiteral("/originals");
+    }
     QString libraryDescriptorPath() const
     {
         return recordsPath() + QStringLiteral("/.pimio-library.json");
@@ -190,6 +195,16 @@ public:
             baseName.left(baseName.size() - 5) + QStringLiteral(".tombstone");
         return stagingPath() + QLatin1Char('/') + detail::shardFor(baseName)
                + QLatin1Char('/') + fileName;
+    }
+
+    QString stagedOriginalPath(const core::MediaRecord &record) const
+    {
+        return stagingPath() + QLatin1Char('/') + record.managedOriginalPath;
+    }
+
+    QString committedOriginalPath(const core::MediaRecord &record) const
+    {
+        return repositoryPath() + QLatin1Char('/') + record.managedOriginalPath;
     }
 
     lore_global_args_t globals() const

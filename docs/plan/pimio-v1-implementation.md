@@ -7,10 +7,11 @@ implement all of v1 in one branch or agent session.
 ## Reorientation: the Library-Centric Direction
 
 The plans were reoriented around the principle that **one pimio Library is
-one LORE repository** with a stable identity, portable as a self-contained
-unit, and the foundation for the v2 server / v3 studio progression described
-in [pimio.md](pimio.md) and [pimio-v2.md](pimio-v2.md). Increments 0–7.6 were
-implemented before this reorientation. This section records where the
+identified by one LORE repository** with a stable identity, and is the
+foundation for the v2 server / v3 studio progression described in
+[pimio.md](pimio.md) and [pimio-v2.md](pimio-v2.md). Managed originals make the
+repository the complete portable v1 Library. Increments 0–7.6 were implemented
+before this reorientation. This section records where the
 implementation stands against the new direction and what the delta is; the
 delta work is captured as Increments 7.7–7.9 and amendments to Increment 8.
 Standalone v1 now explicitly means local/offline `liblore`, not an embedded
@@ -30,7 +31,7 @@ records that correction.
 | Author identity on every revision | **Missing.** No author concept anywhere | Increment 7.7 |
 | Authorization boundary in the service layer | **Missing.** No permission concept | Increment 7.7 (conceptual only) |
 | Explicit original→derivative relationships | **Partial.** Thumbnails are correctly derived/disposable, but edited versions and exports have no modeled relationship | Increment 8 (amended) |
-| Originals stored/versioned in the repository | **Reopened.** Increment 7.8 proved binary integrity, but its no-go depended principally on the rollback workaround | Increment 7.8c gate |
+| Originals stored/versioned in the repository | **Implemented for v1: managed.** Increment 7.8c accepts checkout/store and backup amplification so the Library remains self-contained | Increment 7.8c |
 | Library lifecycle (create/open/rename/move/backup/restore) | **Missing.** Only repeatable `--library <path>` CLI options | Increment 7.9 |
 | Service API boundary remotable in v2 | **Partial.** Services are UI-independent C++ interfaces, but no consolidated session API designed for a future network boundary | Increment 7.8b proves repository promotion; 7.9 records the service boundary; v2 implements pimio Server |
 | Non-destructive edit recipes | **Planned as designed.** Increment 8 already specifies versioned recipes | None |
@@ -42,14 +43,13 @@ records that correction.
    library that *contains* originals and derivatives, making it a
    self-contained portable unit. The implementation references media in
    place and versions only metadata/recipes. LORE's measured performance
-   covers ~2 KB JSON records, not multi-gigabyte video. **Recommendation:**
-   keep the current *referenced* model as the v1 default, and run the
-   Increment 7.8 feasibility gate for a *managed* mode (originals committed
-   to the repository). That gate passed LORE binary integrity but initially
-   rejected managed mode because pimio copied all of `.lore` before every
-   commit. Decision 0006 removes that workaround, so Increment 7.8c must
-   reconsider the storage model. Until managed mode exists, "backup library"
-   must explicitly include the referenced media roots.
+   covers ~2 KB JSON records, not multi-gigabyte video. Increment 7.8 tested a
+   *managed* mode (originals committed to the repository) and initially rejected
+   it because pimio copied all of `.lore` before every commit. Increment 7.8c
+   repeated the gate after Decision 0006 removed that workaround. It accepts
+   managed originals for v1: metadata commits are now corpus-independent, and
+   the remaining checkout/store and backup duplication is an explicit product
+   tradeoff for a self-contained Library.
 2. **The LORE branch-advance defect remains a release blocker** (condition 4
    of [decision 0001](../decisions/0001-lore-durable-store.md)). The
    library-centric direction makes the repository the *only* durable copy of
@@ -367,8 +367,8 @@ v1**. LORE 0.8.5 round-tripped and deduplicated a 256 MiB binary payload, but
 the checkout plus immutable store roughly doubled original-media storage and
 pimio's pre-commit recovery backup scaled with the complete `.lore` corpus.
 Decision 0006 removes that backup from the target architecture, so Increment
-7.8c reopens the conclusion. Until then, the implementation remains referenced
-and backups must include or explicitly exclude the media roots. See
+7.8c reopens the conclusion. At that point, the implementation remained
+referenced and backups had to include or explicitly exclude the media roots. See
 [decision 0005](../decisions/0005-managed-versus-referenced-originals.md).
 
 ## Increment 7.8a — LORE 0.9 Adoption and Recovery Simplification
@@ -491,6 +491,13 @@ evidence without stopping the standard cross-platform run.
 Reconsider managed originals after 7.8a removes the whole-store copy and 7.8b
 proves the future hosting path.
 
+**Outcome:** Complete — managed originals are the sole v1 model. LORE
+0.9.0 preserves binary integrity and deduplicates immutable content, and a
+production-adapter metadata commit no longer copies the corpus. Checkout and
+immutable-store copies, complete-backup headroom, equivalent restore capacity,
+and additional server storage are accepted costs of keeping original media in
+the Library repository.
+
 **Deliverables**
 
 - Repeat the large-binary measurements through the production adapter on 0.9.0,
@@ -507,6 +514,17 @@ proves the future hosting path.
 - The decision states actual resting, peak, backup, and server-side storage
   implications without counting the removed rollback copy.
 
+The retained `lore.binary_content` gate creates the Library with
+`LoreDurableStore`, measures and restores deterministic binary content, and
+exercises production scanner ingest, source removal, restart, checkout restore,
+managed removal, and failed-commit retry. It also commits a small metadata edit,
+then backs up and restores the complete candidate repository and verifies
+identity, metadata, and bytes. A genuinely full volume and each binary-write interruption point cannot
+be manufactured portably in hosted CI; where filesystem permissions are
+enforced, the fault suite verifies a visible checkout-write error, preserved
+staged work, and retry after the fault clears. Pre-managed records remain
+explicitly referenced until their source can be copied and committed.
+
 ## Increment 7.9 — Library Manager and Lifecycle
 
 Makes the Library a user-facing first-class object rather than a CLI flag.
@@ -518,10 +536,12 @@ contract, and original-media model.
 - Create, open, close, and switch libraries from the application, with a
   Library Manager listing known libraries by name and identity; location is
   displayed but is not the identity.
-- Rename and move a library; back up a library to a single archive and
-  restore it, reconstructing the projection, job queue, and thumbnail caches
-  from the repository. In the referenced model the backup includes or
-  clearly enumerates the media roots.
+- Rename and move the complete repository-backed Library; back it up to a single
+  archive and restore it, reconstructing the projection, job queue, and
+  thumbnail caches from the repository while preserving original bytes.
+- Promotion transfers repository identity, canonical records, history, and the
+  current managed originals. UI must disclose LORE's lazy historical-payload
+  behavior without implying that current originals remain external.
 - A documented in-process service API boundary (session/service interfaces
   the UI consumes) shaped so v2 can place a network between client and
   services without redesign. No networking, authentication, or user

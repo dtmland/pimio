@@ -12,6 +12,7 @@ private slots:
     void hasherDifferentDataProducesDifferentFingerprint();
     void hasherReadFromFileSystem();
     void scanAddsNewFiles();
+    void failedScanCommitRetainsManagedImportForRetry();
     void batchedScanCommitsBeforeItFinishes();
     void anUnbatchedScanCommitsOnceAtTheEnd();
     void aCancelledBatchedScanKeepsWhatItAlreadyCommitted();
@@ -20,7 +21,10 @@ private slots:
     void repeatedUnchangedScanMakesNoUpdates();
     void scanRemovesHistoricalSamePathDuplicates();
     void scanUpdatesChangedFile();
+    void scanReadFailureKeepsManagedOriginal();
     void scanRemovesDeletedFile();
+    void scanMigratesAnAvailableReferencedRecord();
+    void scanRetainsAMissingReferencedRecordForMigration();
     void scanDetectsRenameInSameDirectory();
     void scanDetectsMoveToNewDirectory();
     void scanRecordsDuplicatesWithSeparateIds();

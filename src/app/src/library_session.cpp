@@ -425,6 +425,7 @@ void LibrarySession::start()
             d->thumbnailCache.get(), d->compositeRenderer.get());
 
     d->model->setDatabase(d->projectionDb.get());
+    d->model->setDurableStore(d->store);
     d->model->setRequestService(d->thumbnailService.get());
 
     // The job dispatcher runs ScanRoot/ReconcileRoot workers on its own

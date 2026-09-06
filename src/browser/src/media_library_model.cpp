@@ -18,8 +18,14 @@ void MediaLibraryModel::setDatabase(projection::ProjectionDatabase *db)
     if (m_db == db) {
         return;
     }
+
     m_db = db;
     reload();
+}
+
+void MediaLibraryModel::setDurableStore(core::DurableStore *store)
+{
+    m_store = store;
 }
 
 void MediaLibraryModel::setRequestService(core::MediaRequestService *service)
@@ -354,7 +360,10 @@ QVariant MediaLibraryModel::data(const QModelIndex &index, int role) const
 
     case AbsolutePathRole: {
         const core::MediaRecord *record = ensureRecord(row);
-        return record ? record->identity.absolutePath : QString();
+        if (!record) {
+            return QString();
+        }
+        return m_store ? m_store->originalPath(*record, nullptr) : record->identity.absolutePath;
     }
 
     case CaptureTimeStringRole: {

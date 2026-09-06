@@ -37,9 +37,19 @@ struct Checkpoint
 /// is the ground truth.
 struct MediaRecord
 {
+    enum class OriginalStorage {
+        Referenced,
+        Managed,
+    };
+
     MediaId id;
     ContentFingerprint fingerprint;
+    /// Identity of the file at the import source. It is provenance, not the
+    /// location consumers should use to read a managed original.
     FileIdentity identity;
+    OriginalStorage originalStorage = OriginalStorage::Referenced;
+    /// Portable path inside the durable repository checkout.
+    QString managedOriginalPath;
     MediaMetadata metadata;
     EditRecipe recipe;
 
@@ -71,6 +81,15 @@ public:
     /// Stages a record without publishing it. Staged changes survive in the
     /// working area but are not part of history until commit().
     virtual bool stage(const MediaRecord &record, Error *error) = 0;
+
+    /// Copies and stages an original together with its record. Neither becomes
+    /// committed independently of the other.
+    virtual bool stageOriginal(const MediaRecord &record, const QString &sourcePath,
+                               Error *error) = 0;
+
+    /// Resolves the path consumers should read. Legacy referenced records remain
+    /// readable from their source path and explicitly report Referenced storage.
+    virtual QString originalPath(const MediaRecord &record, Error *error) const = 0;
 
     /// Publishes all staged changes as one checkpoint.
     ///

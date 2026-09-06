@@ -19,6 +19,7 @@ private slots:
     void emptyProjectionYieldsZeroRows();
     void mediaIdRoleReturnsStableId();
     void absolutePathRoleReturnsPath();
+    void managedOriginalPathIsResolvedByStore();
     void captureTimeStringRoleReturnsIsoString();
     void mediaKindRoleReturnsImageForImages();
     void thumbnailStatusStartsAsPending();
