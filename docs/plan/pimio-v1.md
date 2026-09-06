@@ -38,10 +38,10 @@ can support the 2.0.0 rendering frontend without being rewritten.
   location on disk. Provide library management — create, open, close, switch,
   rename, move, back up, and restore libraries — so a library is a portable,
   explicit object rather than an implicit side effect of scanned folders.
-  Current code references originals in configured media roots, so a portable
+  Version 1 references originals in configured media roots, so a portable
   backup must include those roots as well as the repository. Increment 7.8c
-  reopens the v1 storage choice after removal of the whole-store rollback copy;
-  Library Manager follows its managed/referenced/both decision.
+  confirmed this choice after removal of the whole-store rollback copy;
+  Library Manager must enumerate included and excluded roots.
 - Configure one or more local media roots per library.
 - Scan images and videos incrementally, preserving a stable file identity and
   content fingerprint to recognize moves and renames.

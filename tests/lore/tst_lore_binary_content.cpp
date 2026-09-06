@@ -71,11 +71,41 @@ QByteArray fileHash(const QString &path)
 qint64 directorySize(const QString &path)
 {
     qint64 total = 0;
-    QDirIterator entries(path, QDir::Files | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+    QDirIterator entries(path, QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot,
+                         QDirIterator::Subdirectories);
     while (entries.hasNext()) {
         total += QFileInfo(entries.next()).size();
     }
     return total;
+}
+
+bool copyDirectory(const QString &sourcePath, const QString &destinationPath)
+{
+    const QDir source(sourcePath);
+    if (!QDir().mkpath(destinationPath)) {
+        return false;
+    }
+
+    QDirIterator entries(sourcePath,
+                         QDir::Dirs | QDir::Files | QDir::Hidden | QDir::NoDotAndDotDot,
+                         QDirIterator::Subdirectories);
+    while (entries.hasNext()) {
+        const QString sourceEntry = entries.next();
+        const QString relative = source.relativeFilePath(sourceEntry);
+        const QString destinationEntry = destinationPath + QLatin1Char('/') + relative;
+        const QFileInfo info(sourceEntry);
+        if (info.isDir()) {
+            if (!QDir().mkpath(destinationEntry)) {
+                return false;
+            }
+        } else {
+            if (!QDir().mkpath(QFileInfo(destinationEntry).absolutePath())
+                || !QFile::copy(sourceEntry, destinationEntry)) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 } // namespace
@@ -99,8 +129,14 @@ void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
     LoreDurableStore store(temporary.filePath(QStringLiteral("store")));
     Error error;
     QVERIFY2(store.open(&error), qPrintable(error.message()));
+    QVERIFY2(store.createLibrary(QStringLiteral("Binary storage spike"), &error),
+             qPrintable(error.message()));
+    const auto descriptor = store.libraryDescriptor(&error);
+    QVERIFY2(descriptor.has_value(), qPrintable(error.message()));
+    const QString libraryId = descriptor->id;
     store.close();
 
+    const QString storePath = store.storePath();
     const QString repository = store.repositoryPath();
     const QString originals = repository + QStringLiteral("/originals");
     QVERIFY(QDir().mkpath(originals));
@@ -164,10 +200,59 @@ void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
                        .arg(contentSize)));
     QCOMPARE(fileHash(duplicate), expectedHash);
 
+    const qint64 repositorySizeBeforeMetadata = directorySize(repository);
+    QVERIFY2(store.open(&error), qPrintable(error.message()));
+    QVERIFY(store.stage(makeLoreRecord(QStringLiteral("large-corpus-record"),
+                                       QStringLiteral("metadata-only edit")),
+                        &error));
+    timer.restart();
+    QVERIFY2(store.commit(QStringLiteral("Small metadata edit"), &error).has_value(),
+             qPrintable(error.message()));
+    const qint64 metadataCommitMilliseconds = timer.elapsed();
+    store.close();
+    const qint64 metadataCommitGrowth = directorySize(repository) - repositorySizeBeforeMetadata;
+    QVERIFY(!QFileInfo::exists(storePath + QStringLiteral("/.pimio-lore-backup")));
+
+    const QString backupPath = temporary.filePath(QStringLiteral("backup"));
+    timer.restart();
+    QVERIFY(copyDirectory(storePath, backupPath));
+    const qint64 backupMilliseconds = timer.elapsed();
+    const qint64 backupSize = directorySize(backupPath);
+    QCOMPARE(backupSize, directorySize(storePath));
+
+    QVERIFY(QDir(storePath).removeRecursively());
+    const QString restoredPath = temporary.filePath(QStringLiteral("restored"));
+    timer.restart();
+    QVERIFY(copyDirectory(backupPath, restoredPath));
+    const qint64 restoreMilliseconds = timer.elapsed();
+
+    LoreDurableStore restored(restoredPath);
+    QVERIFY2(restored.open(&error), qPrintable(error.message()));
+    const auto restoredDescriptor = restored.libraryDescriptor(&error);
+    QVERIFY2(restoredDescriptor.has_value(), qPrintable(error.message()));
+    QCOMPARE(restoredDescriptor->id, libraryId);
+    const auto restoredRecord =
+            restored.load(MediaId(QStringLiteral("large-corpus-record")), &error);
+    QVERIFY2(restoredRecord.has_value(), qPrintable(error.message()));
+    QCOMPARE(restoredRecord->metadata.caption, QStringLiteral("metadata-only edit"));
+    restored.close();
+
+    const QString restoredOriginal =
+            restored.repositoryPath() + QStringLiteral("/originals/representative-video.bin");
+    QVERIFY(QFile::remove(restoredOriginal));
+    QVERIFY2(runLoreCli(restored.repositoryPath(),
+                        {QStringLiteral("file"), QStringLiteral("reset"),
+                         QDir::toNativeSeparators(restoredOriginal)},
+                        &output),
+             qPrintable(output));
+    QCOMPARE(fileHash(restoredOriginal), expectedHash);
+
     qInfo().noquote() << QStringLiteral("LORE binary spike: bytes=%1 stage_ms=%2 commit_ms=%3 "
                                         "reload_ms=%4 "
                                         "repository_bytes=%5 lore_bytes=%6 duplicate_commit_ms=%7 "
-                                        "duplicate_lore_growth_bytes=%8")
+                                        "duplicate_lore_growth_bytes=%8 metadata_commit_ms=%9 "
+                                        "metadata_commit_growth_bytes=%10 backup_bytes=%11 "
+                                        "backup_ms=%12 restore_ms=%13")
                              .arg(contentSize)
                              .arg(stageMilliseconds)
                              .arg(commitMilliseconds)
@@ -175,7 +260,12 @@ void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
                              .arg(repositorySizeAfterOriginal)
                              .arg(loreSizeAfterOriginal)
                              .arg(duplicateCommitMilliseconds)
-                             .arg(duplicateStoreGrowth);
+                             .arg(duplicateStoreGrowth)
+                             .arg(metadataCommitMilliseconds)
+                             .arg(metadataCommitGrowth)
+                             .arg(backupSize)
+                             .arg(backupMilliseconds)
+                             .arg(restoreMilliseconds);
 }
 
 QTEST_GUILESS_MAIN(TestLoreBinaryContent)

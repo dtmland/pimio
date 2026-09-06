@@ -24,7 +24,7 @@ Update this file in the same change that moves an increment forward.
 | 7.8 | Library storage-model gate (managed originals) | Complete (historical decision reopened) |
 | 7.8a | LORE 0.9 adoption and recovery simplification | Complete |
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
-| 7.8c | Storage-model decision revisit | Not started |
+| 7.8c | Storage-model decision revisit | Complete (referenced originals for v1) |
 | 7.9 | Library manager and lifecycle | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
@@ -355,8 +355,14 @@ tiles the longer the application is scrolled. Rationale in
   than blocking the user-facing operation.
   `lore.server_promotion` retains the reproducible topology and expected-failure
   evidence in standard CI without adding or packaging a preliminary pimio Server.
-- **7.8c:** repeat storage economics through the production 0.9.0 path and make
-  the final managed/referenced/both decision before Library Manager work.
+- **7.8c — Complete:** the production 0.9.0 gate verifies binary integrity,
+  restart, deduplication, metadata commits against the binary corpus, and a
+  whole-store backup/restore. Removing the rollback copy makes metadata commits
+  corpus-independent, but managed originals retain checkout/store duplication,
+  double that footprint again during complete backup, and add a server copy on
+  promotion. Version 1 therefore keeps referenced originals only. Library
+  Manager backups must enumerate and optionally include every media root;
+  repository move and promotion do not imply moving those originals.
 - Release-note review found no explicit statement that 0.9.0 resolves pimio's
   three 0.8.5 interrupted-commit observations. Reproduce before filing the
   [prepared upstream issue drafts](lore-0.9-upstream-issue-drafts.md).

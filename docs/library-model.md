@@ -39,9 +39,9 @@ identity, metadata, organization, edit recipes, and history, but it is not by
 itself a backup of the media. A complete referenced-library backup must include
 every referenced root and the information needed to reconnect it after restore.
 
-Increment 7.8 proved large-binary integrity and deduplication. Its v1 no-go for
-managed originals depended principally on pimio's whole-store rollback copy,
-which [decision 0006](decisions/0006-local-first-lore-topology.md) removes from
-the target architecture. The storage-model decision is therefore reopened; the
-current referenced behavior remains in force until the new gate completes. See
+Increment 7.8c repeated the large-binary gate on LORE 0.9.0 after removal of
+pimio's whole-store rollback copy. Metadata commits no longer scale with the
+corpus, but managed originals still require a checkout copy plus an immutable
+store copy, and a complete backup temporarily doubles that storage again.
+Version 1 therefore keeps referenced originals. See
 [decision 0005](decisions/0005-managed-versus-referenced-originals.md).
