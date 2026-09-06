@@ -96,6 +96,7 @@ bool MemoryDurableStore::stage(const core::MediaRecord &record, core::Error *err
                  QStringLiteral("The durable store is unavailable."));
         return false;
     }
+
     if (!record.id.isValid()) {
         setError(error, core::ErrorCode::Internal,
                  QStringLiteral("A record must have a valid media id."));
@@ -103,6 +104,30 @@ bool MemoryDurableStore::stage(const core::MediaRecord &record, core::Error *err
     }
     m_staged.insert(record.id.value(), record);
     return true;
+}
+
+bool MemoryDurableStore::stageOriginal(const core::MediaRecord &record, const QString &sourcePath,
+                                       core::Error *error)
+{
+    if (record.originalStorage != core::MediaRecord::OriginalStorage::Managed
+        || record.managedOriginalPath.isEmpty() || sourcePath.isEmpty()) {
+        setError(error, core::ErrorCode::Internal,
+                 QStringLiteral("A managed original needs source and repository paths."));
+        return false;
+    }
+    if (!stage(record, error)) {
+        return false;
+    }
+    m_stagedOriginals.insert(record.id.value());
+    return true;
+}
+
+QString MemoryDurableStore::originalPath(const core::MediaRecord &record, core::Error *) const
+{
+    if (record.originalStorage == core::MediaRecord::OriginalStorage::Managed) {
+        return QStringLiteral("/memory-store/") + record.managedOriginalPath;
+    }
+    return record.identity.absolutePath;
 }
 
 std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &message,
@@ -130,10 +155,13 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
     for (auto it = m_staged.constBegin(); it != m_staged.constEnd(); ++it) {
         m_committed.insert(it.key(), it.value());
     }
+    m_committedOriginals.unite(m_stagedOriginals);
     m_staged.clear();
+    m_stagedOriginals.clear();
 
     for (const QString &id : std::as_const(m_stagedRemovals)) {
         m_committed.remove(id);
+        m_committedOriginals.remove(id);
     }
     m_stagedRemovals.clear();
 
@@ -154,13 +182,14 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
 bool MemoryDurableStore::discardStaged(core::Error *)
 {
     m_staged.clear();
+    m_stagedOriginals.clear();
     m_stagedRemovals.clear();
     return true;
 }
 
 bool MemoryDurableStore::hasStagedChanges() const
 {
-    return !m_staged.isEmpty() || !m_stagedRemovals.isEmpty();
+    return !m_staged.isEmpty() || !m_stagedOriginals.isEmpty() || !m_stagedRemovals.isEmpty();
 }
 
 bool MemoryDurableStore::remove(const core::MediaId &id, core::Error *error)
@@ -172,6 +201,7 @@ bool MemoryDurableStore::remove(const core::MediaId &id, core::Error *error)
     }
     // Removing a staged update supersedes it.
     m_staged.remove(id.value());
+    m_stagedOriginals.remove(id.value());
     m_stagedRemovals.insert(id.value());
     return true;
 }

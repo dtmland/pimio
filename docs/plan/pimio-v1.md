@@ -38,11 +38,11 @@ can support the 2.0.0 rendering frontend without being rewritten.
   location on disk. Provide library management — create, open, close, switch,
   rename, move, back up, and restore libraries — so a library is a portable,
   explicit object rather than an implicit side effect of scanned folders.
-  Version 1 references originals in configured media roots, so a portable
-  backup must include those roots as well as the repository. Increment 7.8c
-  confirmed this choice after removal of the whole-store rollback copy;
-  Library Manager must enumerate included and excluded roots.
-- Configure one or more local media roots per library.
+  Version 1 stores originals in LORE. Increment 7.8c accepts the measured
+  storage amplification so moving, backing up, restoring, or promoting the
+  repository carries the current original media.
+- Configure one or more local import roots per library. Imported originals are
+  copied into the repository; the source roots are not durable dependencies.
 - Scan images and videos incrementally, preserving a stable file identity and
   content fingerprint to recognize moves and renames.
 - Store derived state in a SQLite cache with migrations, transactions,

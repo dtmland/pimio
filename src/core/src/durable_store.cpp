@@ -9,6 +9,8 @@ constexpr QLatin1StringView kIdKey{"id"};
 constexpr QLatin1StringView kFingerprintAlgorithmKey{"fingerprintAlgorithm"};
 constexpr QLatin1StringView kFingerprintDigestKey{"fingerprintDigest"};
 constexpr QLatin1StringView kIdentityKey{"identity"};
+constexpr QLatin1StringView kOriginalStorageKey{"originalStorage"};
+constexpr QLatin1StringView kManagedOriginalPathKey{"managedOriginalPath"};
 constexpr QLatin1StringView kMetadataKey{"metadata"};
 constexpr QLatin1StringView kRecipeKey{"recipe"};
 constexpr QLatin1StringView kMessageKey{"message"};
@@ -57,6 +59,10 @@ QJsonObject MediaRecord::toJson() const
     object.insert(kFingerprintAlgorithmKey, fingerprint.algorithm());
     object.insert(kFingerprintDigestKey, fingerprint.digest());
     object.insert(kIdentityKey, identity.toJson());
+    object.insert(kOriginalStorageKey,
+                  originalStorage == OriginalStorage::Managed ? QStringLiteral("managed")
+                                                              : QStringLiteral("referenced"));
+    object.insert(kManagedOriginalPathKey, managedOriginalPath);
     object.insert(kMetadataKey, metadata.toJson());
     object.insert(kRecipeKey, recipe.toJson());
     return object;
@@ -69,6 +75,11 @@ MediaRecord MediaRecord::fromJson(const QJsonObject &object)
     record.fingerprint = ContentFingerprint(object.value(kFingerprintAlgorithmKey).toString(),
                                             object.value(kFingerprintDigestKey).toString());
     record.identity = FileIdentity::fromJson(object.value(kIdentityKey).toObject());
+    record.originalStorage =
+            object.value(kOriginalStorageKey).toString() == QLatin1String("managed")
+            ? OriginalStorage::Managed
+            : OriginalStorage::Referenced;
+    record.managedOriginalPath = object.value(kManagedOriginalPathKey).toString();
     record.metadata = MediaMetadata::fromJson(object.value(kMetadataKey).toObject());
     record.recipe = EditRecipe::fromJson(object.value(kRecipeKey).toObject());
     return record;

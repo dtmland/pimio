@@ -4,8 +4,9 @@
 #include "pimio/core/types.h"
 #include "pimio/scan/media_hasher.h"
 
-#include <QFileInfo>
+#include <QCryptographicHash>
 #include <QDir>
+#include <QFileInfo>
 #include <QHash>
 #include <QList>
 #include <QSet>
@@ -24,6 +25,20 @@ QString pathKey(const QString &path)
     key = key.toCaseFolded();
 #endif
     return key;
+}
+
+QString managedOriginalPath(const core::MediaId &id, const core::ContentFingerprint &fingerprint,
+                            const QString &fileName)
+{
+    const QString suffix = QFileInfo(fileName).suffix().toLower();
+    const QString extension = suffix.isEmpty() ? QString() : QLatin1Char('.') + suffix;
+    const QString encodedId = QString::fromLatin1(
+            QCryptographicHash::hash(id.value().toUtf8(), QCryptographicHash::Sha256).toHex());
+    const QString encodedContent = QString::fromLatin1(
+            QCryptographicHash::hash(fingerprint.digest().toUtf8(), QCryptographicHash::Sha256)
+                    .toHex());
+    return QStringLiteral("originals/%1/%2/%3%4")
+            .arg(encodedId.left(2), encodedId, encodedContent, extension);
 }
 
 bool isWithinRoot(const QString &path, const QString &root)
@@ -193,6 +208,7 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
     // ---- Reconcile each found file ----
 
     QSet<QString> seenIds; // ids of records that still exist on disk
+    QSet<QString> failedPaths; // source paths that could not be reconciled safely
 
     // Records staged since the last commit. Batching them lets a browser show
     // part of a library while the rest is still being scanned: a record is
@@ -208,7 +224,6 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
         const auto checkpoint =
             d->store->commit(QStringLiteral("Scan: %1").arg(root.absolutePath), &commitError);
         if (!checkpoint.has_value()) {
-            d->store->discardStaged(nullptr);
             return commitError;
         }
         if (onProgress && !pendingBatch.isEmpty()) {
@@ -252,7 +267,8 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
             // File was known at this path.
             core::MediaRecord existing = byPath.value(currentPathKey).constFirst();
 
-            if (identity.looksUnchangedFrom(existing.identity)) {
+            if (identity.looksUnchangedFrom(existing.identity)
+                && existing.originalStorage == core::MediaRecord::OriginalStorage::Managed) {
                 // Cheap check says nothing changed; skip recomputing fingerprint.
                 seenIds.insert(existing.id.value());
                 ++result->unchanged;
@@ -264,6 +280,7 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
             const core::ContentFingerprint fp =
                 MediaHasher::fingerprintFile(path, *d->fs, &hashError);
             if (hashError.isError()) {
+                failedPaths.insert(currentPathKey);
                 result->warnings.append(hashError.withContext(
                     QJsonObject{{QStringLiteral("path"), path}}));
                 continue;
@@ -271,6 +288,10 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
 
             existing.identity = identity;
             existing.fingerprint = fp;
+            existing.originalStorage = core::MediaRecord::OriginalStorage::Managed;
+            const QString previousManagedPath = existing.managedOriginalPath;
+            existing.managedOriginalPath =
+                    managedOriginalPath(existing.id, fp, QFileInfo(path).fileName());
 
             // Refresh metadata if a reader is available and supports this file.
             if (d->reader != nullptr && d->reader->supports(path)) {
@@ -292,7 +313,11 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
             existing.metadata.folderPath = QFileInfo(path).absolutePath();
 
             core::Error stageError;
-            if (!d->store->stage(existing, &stageError)) {
+            const bool originalChanged = previousManagedPath != existing.managedOriginalPath;
+            const bool staged = originalChanged ? d->store->stageOriginal(existing, path,
+                                                                           &stageError)
+                                                : d->store->stage(existing, &stageError);
+            if (!staged) {
                 return stageError;
             }
             seenIds.insert(existing.id.value());
@@ -308,6 +333,7 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
             const core::ContentFingerprint fp =
                 MediaHasher::fingerprintFile(path, *d->fs, &hashError);
             if (hashError.isError()) {
+                failedPaths.insert(currentPathKey);
                 result->warnings.append(hashError.withContext(
                     QJsonObject{{QStringLiteral("path"), path}}));
                 continue;
@@ -337,8 +363,15 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
                 newRecord.metadata.kind = kindFromExtension(QFileInfo(path).fileName());
             }
 
+            const bool alreadyManaged =
+                    isMoved
+                    && newRecord.originalStorage == core::MediaRecord::OriginalStorage::Managed;
             newRecord.identity = identity;
             newRecord.fingerprint = fp;
+            newRecord.originalStorage = core::MediaRecord::OriginalStorage::Managed;
+            const QString previousManagedPath = newRecord.managedOriginalPath;
+            newRecord.managedOriginalPath =
+                    managedOriginalPath(newRecord.id, fp, QFileInfo(path).fileName());
             newRecord.metadata.fileName = QFileInfo(path).fileName();
             newRecord.metadata.folderPath = QFileInfo(path).absolutePath();
 
@@ -360,7 +393,12 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
             }
 
             core::Error stageError;
-            if (!d->store->stage(newRecord, &stageError)) {
+            const bool managedBytesUnchanged =
+                    alreadyManaged && previousManagedPath == newRecord.managedOriginalPath;
+            const bool staged = managedBytesUnchanged
+                    ? d->store->stage(newRecord, &stageError)
+                    : d->store->stageOriginal(newRecord, path, &stageError);
+            if (!staged) {
                 return stageError;
             }
             seenIds.insert(newRecord.id.value());
@@ -380,7 +418,13 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
                 d->store->discardStaged(nullptr);
                 return core::Error::cancelled();
             }
-            if (!seenIds.contains(record.id.value())) {
+            // Import roots are discovery/provenance inputs, not the durable
+            // owner of an item. A missing source must never delete either a
+            // managed original or a legacy record still awaiting migration.
+            // The one removable case is an old duplicate record for a source
+            // path that is still present and has already been reconciled.
+            if (!seenIds.contains(record.id.value())
+                && foundPaths.contains(it.key()) && !failedPaths.contains(it.key())) {
                 core::Error removeError;
                 if (!d->store->remove(record.id, &removeError)) {
                     return removeError;

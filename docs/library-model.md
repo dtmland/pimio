@@ -33,15 +33,19 @@ the stable library id in their application-data paths. The current repeated
 
 ## Original media storage
 
-The current implementation references original media in configured roots;
-originals are not copied into LORE. The repository is authoritative for library
-identity, metadata, organization, edit recipes, and history, but it is not by
-itself a backup of the media. A complete referenced-library backup must include
-every referenced root and the information needed to reconnect it after restore.
+The v1 storage model is managed: importing media copies the original bytes into
+the Library's LORE repository and commits them with the canonical record. Import
+paths are provenance and discovery inputs, not durable Library dependencies.
+The scanner copies new and changed originals through `DurableStore`; consumers
+resolve the portable repository-relative location to the current checkout.
+Deleting an import source after a successful commit does not remove the managed
+item. Records written before managed ingest remain explicitly `referenced` and
+readable; rescanning an available source migrates it, while a missing source
+remains visibly incomplete rather than being relabeled or deleted.
 
 Increment 7.8c repeated the large-binary gate on LORE 0.9.0 after removal of
 pimio's whole-store rollback copy. Metadata commits no longer scale with the
-corpus, but managed originals still require a checkout copy plus an immutable
-store copy, and a complete backup temporarily doubles that storage again.
-Version 1 therefore keeps referenced originals. See
+corpus. Managed originals require a checkout copy plus an immutable store copy,
+and a complete backup temporarily doubles that storage again; those costs are
+accepted so one repository contains the complete Library. See
 [decision 0005](decisions/0005-managed-versus-referenced-originals.md).

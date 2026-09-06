@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pimio/core/media_request.h"
+#include "pimio/core/durable_store.h"
 #include "pimio/core/metadata.h"
 #include "pimio/core/types.h"
 #include "pimio/projection/projection_database.h"
@@ -59,6 +60,7 @@ public:
 
     /// Attaches the model to a projection database. Clears the current data.
     void setDatabase(projection::ProjectionDatabase *db);
+    void setDurableStore(core::DurableStore *store);
 
     /// Attaches the thumbnail request service. May be null (thumbnails stay
     /// in Pending state until a service is provided).
@@ -209,6 +211,7 @@ private:
     void onThumbnailError(const core::MediaRequest &request, const core::Error &error);
 
     projection::ProjectionDatabase *m_db = nullptr;
+    core::DurableStore *m_store = nullptr;
     core::MediaRequestService *m_service = nullptr;
     ThumbnailImageProvider *m_imageProvider = nullptr;
     QSize m_thumbnailSize{256, 256};

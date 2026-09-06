@@ -203,7 +203,12 @@ void MediaLibraryModel::requestThumbnailIfNeeded(int row) const
     core::MediaRequest req;
     req.mediaId = item.id;
     req.fingerprint = record->fingerprint;
-    req.absolutePath = record->identity.absolutePath;
+    req.absolutePath =
+            m_store ? m_store->originalPath(*record, nullptr) : record->identity.absolutePath;
+    if (req.absolutePath.isEmpty()) {
+        item.thumbnailStatus = ThumbnailStatus::Error;
+        return;
+    }
     req.kind = core::MediaRequestKind::Thumbnail;
     req.targetSize = m_thumbnailSize;
     req.priority = core::JobPriority::Interactive;

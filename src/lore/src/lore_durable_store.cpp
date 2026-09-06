@@ -52,21 +52,22 @@ bool LoreDurableStore::Private::restoreCheckoutToCommittedState(Error *error)
     const lore_global_args_t args = globals();
 
     const QByteArray records = detail::nativePath(recordsPath());
-    const lore_string_t path = loreString(records);
+    const QByteArray originals = detail::nativePath(originalsPath());
+    const lore_string_t paths[] = {loreString(records), loreString(originals)};
 
     // A staged node cannot be reset, so staging is always released first.
     Operation unstage;
     lore_file_unstage_args_t unstageArgs;
     std::memset(&unstageArgs, 0, sizeof(unstageArgs));
-    unstageArgs.paths.ptr = &path;
-    unstageArgs.paths.count = 1;
+    unstageArgs.paths.ptr = paths;
+    unstageArgs.paths.count = 2;
     api.fileUnstage(&args, &unstageArgs, unstage.config());
 
     Operation reset;
     lore_file_reset_args_t resetArgs;
     std::memset(&resetArgs, 0, sizeof(resetArgs));
-    resetArgs.paths.ptr = &path;
-    resetArgs.paths.count = 1;
+    resetArgs.paths.ptr = paths;
+    resetArgs.paths.count = 2;
     // Untracked files in the checkout are, by definition, the residue of a
     // commit that did not complete.
     resetArgs.purge = 1;
@@ -175,7 +176,7 @@ bool LoreDurableStore::open(Error *error)
         }
     }
 
-    if (!QDir().mkpath(d->recordsPath())) {
+    if (!QDir().mkpath(d->recordsPath()) || !QDir().mkpath(d->originalsPath())) {
         detail::setError(error, ErrorCode::PermissionDenied,
                  QStringLiteral("Could not create %1.").arg(d->recordsPath()));
         return false;
@@ -397,6 +398,42 @@ QString LoreDurableStore::stateToken() const
     // process must be visible here, because this token is what tells the
     // SQLite projection that it has to be rebuilt.
     return d->queryStateToken(nullptr);
+}
+
+QString LoreDurableStore::originalPath(const core::MediaRecord &record, Error *error) const
+{
+    if (record.originalStorage == core::MediaRecord::OriginalStorage::Referenced) {
+        return record.identity.absolutePath;
+    }
+    const QString relative = QDir::cleanPath(record.managedOriginalPath);
+    if (relative.isEmpty() || relative == QLatin1String(".") || relative.startsWith(QLatin1Char('/'))
+        || relative == QLatin1String("..") || relative.startsWith(QLatin1String("../"))
+        || relative != record.managedOriginalPath
+        || !relative.startsWith(QLatin1String("originals/"))) {
+        detail::setError(error, ErrorCode::CorruptData,
+                         QStringLiteral("The managed original path is invalid."));
+        return {};
+    }
+    const QString resolved = d->repositoryPath() + QLatin1Char('/') + relative;
+    const QString originalsRoot = QFileInfo(d->originalsPath()).canonicalFilePath();
+    const QString parent = QFileInfo(resolved).absoluteDir().canonicalPath();
+    const QString canonical = QFileInfo(resolved).canonicalFilePath();
+    const auto isWithinOriginals = [&originalsRoot](const QString &path) {
+        if (path.isEmpty() || originalsRoot.isEmpty()) {
+            return true;
+        }
+        const QString relativePath =
+                QDir::fromNativeSeparators(QDir(originalsRoot).relativeFilePath(path));
+        return relativePath != QLatin1String("..")
+                && !relativePath.startsWith(QLatin1String("../"))
+                && !QDir::isAbsolutePath(relativePath);
+    };
+    if (!isWithinOriginals(parent) || !isWithinOriginals(canonical)) {
+        detail::setError(error, ErrorCode::CorruptData,
+                         QStringLiteral("The managed original resolves outside the repository."));
+        return {};
+    }
+    return resolved;
 }
 
 } // namespace pimio::lore

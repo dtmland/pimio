@@ -1,6 +1,8 @@
 #include "lore_test_support.h"
 
 #include "pimio/lore/lore_durable_store.h"
+#include "pimio/scan/qt_file_system.h"
+#include "pimio/scan/scanner.h"
 
 #include <QCryptographicHash>
 #include <QDirIterator>
@@ -116,6 +118,8 @@ class TestLoreBinaryContent : public QObject
 
 private slots:
     void commitRestartReloadAndDeduplicate();
+    void scannerIngestsManagedOriginal();
+    void failedManagedCommitRetainsRecordAndBytesForRetry();
 };
 
 void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
@@ -269,6 +273,121 @@ void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
                              .arg(backupSize)
                              .arg(backupMilliseconds)
                              .arg(restoreMilliseconds);
+}
+
+void TestLoreBinaryContent::scannerIngestsManagedOriginal()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const QString sourceRoot = temporary.filePath(QStringLiteral("import"));
+    QVERIFY(QDir().mkpath(sourceRoot));
+    const QString sourcePath = sourceRoot + QStringLiteral("/photo.jpg");
+    QVERIFY(writeBinaryFile(sourcePath, 2 * kMiB));
+    QByteArray expectedHash = fileHash(sourcePath);
+
+    const QString storePath = temporary.filePath(QStringLiteral("store"));
+    {
+        LoreDurableStore store(storePath);
+        Error error;
+        QVERIFY2(store.open(&error), qPrintable(error.message()));
+        QVERIFY(store.createLibrary(QStringLiteral("Managed"), &error));
+        pimio::scan::QtFileSystem fileSystem;
+        pimio::scan::Scanner scanner(&fileSystem, nullptr, &store);
+        std::atomic<bool> cancelled{false};
+        pimio::scan::Scanner::Result result;
+        QVERIFY2(!scanner.scan({sourceRoot}, cancelled, &result).isError(),
+                 qPrintable(error.message()));
+        QCOMPARE(result.added, 1);
+
+        const MediaId id = store.listIds(&error).constFirst();
+        const auto record = store.load(id, &error);
+        QVERIFY(record.has_value());
+        QCOMPARE(record->originalStorage, MediaRecord::OriginalStorage::Managed);
+        QVERIFY(!record->managedOriginalPath.isEmpty());
+        const QString resolvedPath = store.originalPath(*record, &error);
+        QVERIFY2(!resolvedPath.isEmpty(), qPrintable(error.message()));
+        QVERIFY2(QFileInfo::exists(resolvedPath), qPrintable(resolvedPath));
+        QCOMPARE(fileHash(resolvedPath), expectedHash);
+
+        QFile changedSource(sourcePath);
+        QVERIFY(changedSource.open(QIODevice::Append));
+        QCOMPARE(changedSource.write("changed"), qint64(7));
+        changedSource.close();
+        expectedHash = fileHash(sourcePath);
+        result = {};
+        QVERIFY(!scanner.scan({sourceRoot}, cancelled, &result).isError());
+        QCOMPARE(result.updated, 1);
+        const auto updatedRecord = store.load(id, &error);
+        QVERIFY(updatedRecord.has_value());
+        const QString updatedPath = store.originalPath(*updatedRecord, &error);
+        QVERIFY(updatedPath != resolvedPath);
+        QCOMPARE(fileHash(updatedPath), expectedHash);
+        QVERIFY(!QFileInfo::exists(resolvedPath));
+
+        QVERIFY(QFile::remove(sourcePath));
+        result = {};
+        QVERIFY(!scanner.scan({sourceRoot}, cancelled, &result).isError());
+        QCOMPARE(result.removed, 0);
+        QVERIFY(store.load(id, &error).has_value());
+    }
+
+    LoreDurableStore reopened(storePath);
+    Error error;
+    QVERIFY2(reopened.open(&error), qPrintable(error.message()));
+    const MediaId id = reopened.listIds(&error).constFirst();
+    const auto record = reopened.load(id, &error);
+    QVERIFY(record.has_value());
+    const QString managedPath = reopened.originalPath(*record, &error);
+    QCOMPARE(fileHash(managedPath), expectedHash);
+
+    QVERIFY(QFile::remove(managedPath));
+    QVERIFY2(reopened.restoreFromDurableState(&error), qPrintable(error.message()));
+    QCOMPARE(fileHash(managedPath), expectedHash);
+
+    QVERIFY(reopened.remove(id, &error));
+    QVERIFY(reopened.commit(QStringLiteral("Remove managed original"), &error).has_value());
+    QVERIFY(!QFileInfo::exists(managedPath));
+}
+
+void TestLoreBinaryContent::failedManagedCommitRetainsRecordAndBytesForRetry()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const QString source = temporary.filePath(QStringLiteral("source.jpg"));
+    QVERIFY(writeBinaryFile(source, kMiB));
+
+    LoreDurableStore store(temporary.filePath(QStringLiteral("store")));
+    Error error;
+    QVERIFY(store.open(&error));
+    QVERIFY(store.createLibrary(QStringLiteral("Retry"), &error));
+
+    MediaRecord record;
+    record.id = MediaId(QStringLiteral("retry-original"));
+    record.fingerprint = ContentFingerprint(
+            QStringLiteral("sha256"), QString::fromLatin1(fileHash(source).toHex()));
+    record.identity.absolutePath = source;
+    record.identity.sizeBytes = QFileInfo(source).size();
+    record.originalStorage = MediaRecord::OriginalStorage::Managed;
+    record.managedOriginalPath = QStringLiteral("originals/re/retry-original.jpg");
+    QVERIFY(store.stageOriginal(record, source, &error));
+
+    const QString destination = store.originalPath(record, &error);
+    QVERIFY(QDir().mkpath(destination));
+    const auto failed = store.commit(QStringLiteral("Blocked"), &error);
+    QVERIFY(!failed.has_value());
+    QVERIFY(store.hasStagedChanges());
+    QVERIFY(!store.load(record.id, nullptr).has_value());
+
+    QDir(destination).removeRecursively();
+    QVERIFY2(store.commit(QStringLiteral("Retry"), &error).has_value(),
+             qPrintable(error.message()));
+    const auto loaded = store.load(record.id, &error);
+    QVERIFY(loaded.has_value());
+    QCOMPARE(fileHash(store.originalPath(*loaded, &error)), fileHash(source));
 }
 
 QTEST_GUILESS_MAIN(TestLoreBinaryContent)

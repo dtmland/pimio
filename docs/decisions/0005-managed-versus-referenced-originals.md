@@ -1,25 +1,25 @@
-# 0005 — Referenced originals for v1
+# 0005 — Managed originals for v1
 
 Status: **accepted.** Initially recorded at the end of Increment 7.8 and
 re-evaluated through the production LORE 0.9.0 path in Increment 7.8c.
 
 ## Decision
 
-pimio uses referenced libraries for v1: LORE stores the library
-descriptor, metadata, organization, edit recipes, and history, while original
-media remains in configured media roots.
+pimio uses managed libraries for v1: original media is copied into the Library's
+LORE repository and committed alongside its descriptor, metadata, organization,
+edit recipes, and history. The source path is import provenance, not durable
+Library storage.
 
-Managed originals and a choice between managed and referenced modes remain out
-of v1. Removing pimio's whole-store recovery copy makes small metadata commits
-independent of corpus size, but it does not remove LORE's checkout plus
-immutable-store duplication. Referenced originals therefore retain predictable
-capacity requirements while the Library Manager makes backup scope explicit.
+The measured checkout plus immutable-store duplication is accepted. Removing
+pimio's whole-store recovery copy makes ordinary metadata commits independent
+of corpus size, and keeping originals in LORE satisfies the product requirement
+that a Library is self-contained, portable, and promoted as one unit.
 
 ## Context
 
 The library-centric design aims to make a Library portable and self-contained,
-but the existing implementation versions JSON records and references original
-media in place. Increment 2 measured LORE with small records only. Increment
+but the implementation before Increment 7.8c versioned JSON records and
+referenced original media in place. Increment 2 measured LORE with small records only. Increment
 7.8 therefore tested whether LORE 0.8.5 can carry compressed-media-sized binary
 content before any managed ingest was designed.
 
@@ -85,12 +85,11 @@ with the rollback implementation's removal in Increment 7.8a, its space cost
 does not scale with the 256 MiB corpus. The complete-copy timings are
 environment-specific; their capacity requirement is not.
 
-## Why managed originals remain out of v1
+## Why managed originals are accepted for v1
 
 Binary correctness, restart, restore, and LORE's content deduplication pass.
 The removed rollback copy also means an ordinary pimio metadata commit no
-longer copies the corpus. The remaining costs still make managed originals a
-poor v1 default:
+longer copies the corpus. Managed storage has explicit costs:
 
 1. A checked-out original also exists in LORE's immutable store. The first
    payload therefore requires about twice its source size at rest before small
@@ -106,58 +105,47 @@ poor v1 default:
    error and preserves staged metadata, but LORE exposes no reservation that
    could guarantee a multi-gigabyte original will finish after ingest starts.
    Hosted cross-platform tests cannot deterministically exhaust a volume or
-   interrupt each binary-write phase, so the managed candidate lacks that
-   evidence; the selected referenced path does not perform those writes.
-4. Managed ingest, lifecycle policy, partial backup, and storage monitoring do
-   not otherwise benefit v1's organization workflows enough to justify a
-   second storage mode and its cross-platform failure surface.
+   interrupt each binary-write phase, so ingest must preflight capacity, retain
+   the source until commit succeeds, and report partial work visibly.
 
 The gate is intentionally about the complete pimio storage path, not whether
 LORE can read one large file in isolation. The 0.9.0 result removes the
-repository-sized cost from metadata commits, but the resting, backup, restore,
-low-space, and hosted-storage economics still do not justify managed ingest in
-v1.
+repository-sized cost from metadata commits. The remaining resting, backup,
+restore, low-space, and hosted-storage costs are accepted in exchange for one
+self-contained Library lifecycle.
 
 ## Backup, restore, and portability consequences
 
-A v1 library backup is complete only when it includes both:
+A complete v1 Library backup contains the LORE repository, including its
+committed originals, identity, canonical records, and history. The Library
+Manager must take the backup from a quiescent durable checkpoint, verify it
+before reporting success, and restore the same library id and original bytes at
+a new location. Source import folders are not additional backup dependencies.
 
-- the LORE repository, which preserves identity, canonical records, and
-  history; and
-- every referenced media root, with enough mapping information to reconnect
-  restored paths.
+Moving or copying the repository carries the managed originals with its
+identity. Promotion pushes the committed current originals with canonical state
+and history; as documented in decision 0006, older historical payloads remain
+subject to LORE's lazy hydration behavior.
 
-The Increment 7.9 Library Manager must offer an organizational-state backup of
-the repository and a complete backup that includes selected referenced roots.
-Every backup manifest must enumerate each root and whether its content is
-included. Restore preserves the library id, allows roots to be reconnected at
-new locations, and reports missing or excluded roots instead of implying that
-their media was backed up.
-
-Moving or copying the repository preserves library identity and does not move
-the media roots. Promotion pushes canonical repository state and history; it
-does not upload referenced originals. Product documentation and UI may call a
-backup or promoted Library self-contained or portable only when the referenced
-media is transferred and reconnectable too.
+Repositories containing pre-managed records remain readable. Such records are
+decoded as explicitly referenced and therefore migration-incomplete; a scan can
+copy an available source into LORE and commit the managed location. Missing
+sources are retained for later repair and are never silently marked managed.
 
 ## Alternatives considered
 
-- **Managed originals in LORE for v1.** Rejected after the 0.9.0 retest because
-  checkout/store duplication and complete-backup capacity remain, despite
-  metadata commits no longer copying the repository.
-- **Managed and referenced modes in v1.** Rejected because the managed half has
-  the same capacity and low-space concerns and would double lifecycle
-  complexity.
-- **Referenced originals.** Accepted. It retains the proven metadata/history
-  architecture, keeps one live copy of each original, and makes backup and
-  promotion scope explicit.
+- **Managed originals in LORE for v1.** Accepted. The self-contained lifecycle
+  outweighs the measured capacity amplification, and metadata commits no longer
+  copy the repository.
+- **Managed and referenced modes in v1.** Rejected because two storage modes
+  would double ingest, lifecycle, backup, restore, and promotion behavior.
+- **Referenced originals.** Rejected because a repository-only move, backup, or
+  promotion would omit the media and require users to manage a second durable
+  storage topology.
 
 ## Revisit criteria
 
-A future managed mode needs a product requirement that outweighs its capacity
-cost and a new feasibility gate covering large real-world corpora, deterministic
-low-space and interrupted-binary-write behavior, incremental backup/restore,
-retention, and all supported platforms. Candidate designs may use immutable
-blobs outside the LORE checkout or a newer LORE transaction model, but must
-preserve content integrity without requiring two live local copies of the
-entire corpus.
+The initial managed implementation may accept the measured amplification.
+Future storage optimization must preserve LORE-backed identity, integrity,
+history, backup, restore, and promotion semantics. Referenced or external-blob
+modes require a separate product decision rather than an implicit fallback.

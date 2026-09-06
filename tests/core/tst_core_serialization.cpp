@@ -349,6 +349,8 @@ void TestCoreSerialization::mediaRecordRoundTrip()
     record.identity.fileId = QStringLiteral("42");
     record.identity.sizeBytes = 1234567;
     record.identity.lastModified = QDateTime(QDate(2019, 5, 4), QTime(13, 45, 12), Qt::UTC);
+    record.originalStorage = MediaRecord::OriginalStorage::Managed;
+    record.managedOriginalPath = QStringLiteral("originals/me/media-1.jpg");
     record.metadata = sampleMetadata();
     record.recipe = sampleRecipe();
 
@@ -358,8 +360,17 @@ void TestCoreSerialization::mediaRecordRoundTrip()
     QCOMPARE(restored.identity.absolutePath, record.identity.absolutePath);
     QCOMPARE(restored.identity.sizeBytes, record.identity.sizeBytes);
     QCOMPARE(restored.identity.lastModified, record.identity.lastModified);
+    QCOMPARE(restored.originalStorage, MediaRecord::OriginalStorage::Managed);
+    QCOMPARE(restored.managedOriginalPath, record.managedOriginalPath);
     QCOMPARE(restored.metadata, record.metadata);
     QCOMPARE(restored.recipe, record.recipe);
+
+    QJsonObject legacy = record.toJson();
+    legacy.remove(QStringLiteral("originalStorage"));
+    legacy.remove(QStringLiteral("managedOriginalPath"));
+    const MediaRecord referenced = MediaRecord::fromJson(legacy);
+    QCOMPARE(referenced.originalStorage, MediaRecord::OriginalStorage::Referenced);
+    QVERIFY(referenced.managedOriginalPath.isEmpty());
 }
 
 void TestCoreSerialization::libraryAndCheckpointRoundTrip()

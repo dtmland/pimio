@@ -80,6 +80,27 @@ void TestBrowserModel::absolutePathRoleReturnsPath()
     QVERIFY(path.endsWith(QStringLiteral(".jpg")));
 }
 
+void TestBrowserModel::managedOriginalPathIsResolvedByStore()
+{
+    MemoryDurableStore store(m_clock);
+    MediaRecord record = makeRecord(QStringLiteral("managed"), 1000);
+    record.originalStorage = MediaRecord::OriginalStorage::Managed;
+    record.managedOriginalPath = QStringLiteral("originals/ma/managed.jpg");
+    QVERIFY(store.stageOriginal(record, record.identity.absolutePath, nullptr));
+    QVERIFY(store.commit(QStringLiteral("managed"), nullptr).has_value());
+
+    Error error;
+    m_db = std::make_unique<ProjectionDatabase>();
+    QVERIFY(m_db->openInMemory(&error));
+    QVERIFY(m_db->rebuildFrom(store, &error));
+
+    MediaLibraryModel model;
+    model.setDatabase(m_db.get());
+    model.setDurableStore(&store);
+    QCOMPARE(model.data(model.index(0), MediaLibraryModel::AbsolutePathRole).toString(),
+             QStringLiteral("/memory-store/originals/ma/managed.jpg"));
+}
+
 void TestBrowserModel::captureTimeStringRoleReturnsIsoString()
 {
     populate(1);

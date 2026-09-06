@@ -111,14 +111,14 @@ class TestWatchReconciliation : public QObject
     Q_OBJECT
 
 private slots:
-    void manyIncrementalReconcilesMatchOneCleanPass();
+    void incrementalReconcileRetainsImportedMediaMissingFromSource();
     void renameKeepsTheSameMediaIdAcrossReconciles();
     void duplicateReconcileCallsAreIdempotent();
     void reconcilingOnlyAtTheEndStillConvergesAfterDroppedTriggers();
     void startupOverflowEnqueuesAReconcile();
 };
 
-void TestWatchReconciliation::manyIncrementalReconcilesMatchOneCleanPass()
+void TestWatchReconciliation::incrementalReconcileRetainsImportedMediaMissingFromSource()
 {
     // --- Path A: many small reconcile calls, as watch would trigger. ---
     testing::MemoryFileSystem fsA;
@@ -168,8 +168,15 @@ void TestWatchReconciliation::manyIncrementalReconcilesMatchOneCleanPass()
     fsB.addFile(kRoot + "/d.jpg", "content-d", kT0);
     VERIFY_RECONCILE_OK(reconcileOnce(scannerB, projectionB, storeB));
 
-    QCOMPARE(contentView(storeA), contentView(storeB));
-    QCOMPARE(contentView(projectionA), contentView(projectionB));
+    const auto incremental = contentView(storeA);
+    const auto clean = contentView(storeB);
+    QCOMPARE(incremental.size(), 4);
+    QCOMPARE(clean.size(), 3);
+    QVERIFY(incremental.contains(kRoot + QStringLiteral("/c.jpg")));
+    for (auto it = clean.constBegin(); it != clean.constEnd(); ++it) {
+        QCOMPARE(incremental.value(it.key()), it.value());
+    }
+    QCOMPARE(contentView(projectionA), incremental);
 }
 
 void TestWatchReconciliation::renameKeepsTheSameMediaIdAcrossReconciles()

@@ -24,7 +24,7 @@ Update this file in the same change that moves an increment forward.
 | 7.8 | Library storage-model gate (managed originals) | Complete (historical decision reopened) |
 | 7.8a | LORE 0.9 adoption and recovery simplification | Complete |
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
-| 7.8c | Storage-model decision revisit | Complete (referenced originals for v1) |
+| 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Not started |
 | 8 | Save, portable metadata, and image recipes | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
@@ -324,8 +324,8 @@ tiles the longer the application is scrolled. Rationale in
   complete durable corpus.
 - [Decision 0006](../decisions/0006-local-first-lore-topology.md) removed that
   whole-store backup from the target architecture, so Increment 7.8c repeated
-  the storage gate. Referenced originals remain the v1 choice, and complete
-  backups must include the configured media roots.
+  the storage gate. Managed originals are the v1 choice despite the measured
+  amplification, so a complete Library is one repository.
 
 ### Automated evidence
 
@@ -358,11 +358,14 @@ tiles the longer the application is scrolled. Rationale in
 - **7.8c — Complete:** the production 0.9.0 gate verifies binary integrity,
   restart, deduplication, metadata commits against the binary corpus, and a
   whole-store backup/restore. Removing the rollback copy makes metadata commits
-  corpus-independent, but managed originals retain checkout/store duplication,
+  corpus-independent. Managed originals retain checkout/store duplication,
   double that footprint again during complete backup, and add a server copy on
-  promotion. Version 1 therefore keeps referenced originals only. Library
-  Manager backups must enumerate and optionally include every media root;
-  repository move and promotion do not imply moving those originals.
+  promotion; those costs are accepted to keep the Library self-contained.
+  The scanner now stages original bytes and records together through the durable
+  store, consumers resolve repository-relative managed locations, and removed
+  import sources do not remove committed media. Legacy referenced records remain
+  readable and explicitly migration-incomplete. Increment 7.9 builds lifecycle
+  operations on this managed store.
 - Release-note review found no explicit statement that 0.9.0 resolves pimio's
   three 0.8.5 interrupted-commit observations. Reproduce before filing the
   [prepared upstream issue drafts](lore-0.9-upstream-issue-drafts.md).

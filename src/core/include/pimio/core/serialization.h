@@ -11,7 +11,7 @@ namespace pimio::core {
 /// Increment this only together with a documented migration. Readers must
 /// accept older versions and must preserve unknown fields from newer versions
 /// so that a downgrade does not silently discard data.
-inline constexpr int kRecordSchemaVersion = 1;
+inline constexpr int kRecordSchemaVersion = 2;
 
 /// Key used for the schema version in every serialized record.
 inline constexpr QLatin1StringView kSchemaVersionKey{"schemaVersion"};

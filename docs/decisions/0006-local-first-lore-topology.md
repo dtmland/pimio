@@ -125,7 +125,8 @@ upstream reports are in
 - The desktop UI can promote an idle local Library to a user-supplied LORE URL;
   it does not package a server or implement background synchronization.
 - Increment 7.8c retests managed originals without the whole-store snapshot and
-  keeps referenced originals for v1. Metadata commits are corpus-independent,
-  but checkout/store and complete-backup duplication remain.
+  accepts them for v1. Metadata commits are corpus-independent; checkout/store,
+  complete-backup, and server duplication are accepted costs of a self-contained
+  Library.
 - Decision 0001 retains its superseded recovery evidence. Decision 0005 records
-  the final referenced-originals choice after the Increment 7.8c retest.
+  the final managed-originals choice after the Increment 7.8c retest.
