@@ -82,6 +82,7 @@ bool LoreDurableStore::renameLibrary(const QString &name, Error *error)
         return false;
     }
 
+    qInfo("rename-library: reading descriptor");
     auto descriptor = libraryDescriptor(error);
     if (!descriptor) {
         return false;
@@ -91,6 +92,7 @@ bool LoreDurableStore::renameLibrary(const QString &name, Error *error)
     }
 
     descriptor->name = trimmedName;
+    qInfo("rename-library: staging descriptor");
     QSaveFile file(d->stagedLibraryDescriptorPath());
     const QByteArray bytes = QJsonDocument(descriptor->toJson()).toJson(QJsonDocument::Compact);
     if (!file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size() || !file.commit()) {
@@ -98,6 +100,7 @@ bool LoreDurableStore::renameLibrary(const QString &name, Error *error)
                          QStringLiteral("Could not stage the renamed library descriptor."));
         return false;
     }
+    qInfo("rename-library: committing descriptor");
     return commit(QStringLiteral("Rename library"), error).has_value();
 }
 

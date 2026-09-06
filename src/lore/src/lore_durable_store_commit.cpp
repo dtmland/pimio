@@ -355,6 +355,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     }
 
     Operation stageOperation;
+    qInfo("commit: staging records");
     stageTree(records, stageOperation);
     if (stageOperation.status != 0) {
         d->restoreCheckoutToCommittedState(nullptr);
@@ -378,6 +379,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
                     QJsonDocument::fromJson(descriptorFile.readAll()).object());
         }
     }
+    qInfo("commit: reading history");
     const QList<core::Checkpoint> previous = history(1, nullptr);
     const QString parentId = previous.isEmpty() ? QString() : previous.constFirst().id;
     const QJsonObject provenance{
@@ -392,6 +394,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
             QByteArrayLiteral("pimio-checkpoint-v1:")
             + QJsonDocument(provenance).toJson(QJsonDocument::Compact);
     commitArgs.message = loreString(messageUtf8);
+    qInfo("commit: committing revision");
     api.revisionCommit(&args, &commitArgs, commitOperation.config());
     if (commitOperation.status != 0 || commitOperation.checkpoints.isEmpty()) {
         d->restoreCheckoutToCommittedState(nullptr);
@@ -404,6 +407,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     Operation flushOperation;
     lore_repository_flush_args_t flushArgs;
     std::memset(&flushArgs, 0, sizeof(flushArgs));
+    qInfo("commit: flushing repository");
     api.repositoryFlush(&args, &flushArgs, flushOperation.config());
     if (flushOperation.status != 0) {
         d->restoreCheckoutToCommittedState(nullptr);

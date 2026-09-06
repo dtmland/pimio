@@ -155,10 +155,13 @@ bool LibraryManager::rename(const QString &id, const QString &name, core::Error 
         return false;
     }
     lore::LoreDurableStore store(storePathFor(library->location));
+    qInfo("library-manager rename: opening store");
     if (!store.open(error) || !store.renameLibrary(name, error)) {
         return false;
     }
+    qInfo("library-manager rename: reading descriptor");
     const auto descriptor = store.libraryDescriptor(error);
+    qInfo("library-manager rename: closing store");
     store.close();
     if (!descriptor) {
         return false;
