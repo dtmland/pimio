@@ -127,5 +127,5 @@ upstream reports are in
 - Increment 7.8c retests managed originals without the whole-store snapshot and
   keeps referenced originals for v1. Metadata commits are corpus-independent,
   but checkout/store and complete-backup duplication remain.
-- Decisions 0001 and 0005 remain as brief historical evidence, with their
-  superseded conclusions clearly marked.
+- Decision 0001 retains its superseded recovery evidence. Decision 0005 records
+  the final referenced-originals choice after the Increment 7.8c retest.

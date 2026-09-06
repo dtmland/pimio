@@ -7,10 +7,11 @@ implement all of v1 in one branch or agent session.
 ## Reorientation: the Library-Centric Direction
 
 The plans were reoriented around the principle that **one pimio Library is
-one LORE repository** with a stable identity, portable as a self-contained
-unit, and the foundation for the v2 server / v3 studio progression described
-in [pimio.md](pimio.md) and [pimio-v2.md](pimio-v2.md). Increments 0–7.6 were
-implemented before this reorientation. This section records where the
+identified by one LORE repository** with a stable identity, and is the
+foundation for the v2 server / v3 studio progression described in
+[pimio.md](pimio.md) and [pimio-v2.md](pimio-v2.md). A portable v1 Library also
+requires its referenced media roots and reconnection mapping. Increments 0–7.6
+were implemented before this reorientation. This section records where the
 implementation stands against the new direction and what the delta is; the
 delta work is captured as Increments 7.7–7.9 and amendments to Increment 8.
 Standalone v1 now explicitly means local/offline `liblore`, not an embedded

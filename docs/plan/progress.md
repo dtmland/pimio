@@ -333,7 +333,7 @@ tiles the longer the application is scrolled. Rationale in
   process, verifies its SHA-256, and demonstrates content deduplication across
   two paths.
 
-## Increments 7.8a–7.8c — Architecture correction — In progress
+## Increments 7.8a–7.8c — Architecture correction — Complete
 
 - **7.8a — Complete:** every build context pins checksum-verified LORE 0.9.0.
   The private API uses 0.9 metadata discriminants, a copied 0.8.5 repository
