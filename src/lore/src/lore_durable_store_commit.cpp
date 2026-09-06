@@ -6,6 +6,7 @@
 #include <QCryptographicHash>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QJsonDocument>
 #include <QSet>
 
@@ -16,6 +17,22 @@ namespace pimio::lore {
 
 using core::Error;
 using core::ErrorCode;
+
+namespace {
+
+bool fileMatchesSha256(const QString &path, const QString &expectedDigest)
+{
+    if (!QFileInfo(path).isFile()) {
+        return false;
+    }
+
+    QFile file(path);
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    return file.open(QIODevice::ReadOnly) && hash.addData(&file)
+           && QString::fromLatin1(hash.result().toHex()) == expectedDigest;
+}
+
+} // namespace
 
 bool LoreDurableStore::stage(const core::MediaRecord &record, Error *error)
 {
@@ -77,17 +94,12 @@ bool LoreDurableStore::stageOriginal(const core::MediaRecord &record, const QStr
         return false;
     }
 
-    QFile copied(temporary);
-    QCryptographicHash hash(QCryptographicHash::Sha256);
-    if (!copied.open(QIODevice::ReadOnly) || !hash.addData(&copied)
-        || QString::fromLatin1(hash.result().toHex()) != record.fingerprint.digest()) {
-        copied.close();
+    if (!fileMatchesSha256(temporary, record.fingerprint.digest())) {
         QFile::remove(temporary);
         detail::setError(error, ErrorCode::CorruptData,
                          QStringLiteral("The staged original does not match its fingerprint."));
         return false;
     }
-    copied.close();
     QFile::remove(target);
     if (!QFile::rename(temporary, target)) {
         QFile::remove(temporary);
@@ -144,11 +156,14 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
     std::sort(stagedOriginalFiles.begin(), stagedOriginalFiles.end());
 
     QSet<QString> expectedOriginals;
+    QHash<QString, QString> expectedOriginalDigests;
     for (const QString &stagedFile : std::as_const(stagedFiles)) {
         const auto record = detail::readRecordFile(stagedFile, nullptr);
         if (record && record->originalStorage == core::MediaRecord::OriginalStorage::Managed
             && !record->managedOriginalPath.isEmpty()) {
             expectedOriginals.insert(record->managedOriginalPath);
+            expectedOriginalDigests.insert(record->managedOriginalPath,
+                                           record->fingerprint.digest());
         }
     }
     for (auto it = stagedOriginalFiles.begin(); it != stagedOriginalFiles.end();) {
@@ -208,13 +223,25 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
             }
             originalsChanged = true;
         }
-        QFile::remove(committedRecord);
+        if (QFileInfo::exists(committedRecord) && !QFile::remove(committedRecord)) {
+            d->restoreCheckoutToCommittedState(nullptr);
+            detail::setError(error, ErrorCode::PermissionDenied,
+                             QStringLiteral("Could not remove a managed record."));
+            return std::nullopt;
+        }
     }
 
     for (const QString &stagedOriginal : std::as_const(stagedOriginalFiles)) {
         originalsChanged = true;
         const QString relative = staging.relativeFilePath(stagedOriginal);
         const QString target = d->repositoryPath() + QLatin1Char('/') + relative;
+        const QString expectedDigest = expectedOriginalDigests.value(relative);
+        if (expectedDigest.isEmpty() || !fileMatchesSha256(stagedOriginal, expectedDigest)) {
+            d->restoreCheckoutToCommittedState(nullptr);
+            detail::setError(error, ErrorCode::CorruptData,
+                             QStringLiteral("A staged original does not match its fingerprint."));
+            return std::nullopt;
+        }
         if (!QDir().mkpath(QFileInfo(target).absolutePath())) {
             d->restoreCheckoutToCommittedState(nullptr);
             detail::setError(error, ErrorCode::PermissionDenied,
@@ -234,6 +261,12 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
             return std::nullopt;
         }
         if (QFileInfo::exists(target)) {
+            if (!fileMatchesSha256(target, expectedDigest)) {
+                d->restoreCheckoutToCommittedState(nullptr);
+                detail::setError(error, ErrorCode::CorruptData,
+                                 QStringLiteral("A managed original does not match its fingerprint."));
+                return std::nullopt;
+            }
             continue;
         }
         const QString temporary = target + QStringLiteral(".pimio-write");

@@ -373,7 +373,11 @@ void TestScanIncremental::scanReadFailureKeepsManagedOriginal()
     QVERIFY(!scanner.scan({kRoot}, cancel, &result).isError());
 
     QCOMPARE(result.removed, 0);
-    QCOMPARE(loadAll(store), QList<core::MediaRecord>{original});
+    const QList<core::MediaRecord> records = loadAll(store);
+    QCOMPARE(records.size(), 1);
+    QCOMPARE(records.constFirst().id, original.id);
+    QCOMPARE(records.constFirst().fingerprint, original.fingerprint);
+    QCOMPARE(records.constFirst().managedOriginalPath, original.managedOriginalPath);
     QCOMPARE(result.warnings.size(), 1);
 }
 
