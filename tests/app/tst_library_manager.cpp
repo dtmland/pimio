@@ -19,7 +19,9 @@ core::MediaRecord managedRecord()
     core::MediaRecord record;
     record.id = core::MediaId(QStringLiteral("managed-photo"));
     record.fingerprint =
-            core::ContentFingerprint(QStringLiteral("sha256"), QStringLiteral("abc123"));
+            core::ContentFingerprint(QStringLiteral("sha256"),
+                                     QStringLiteral("41a5cec5e4cb716aacbd67940ca14ec7"
+                                                    "bddf4f8e3f2822e7d19e86daaa903477"));
     record.identity.absolutePath = QStringLiteral("/import/photo.jpg");
     record.identity.sizeBytes = 16;
     record.originalStorage = core::MediaRecord::OriginalStorage::Managed;
