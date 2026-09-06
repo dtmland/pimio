@@ -79,6 +79,7 @@ void TestLibraryManager::createOpenSwitchRenameAndMove()
     qInfo("library-manager: renaming first library");
     QVERIFY2(manager.rename(first->id, QStringLiteral("Family"), &error),
              qPrintable(error.message()));
+    qInfo("library-manager: rejecting nested move");
     QVERIFY(!manager.move(first->id,
                           QDir(first->location).filePath(QStringLiteral("nested/library")),
                           &error));

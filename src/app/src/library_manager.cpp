@@ -172,12 +172,21 @@ bool LibraryManager::rename(const QString &id, const QString &name, core::Error 
     std::fprintf(stderr, "library-manager rename: closing store\n");
     std::fflush(stderr);
     store.close();
+    std::fprintf(stderr, "library-manager rename: store closed\n");
+    std::fflush(stderr);
     if (!descriptor) {
         return false;
     }
     library->name = descriptor->name;
+    std::fprintf(stderr, "library-manager rename: replacing registry entry\n");
+    std::fflush(stderr);
     replaceKnown(*library);
-    return saveRegistry(error);
+    std::fprintf(stderr, "library-manager rename: saving registry\n");
+    std::fflush(stderr);
+    const bool saved = saveRegistry(error);
+    std::fprintf(stderr, "library-manager rename: registry saved\n");
+    std::fflush(stderr);
+    return saved;
 #endif
 }
 
