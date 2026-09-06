@@ -27,9 +27,12 @@ UI. Later server and collaboration layers can replace the policy behind this
 boundary without changing stored authors or service callers.
 
 Projection databases, job queues, and thumbnail caches are derived data and use
-the stable library id in their application-data paths. The current repeated
-`--library` media-root arguments remain a repository locator until Increment
-7.9 adds the Library Manager; they are never exposed as library identity.
+the stable library id in their application-data paths. The Library Manager
+stores known repository locators separately and revalidates identity from the
+descriptor whenever it opens one. The repeated `--library` media-root form
+remains a compatibility import entry point; it is never exposed as identity.
+The in-process lifecycle boundary and backup format are documented in
+[library-service-api.md](library-service-api.md).
 
 ## Original media storage
 

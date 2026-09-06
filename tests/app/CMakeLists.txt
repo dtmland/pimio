@@ -19,3 +19,16 @@ target_compile_definitions(tst_app_smoke PRIVATE
 # The QPA platform is chosen by the CTest preset so the same test can run
 # offscreen everywhere and under Xvfb/X11 on Linux.
 add_test(NAME app.smoke COMMAND tst_app_smoke)
+
+if(PIMIO_LORE_FOUND)
+    qt_add_executable(tst_library_manager
+        tst_library_manager.cpp
+    )
+    target_link_libraries(tst_library_manager PRIVATE
+        pimio::app_lib
+        pimio::lore
+        pimio::projection
+        Qt6::Test
+    )
+    add_test(NAME app.library_manager COMMAND tst_library_manager)
+endif()

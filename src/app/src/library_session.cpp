@@ -377,13 +377,14 @@ bool LibrarySession::activateLibrary(const QString &location)
 
 bool LibrarySession::createLibrary(const QString &name, const QString &location)
 {
-    shutdown();
     core::Error error;
     const auto library = d->manager->create(name, location, &error);
     if (!library) {
         setLifecycleStatus(tr("Could not create the Library: %1").arg(error.message()));
         return false;
     }
+    shutdown();
+    d->manager->select(library->id);
     d->managedLocation = library->location;
     d->activity->setScanning(true);
     start();
@@ -392,8 +393,22 @@ bool LibrarySession::createLibrary(const QString &name, const QString &location)
 
 bool LibrarySession::openLibrary(const QString &location)
 {
+    if (QDir::cleanPath(QFileInfo(location).absoluteFilePath())
+        == QDir::cleanPath(currentLibraryLocation())) {
+        return hasOpenLibrary();
+    }
+    core::Error error;
+    const auto library = d->manager->open(location, &error);
+    if (!library) {
+        setLifecycleStatus(tr("Could not open the Library: %1").arg(error.message()));
+        return false;
+    }
     shutdown();
-    return activateLibrary(location);
+    d->manager->select(library->id);
+    d->managedLocation = library->location;
+    d->activity->setScanning(true);
+    start();
+    return hasOpenLibrary();
 }
 
 void LibrarySession::closeLibrary()

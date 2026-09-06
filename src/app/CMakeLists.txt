@@ -6,6 +6,8 @@ qt_add_library(pimio_app_lib STATIC
     src/application.cpp
     src/library_activity.cpp
     src/library_manager.cpp
+    src/library_manager_storage.cpp
+    src/library_manager_storage.h
     src/library_session.cpp
 )
 
