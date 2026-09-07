@@ -158,6 +158,17 @@ class BuildPinsTests(unittest.TestCase):
 
 
 class BuildWiringTests(unittest.TestCase):
+    def test_metrics_include_build_sources_but_not_generated_output(self):
+        from tools.metrics.generate_repo_metrics import detect_language, is_supported_path
+
+        for relative in ("tools/build/pins.sh", "tools/build/pins.ps1", "tests/build/lore_pins.cmake"):
+            self.assertTrue(is_supported_path(ROOT / relative))
+        for relative in ("build/default/CMakeCache.txt", "install/bin/pimio",
+                         "tests/build/__pycache__/test_build_contracts.pyc"):
+            self.assertFalse(is_supported_path(ROOT / relative))
+        self.assertEqual(detect_language(ROOT / "tools/build/qt.env"), "Shell")
+        self.assertEqual(detect_language(ROOT / "tools/local-build/linux/Containerfile"), "Docker")
+
     def test_workflows_consume_shared_pins_and_packages(self):
         for workflow in ("ci.yml", "release.yml"):
             with self.subTest(workflow=workflow):
