@@ -183,7 +183,11 @@ class BuildWiringTests(unittest.TestCase):
 
     def test_linux_common_packages_cover_codec_build_requirements(self):
         packages = (ROOT / "tools/build/linux-packages.txt").read_text().splitlines()
-        self.assertTrue({"nasm", "perl", "ninja-build"}.issubset(packages))
+        # Codec tools plus Qt Multimedia's PulseAudio runtime SONAME, which clean
+        # containers lack even though GitHub-hosted runners often ship it.
+        self.assertTrue(
+            {"nasm", "perl", "ninja-build", "libpulse0"}.issubset(packages)
+        )
         self.assertEqual(len(packages), len(set(packages)))
         for package in packages:
             self.assertRegex(package, r"^[a-z0-9][a-z0-9+.-]*$")

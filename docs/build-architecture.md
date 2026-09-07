@@ -129,10 +129,10 @@ context-specific extras in the consumers.
 
 | Context | List location | Notable contents | Why it differs |
 | --- | --- | --- | --- |
-| CI build+test | common list + `ci.yml` | xcb libs, `nasm`, `perl`, `ninja-build`, `xvfb` | Builds and runs GUI tests, so it needs `xvfb`; it never deploys, so no `patchelf`. |
-| Release build+deploy | common list + `release.yml` | xcb libs, wayland libs, `nasm`, `perl`, `ninja-build`, `patchelf` | Deploys with `cmake --install`, which rewrites ELF RPATH (`patchelf`) and bundles the Wayland plugin; it does not run GUI tests, so no `xvfb`. |
+| CI build+test | common list + `ci.yml` | xcb libs, `libpulse0`, `nasm`, `perl`, `ninja-build`, `xvfb` | Builds and runs GUI tests, so it needs `xvfb`; it never deploys, so no `patchelf`. |
+| Release build+deploy | common list + `release.yml` | xcb libs, `libpulse0`, wayland libs, `nasm`, `perl`, `ninja-build`, `patchelf` | Deploys with `cmake --install`, which rewrites ELF RPATH (`patchelf`) and bundles the Wayland plugin; it does not run GUI tests, so no `xvfb`. |
 | Release archive verify | `release.yml` | `libgl1`, `libegl1`, `libxcb-cursor0`, `libxkbcommon-x11-0`, `libpulse0` | Deliberately minimal: proves the archive is self-contained on a machine that never built pimio. Mirrors the runtime packages the README asks users to install. |
-| Local Linux | common list + `Containerfile` | common codec tools + xcb libs, build-essential, cmake, git, wayland libs, `patchelf`, `xvfb`, python venv for aqt, 7zip, xz | A from-scratch container image that must build, test *and* deploy, so it is the union of the CI and Release needs plus its own toolchain. |
+| Local Linux | common list + `Containerfile` | common codec tools + xcb libs, `libpulse0`, build-essential, cmake, git, wayland libs, `patchelf`, `xvfb`, python venv for aqt, 7zip, xz | A from-scratch container image that must build, test *and* deploy, so it is the union of the CI and Release needs plus its own toolchain. Hosted runners may already provide PulseAudio; the clean container must install `libpulse0` explicitly so Qt Multimedia can link. |
 
 **Perl on Windows.** `libavif` builds its AV1 codec (libaom) from source via CMake
 FetchContent. libaom's CMake configuration requires Perl to generate assembly
