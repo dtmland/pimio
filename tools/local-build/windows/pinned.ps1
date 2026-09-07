@@ -5,39 +5,16 @@
 #
 # The point of the local environment is that a build made on a developer's
 # machine is comparable with a build made by CI, so Qt and LORE are pinned to
-# the same versions as .github/workflows/ci.yml and cmake/PimioLore.cmake. Those
-# two files remain authoritative: Assert-PimioPinsMatchRepository re-reads them
-# and refuses to run once this file has drifted, because a silently different Qt
-# or LORE would make every local result incomparable with CI.
+# the same shared inputs as CI: tools/build/qt.env and cmake/PimioLore.cmake.
+# Only Windows-specific provisioning belongs here, not copies of product pins.
 
 Set-StrictMode -Version Latest
 
 $PimioPinned = @{
-    # Must match PIMIO_QT_VERSION in .github/workflows/ci.yml.
-    QtVersion  = '6.8.3'
     # aqtinstall's identifier for the MSVC 2022 64-bit desktop build, and the
     # directory name it installs into.
     QtArch     = 'win64_msvc2022_64'
     QtHostDir  = 'msvc2022_64'
-    # Must match the modules installed by .github/workflows/ci.yml. The Qt base
-    # package carries qtbase, qtdeclarative and qtshadertools, but pimio also
-    # links Qt6::Multimedia (see src/thumbnail/CMakeLists.txt) and decodes the
-    # extra image formats, so those add-on modules must be installed too or
-    # configuration fails with "Failed to find required Qt component Multimedia".
-    QtModules  = @('qtmultimedia', 'qtimageformats')
-    # aqtinstall is part of the toolchain, so it is pinned like the rest of it.
-    AqtInstall = 'aqtinstall==3.3.0'
-
-    # Must match PIMIO_LORE_VERSION in cmake/PimioLore.cmake. The checksums are
-    # the recorded Windows entries from that same file.
-    LoreVersion = '0.9.0'
-    LoreTriple  = 'x86_64-pc-windows-msvc'
-    LoreBaseUrl = 'https://github.com/EpicGames/lore/releases/download'
-    LoreBundles = @(
-        @{ Bundle = 'liblore'; Sha256 = '4beb1500db6b3fde2f0107378ca61d609f3aa4c18c8adfe57bfe389d70155b81' }
-        @{ Bundle = 'lore';    Sha256 = 'c213169d251b73feb3fdf1655b9b5e6717a6a862762825918cc318a570018ded' }
-    )
-
     # Portable tools. These are extracted, never installed, so the sandbox needs
     # no installer for them and their versions cannot drift with the host.
     CMakeVersion = '3.31.6'
@@ -113,96 +90,15 @@ function Get-PimioDefaultCacheRoot {
 function Assert-PimioPinsMatchRepository {
     <#
     .SYNOPSIS
-        Fails when the pins in this file disagree with the authoritative ones.
+        Reloads the authoritative inputs, failing before downloads if malformed.
     #>
     param(
         [Parameter(Mandatory = $true)][string] $RepositoryRoot
     )
 
-    $workflow = Join-Path $RepositoryRoot '.github\workflows\ci.yml'
-    $loreModule = Join-Path $RepositoryRoot 'cmake\PimioLore.cmake'
-
-    foreach ($file in @($workflow, $loreModule)) {
-        if (-not (Test-Path -LiteralPath $file)) {
-            throw "Cannot verify the pinned versions: $file is missing. Run this from a pimio checkout."
-        }
-    }
-
-    $ciQtMatch = Select-String -LiteralPath $workflow -Pattern 'PIMIO_QT_VERSION:\s*([0-9.]+)' |
-        Select-Object -First 1
-    if (-not $ciQtMatch) {
-        throw "Cannot find PIMIO_QT_VERSION in $workflow."
-    }
-    $ciQt = $ciQtMatch.Matches[0].Groups[1].Value
-    if ($ciQt -ne $PimioPinned.QtVersion) {
-        throw "Qt pin drift: ci.yml pins Qt $ciQt, pinned.ps1 pins $($PimioPinned.QtVersion). Update pinned.ps1."
-    }
-
-    $ciModulesMatch = Select-String -LiteralPath $workflow -Pattern 'modules:\s*(.+)$' |
-        Select-Object -First 1
-    if (-not $ciModulesMatch) {
-        throw "Cannot find the Qt 'modules:' line in $workflow."
-    }
-    $ciModules = ($ciModulesMatch.Matches[0].Groups[1].Value.Trim() -split '\s+') | Sort-Object
-    $localModules = @($PimioPinned.QtModules) | Sort-Object
-    if (($ciModules -join ' ') -ne ($localModules -join ' ')) {
-        throw "Qt module pin drift: ci.yml installs '$($ciModules -join ' ')', pinned.ps1 installs '$($localModules -join ' ')'. Update pinned.ps1."
-    }
-
-    $loreMatch = Select-String -LiteralPath $loreModule -Pattern 'PIMIO_LORE_VERSION\s+"([0-9.]+)"' |
-        Select-Object -First 1
-    if (-not $loreMatch) {
-        throw "Cannot find PIMIO_LORE_VERSION in $loreModule."
-    }
-    $loreVersion = $loreMatch.Matches[0].Groups[1].Value
-    if ($loreVersion -ne $PimioPinned.LoreVersion) {
-        throw "LORE pin drift: PimioLore.cmake pins LORE $loreVersion, pinned.ps1 pins $($PimioPinned.LoreVersion). Update pinned.ps1."
-    }
-
-    $loreText = Get-Content -LiteralPath $loreModule -Raw
-    foreach ($bundle in $PimioPinned.LoreBundles) {
-        $expected = "$($bundle.Bundle)|$($PimioPinned.LoreTriple)|zip|$($bundle.Sha256)"
-        if (-not $loreText.Contains($expected)) {
-            throw "LORE checksum drift for $($bundle.Bundle): PimioLore.cmake does not record $($bundle.Sha256). Update pinned.ps1."
-        }
-    }
-
-    # The release workflow provisions a fourth environment and must not drift
-    # from ci.yml: a release built against a different Qt, module set, or LORE
-    # than CI verified would ship untested bytes. See docs/build-architecture.md.
-    $release = Join-Path $RepositoryRoot '.github\workflows\release.yml'
-    if (-not (Test-Path -LiteralPath $release)) {
-        throw "Cannot verify the pinned versions: $release is missing. Run this from a pimio checkout."
-    }
-
-    $releaseQtMatch = Select-String -LiteralPath $release -Pattern 'PIMIO_QT_VERSION:\s*([0-9.]+)' |
-        Select-Object -First 1
-    if (-not $releaseQtMatch) {
-        throw "Cannot find PIMIO_QT_VERSION in $release."
-    }
-    $releaseQt = $releaseQtMatch.Matches[0].Groups[1].Value
-    if ($releaseQt -ne $ciQt) {
-        throw "Qt pin drift: release.yml pins Qt $releaseQt, ci.yml pins $ciQt. Reconcile the workflows."
-    }
-
-    $releaseModulesMatch = Select-String -LiteralPath $release -Pattern 'qt_modules:\s*(.+)$' |
-        Select-Object -First 1
-    if (-not $releaseModulesMatch) {
-        throw "Cannot find the Qt 'qt_modules:' line in $release."
-    }
-    $releaseModules = ($releaseModulesMatch.Matches[0].Groups[1].Value.Trim() -split '\s+') | Sort-Object
-    if (($releaseModules -join ' ') -ne ($ciModules -join ' ')) {
-        throw "Qt module pin drift: release.yml installs '$($releaseModules -join ' ')', ci.yml installs '$($ciModules -join ' ')'. Reconcile the workflows."
-    }
-
-    $releaseLoreMatch = Select-String -LiteralPath $release -Pattern 'PIMIO_LORE_VERSION:\s*([0-9.]+)' |
-        Select-Object -First 1
-    if (-not $releaseLoreMatch) {
-        throw "Cannot find PIMIO_LORE_VERSION in $release."
-    }
-    $releaseLore = $releaseLoreMatch.Matches[0].Groups[1].Value
-    if ($releaseLore -ne $loreVersion) {
-        throw "LORE pin drift: release.yml pins LORE $releaseLore, PimioLore.cmake pins $loreVersion. Reconcile the workflows."
+    $sharedPins = Get-PimioBuildPins -RepositoryRoot $RepositoryRoot
+    foreach ($entry in $sharedPins.GetEnumerator()) {
+        $PimioPinned[$entry.Key] = $entry.Value
     }
 }
 
@@ -226,3 +122,6 @@ function Get-PimioLoreCacheRelativePath {
     $archive = Get-PimioLoreArchiveName -Bundle $Bundle
     return "v$($PimioPinned.LoreVersion)\$($PimioPinned.LoreTriple)\$Bundle\$archive"
 }
+
+. (Join-Path $PSScriptRoot '../../build/pins.ps1')
+Assert-PimioPinsMatchRepository -RepositoryRoot (Get-PimioRepositoryRoot)

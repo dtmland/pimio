@@ -1,15 +1,15 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-07 13:39:33 UTC
+- Generated: 2026-09-07 22:45:24 UTC
 - Repository: pimio
-- Commit: 9cc5c73
+- Commit: bcf5f8b
 
 ## Summary
 - Included files: 273
-- Total lines: 42049
-- Code lines: 32303
-- Blank lines: 6377
-- Comment lines: 3369
+- Total lines: 41935
+- Code lines: 32220
+- Blank lines: 6373
+- Comment lines: 3342
 
 ## By language
 
@@ -50,8 +50,8 @@
 | docs/plan/pimio-v1-implementation.md | 709 | 530 | 148 | 31 |
 | tests/scan/tst_scan_incremental_crud.cpp | 558 | 443 | 99 | 16 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
-| .github/workflows/release.yml | 552 | 476 | 37 | 39 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
+| .github/workflows/release.yml | 536 | 465 | 38 | 33 |
 | docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
 | src/app/qml/Main.qml | 495 | 392 | 55 | 48 |
 | src/lore/src/lore_durable_store_commit.cpp | 477 | 440 | 35 | 2 |

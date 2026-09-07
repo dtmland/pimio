@@ -21,14 +21,29 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  # Pinned Qt release for the product. See docs/supported-platforms.md.
-  PIMIO_QT_VERSION: 6.8.3
-  # Pinned LORE release. Must match PIMIO_LORE_VERSION in cmake/PimioLore.cmake;
-  # it is repeated here only so the download cache can be keyed by it.
-  PIMIO_LORE_VERSION: 0.9.0
-
 jobs:
+  local-linux:
+    name: Local Linux build environment
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Build, test, and stage using the local harness
+        run: bash tools/local-build/linux/build.sh --engine docker --output "${{ runner.temp }}/local-build"
+
+      - name: Upload local build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-linux-build-evidence
+          path: |
+            ${{ runner.temp }}/local-build/*.log
+            ${{ runner.temp }}/local-build/*.xml
+            ${{ runner.temp }}/local-build/*.txt
+            ${{ runner.temp }}/local-build/Testing/
+          if-no-files-found: warn
+
   build-and-test:
     name: Build and test (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
@@ -46,27 +61,23 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Validate build contracts
+        run: python -m unittest discover -s tests/build -v
+
+      - name: Load shared build pins
+        shell: bash
+        run: |
+          source tools/build/pins.sh
+          printf '%s\n' "PIMIO_QT_VERSION=$PIMIO_QT_VERSION" \
+            "PIMIO_QT_MODULES=$PIMIO_QT_MODULES" \
+            "PIMIO_LORE_VERSION=$PIMIO_LORE_VERSION" >> "$GITHUB_ENV"
+
       - name: Install Linux native dependencies
         if: matrix.name == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libgl1-mesa-dev \
-            libegl1 \
-            libxkbcommon-dev \
-            libxkbcommon-x11-0 \
-            libxcb-cursor0 \
-            libxcb-icccm4 \
-            libxcb-image0 \
-            libxcb-keysyms1 \
-            libxcb-randr0 \
-            libxcb-render-util0 \
-            libxcb-shape0 \
-            libxcb-xinerama0 \
-            libxcb-xkb1 \
-            nasm \
-            ninja-build \
-            xvfb
+          xargs -a tools/build/linux-packages.txt \
+            sudo apt-get install -y --no-install-recommends xvfb
 
       - name: Install Ninja (Windows and macOS)
         if: matrix.name != 'Linux'
@@ -86,7 +97,7 @@ jobs:
           version: ${{ env.PIMIO_QT_VERSION }}
           cache: true
           cache-key-prefix: qt-multimedia-imageformats-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
-          modules: qtmultimedia qtimageformats
+          modules: ${{ env.PIMIO_QT_MODULES }}
           extra: --base https://download.qt.io
 
       - name: Cache LORE ${{ env.PIMIO_LORE_VERSION }}

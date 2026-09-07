@@ -15,8 +15,8 @@
 ## Build changes must be propagated across every context
 
 pimio is built in four contexts that share build commands but provision their
-environments separately. The build commands live in one place; the *environment*
-is duplicated. When a prompt touches **any** part of the build — a dependency, a
+environments separately. Product pins and common Linux packages are shared;
+context-specific provisioning still differs. When a prompt touches **any** part of the build — a dependency, a
 pinned version, a Qt module, a compiler flag, a system package, a build/test/
 deploy step — treat it as a change to all relevant contexts, not just the one in
 front of you. Missing one is how "works in CI, breaks locally" bugs happen (for
@@ -35,21 +35,44 @@ in:
 
 ### Rules of thumb
 
-- **Pinned versions must match everywhere** (Qt version, Qt modules, LORE
-  version/checksums). `ci.yml` and `cmake/PimioLore.cmake` are authoritative; the
-  local `pinned.*` files re-read them and the drift-asserts also require
-  `release.yml` to agree. If you change a pin, update every file and confirm the
-  asserts still pass.
+- **Change authoritative inputs, not copies.** Qt version/modules and the local
+  aqtinstall version belong only in `tools/build/qt.env`. LORE version, base URL,
+  and checksums belong only in `cmake/PimioLore.cmake`. The shared bootstrap
+  readers in `tools/build/pins.sh` and `pins.ps1` feed CI, Release, and the local
+  harnesses. Do not add product pin literals to workflows, local `pinned.*`
+  files, or `Containerfile` defaults. Update the source once and verify consumers.
 - **Prefer the shared source.** If behavior can live in `CMakePresets.json` or a
   `cmake/` module instead of being duplicated in each workflow/script, put it
   there.
-- **System package lists are intentionally per-context** (CI needs `xvfb`,
-  Release needs `patchelf`/Wayland, the container is the superset). When adding a
-  system dependency, decide which contexts actually need it rather than copying
-  it blindly — and keep the reasoning consistent with the table in
-  `docs/build-architecture.md`.
+- **Common prerequisites must be shared.** All Linux build contexts consume
+  `tools/build/linux-packages.txt` (including codec tools such as NASM and Perl).
+  Keep only context-specific extras in workflows/the container: CI needs `xvfb`,
+  Release needs `patchelf`/Wayland, and the container needs both plus its toolchain.
+  Trace transitive dependencies too: a FetchContent codec can require an assembler,
+  Perl, or Git even when pimio's own CMake does not directly mention that tool.
+  Never assume a tool on a hosted runner exists in a clean container or Sandbox.
 - **Consult and update `docs/build-architecture.md`** — it records what is shared
   vs. per-context and why. Keep it current when the build layout changes.
+
+### Executable evidence, not just a checklist
+
+- Run `python -m unittest discover -s tests/build -v` for every build change.
+  These offline contracts run before provisioning in CI and Release; they
+  exercise the real Bash/PowerShell readers and compare Windows checksums with
+  CMake evaluation. When changing a reader's input format, update both readers
+  and add a mutation test proving propagation or fail-closed behavior.
+- Keep the **Local Linux build environment** CI job green. It runs the actual
+  `tools/local-build/linux/build.sh` entry point from a clean container through
+  configure, build, test, and staging. Native hosted-runner jobs alone do not
+  validate local provisioning. Rebuild the image after package changes; an old
+  `--use-image`/`--pull` image is not evidence for the committed Containerfile.
+- Windows bootstrap tests must run with Windows PowerShell 5.1, not only `pwsh`.
+  For changes to portable downloads, compiler setup, or Sandbox orchestration,
+  also obtain a fresh Windows Sandbox run when available. Reader tests are not
+  an end-to-end Sandbox test; report unavailable validation explicitly.
+- A prose matrix is not an enforcement mechanism. Any newly unavoidable
+  duplication needs an automated contract and a documented reason. Do not
+  suppress a failing checksum check or disable codec optimizations to hide drift.
 
 ## Required completion gate for build-related changes
 
