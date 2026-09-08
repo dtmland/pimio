@@ -1,24 +1,24 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-08 02:26:39 UTC
+- Generated: 2026-09-08 03:30:46 UTC
 - Repository: pimio
-- Commit: 1fe80c0
+- Commit: d5e2fb7
 
 ## Summary
-- Included files: 292
-- Total lines: 43734
-- Code lines: 33823
-- Blank lines: 6539
-- Comment lines: 3372
+- Included files: 288
+- Total lines: 42813
+- Code lines: 32974
+- Blank lines: 6477
+- Comment lines: 3362
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 114 |
-| C/C++ Header | 77 |
+| C++ | 111 |
+| C/C++ Header | 75 |
 | CMake | 32 |
-| Markdown | 28 |
+| Markdown | 29 |
 | Shell | 10 |
 | QML | 9 |
 | PowerShell | 8 |
@@ -33,10 +33,10 @@
 
 | Directory | Files |
 | --- | ---: |
-| src | 141 |
-| tests | 83 |
+| src | 137 |
+| tests | 82 |
 | tools | 28 |
-| docs | 23 |
+| docs | 24 |
 | packaging | 7 |
 | .github | 4 |
 | cmake | 3 |
@@ -48,18 +48,18 @@
 
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
-| src/app/src/library_session.cpp | 910 | 764 | 91 | 55 |
+| src/app/src/library_session.cpp | 780 | 643 | 82 | 55 |
 | docs/plan/pimio-v1-implementation.md | 709 | 530 | 148 | 31 |
 | tests/scan/tst_scan_incremental_crud.cpp | 558 | 443 | 99 | 16 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
 | .github/workflows/release.yml | 536 | 465 | 38 | 33 |
 | docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
-| src/app/qml/Main.qml | 499 | 396 | 55 | 48 |
+| src/app/qml/Main.qml | 495 | 392 | 55 | 48 |
 | src/lore/src/lore_durable_store_commit.cpp | 477 | 440 | 35 | 2 |
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |
 | src/app/src/library_manager.cpp | 465 | 433 | 32 | 0 |
-| tests/app/tst_app_smoke.cpp | 463 | 378 | 64 | 21 |
 | tests/lore/tst_lore_adapter.cpp | 462 | 361 | 77 | 24 |
-| src/scan/src/scanner.cpp | 457 | 358 | 54 | 45 |
 | src/metadata/src/tiff_reader.cpp | 455 | 395 | 41 | 19 |
+| README.md | 453 | 305 | 113 | 35 |
+| tests/lore/tst_lore_server_promotion.cpp | 452 | 405 | 47 | 0 |

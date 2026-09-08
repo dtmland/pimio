@@ -1,7 +1,6 @@
 #pragma once
 
 #include "pimio/core/geolocation.h"
-#include "pimio/core/edit_recipe.h"
 #include "pimio/core/metadata.h"
 
 #include <QString>
@@ -37,7 +36,6 @@ struct FieldSet
     std::optional<int> rating;
     std::optional<QString> caption;
     std::optional<QStringList> tags;
-    std::optional<core::EditRecipe> recipe;
 };
 
 } // namespace pimio::metadata

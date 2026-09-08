@@ -99,7 +99,7 @@ integration.
 
 | Candidate | Purpose | Known licensing concern |
 | --- | --- | --- |
-| libexiv2 | EXIF/IPTC/XMP write, and read coverage beyond plain container headers | GPL-2.0-or-later. Linking strategy must be resolved before distribution. Increment 5 declined it for the read path; see [decisions/0002-metadata-adapter.md](decisions/0002-metadata-adapter.md). |
+| libexiv2 | Candidate for EXIF/IPTC/XMP embedded writes, and read coverage beyond plain container headers | GPL-2.0-or-later. Linking strategy must be resolved before distribution. Increment 5 declined it for the read path; Increment 8 must evaluate it for embedded writes. See [decision 0002](decisions/0002-metadata-adapter.md) and [decision 0007](decisions/0007-embedded-metadata-writes.md). |
 | libraw | RAW decode | LGPL-2.1 / CDDL dual license. |
 | libjpeg-turbo | Lossless JPEG transforms | Permissive. Low risk. |
 | FFmpeg | Video decode, thumbnails, trim | License depends on configure flags. An LGPL build is required unless the product license changes. |

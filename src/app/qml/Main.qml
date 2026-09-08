@@ -92,9 +92,6 @@ Window {
         detail.mediaKind = item.mediaKind
         detail.thumbnailStatus = item.thumbnailStatus
         detail.thumbnailSource = "image://thumbnail/" + detail.mediaId
-        detail.caption = item.caption
-        detail.rating = item.rating
-        detail.tags = item.tags.join(", ")
         detail.visible = true
         detail.forceActiveFocus()
     }
@@ -463,7 +460,6 @@ Window {
         anchors.fill: parent
         z: 10
         keyRepeatAcceleration: root.keyRepeatAcceleration
-        session: root.session
         onCloseRequested: {
             visible = false
             root.endKeyRepeat()

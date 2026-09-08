@@ -5,6 +5,34 @@
 - Do not make claims without actually reading file contents - do not only look at file names and sizes, and do not speculate.
 - Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justification.
 
+## Crash-resistant progress
+
+- For implementation tasks, commit and push the current branch with
+  `report_progress` after each coherent unit of work and whenever material
+  changes have remained unpushed for 20 minutes. Also checkpoint immediately
+  before long-running validation or risky operations and after accepting
+  substantial work from a subagent.
+- A local commit is not a durable checkpoint in the cloud-agent environment.
+  Push the checkpoint branch even when the work is incomplete, and identify
+  unfinished or unvalidated work in the progress checklist. Prefer a focused
+  checkpoint commit over risking the loss of substantial work.
+- Run `git diff --check` and exclude temporary or generated files before a
+  checkpoint. Run focused tests when practical, but do not defer preservation
+  of substantial work solely because full validation is still pending.
+- Do not create a pull request until implementation and validation are complete
+  and the work is ready for final CI and review. Until then, push checkpoint
+  commits only to the feature branch so the `pull_request` workflow is not
+  triggered on every checkpoint. Create an earlier draft PR only when the
+  maintainer explicitly requests one.
+
+## Metadata write direction
+
+- Prefer standards-compatible embedded metadata updates in managed originals.
+  Do not introduce or default to metadata sidecar files unless their necessity
+  is documented and the maintainer gives explicit approval. Follow
+  [decision 0007](../docs/decisions/0007-embedded-metadata-writes.md) when
+  implementing metadata writes.
+
 ## Repository health metrics
 
 - Close to the end of each session, run `python3 tools/metrics/generate_repo_metrics.py` and review the generated reports under `docs/metrics/` to evaluate whether the work in that session should trigger refactoring of any files that have grown too large or have become too complex to maintain comfortably. Then when finished with any refactoring run the tool at the end again to capture the proper state of the repository.

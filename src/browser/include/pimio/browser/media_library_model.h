@@ -43,9 +43,6 @@ public:
         MediaKindRole,                  ///< int: core::MediaKind cast to int.
         ThumbnailStatusRole,            ///< int: ThumbnailStatus cast to int.
         ThumbnailImageRole,             ///< QImage: the thumbnail, or a null QImage.
-        CaptionRole,                    ///< QString: user-visible caption.
-        RatingRole,                     ///< int: 0 through 5.
-        TagsRole,                       ///< QStringList: user-visible tags.
     };
     Q_ENUM(Role)
 

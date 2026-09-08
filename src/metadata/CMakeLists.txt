@@ -1,6 +1,5 @@
 add_library(pimio_metadata STATIC
     include/pimio/metadata/builtin_metadata_reader.h
-    include/pimio/metadata/xmp_sidecar_writer.h
     src/builtin_metadata_reader.cpp
     src/field_set.h
     src/image_reader.cpp
@@ -13,7 +12,6 @@ add_library(pimio_metadata STATIC
     src/media_signature.h
     src/xmp_reader.cpp
     src/xmp_reader.h
-    src/xmp_sidecar_writer.cpp
 )
 
 add_library(pimio::metadata ALIAS pimio_metadata)

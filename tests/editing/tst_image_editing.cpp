@@ -69,7 +69,7 @@ void TestImageEditing::rejectedExportLeavesSourceUnchanged()
     core::Error error;
     editing::ImageRecipeRenderer renderer;
     QVERIFY(!renderer.exportImage(fixture(), sourceRecord().recipe, fixture(), &error));
-    QCOMPARE(error.code(), core::ErrorCode::Conflict);
+    QCOMPARE(static_cast<int>(error.code()), static_cast<int>(core::ErrorCode::Conflict));
     QVERIFY(sourceFile.open(QIODevice::ReadOnly));
     QCOMPARE(sourceFile.readAll(), before);
 }

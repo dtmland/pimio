@@ -22,9 +22,6 @@ public:
         MediaKindRole,
         ThumbnailStatusRole,
         ThumbnailImageRole,
-        CaptionRole,
-        RatingRole,
-        TagsRole,
     };
 
     explicit SyntheticMediaModel(int count, int thumbnailStatus = 0, QString absolutePath = {},

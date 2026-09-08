@@ -43,12 +43,6 @@ QVariant SyntheticMediaModel::data(const QModelIndex &index, int role) const
         return 1;
     case ThumbnailStatusRole:
         return m_thumbnailStatus;
-    case CaptionRole:
-        return QStringLiteral("Synthetic caption");
-    case RatingRole:
-        return 3;
-    case TagsRole:
-        return QStringList{QStringLiteral("synthetic")};
     default:
         return {};
     }
@@ -63,9 +57,6 @@ QHash<int, QByteArray> SyntheticMediaModel::roleNames() const
         {MediaKindRole, "mediaKind"},
         {ThumbnailStatusRole, "thumbnailStatus"},
         {ThumbnailImageRole, "thumbnailImage"},
-        {CaptionRole, "caption"},
-        {RatingRole, "rating"},
-        {TagsRole, "tags"},
     };
 }
 
@@ -124,9 +115,6 @@ QVariantMap SyntheticMediaModel::itemAt(int row) const
         {QStringLiteral("captureTimeString"), data(itemIndex, CaptureTimeStringRole)},
         {QStringLiteral("mediaKind"), data(itemIndex, MediaKindRole)},
         {QStringLiteral("thumbnailStatus"), data(itemIndex, ThumbnailStatusRole)},
-        {QStringLiteral("caption"), data(itemIndex, CaptionRole)},
-        {QStringLiteral("rating"), data(itemIndex, RatingRole)},
-        {QStringLiteral("tags"), data(itemIndex, TagsRole)},
     };
 }
 

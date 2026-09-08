@@ -1,7 +1,6 @@
 #include "xmp_reader.h"
 
 #include <QDateTime>
-#include <QJsonDocument>
 #include <QXmlStreamReader>
 
 namespace pimio::metadata {
@@ -9,7 +8,6 @@ namespace {
 
 const QLatin1String kXmpNamespace("http://ns.adobe.com/xap/1.0/");
 const QLatin1String kDublinCoreNamespace("http://purl.org/dc/elements/1.1/");
-const QLatin1String kPimioNamespace("https://pimio.local/ns/1.0/");
 
 /// Converts an XMP date, which is ISO 8601 with an optional zone designator.
 /// A value with no designator keeps its offset unknown rather than being
@@ -116,14 +114,6 @@ bool readXmpPacket(const QByteArray &xmp, FieldSet *fields, QStringList *warning
             const QStringList values = readLanguageAlternativeOrBag(xml);
             if (!values.isEmpty()) {
                 fields->tags = values;
-            }
-        } else if (namespaceUri == kPimioNamespace && name == QLatin1String("recipe")) {
-            const QByteArray json = QByteArray::fromBase64(xml.readElementText().toUtf8());
-            const QJsonDocument document = QJsonDocument::fromJson(json);
-            if (!document.isObject()) {
-                warnings->append(QStringLiteral("The pimio XMP recipe is not valid JSON."));
-            } else {
-                fields->recipe = core::EditRecipe::fromJson(document.object());
             }
         }
     }
