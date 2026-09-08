@@ -10,6 +10,10 @@ Rectangle {
     property int mediaKind
     property int thumbnailStatus
     property url thumbnailSource
+    property var session: null
+    property string caption
+    property int rating
+    property string tags
     // Whether holding an arrow key jumps progressively further.
     property bool keyRepeatAcceleration: true
     signal closeRequested()
@@ -103,6 +107,125 @@ Rectangle {
         onStatusChanged: {
             if (status === Image.Error && fullResRequested) {
                 detail.fullResFailed = true;
+            }
+        }
+
+        Column {
+            anchors {
+                left: parent.left
+                bottom: parent.bottom
+                margins: 16
+            }
+            width: Math.min(420, parent.width - 32)
+            spacing: 4
+
+            TextField {
+                id: captionField
+                objectName: "editCaption"
+                width: parent.width
+                placeholderText: qsTr("Caption")
+                text: detail.caption
+            }
+            TextField {
+                id: tagsField
+                objectName: "editTags"
+                width: parent.width
+                placeholderText: qsTr("Tags (comma separated)")
+                text: detail.tags
+            }
+            SpinBox {
+                id: ratingField
+                objectName: "editRating"
+                from: 0
+                to: 5
+                value: detail.rating
+            }
+            Row {
+                spacing: 4
+                SpinBox { id: cropX; from: 0; to: 100000; value: 0 }
+                SpinBox { id: cropY; from: 0; to: 100000; value: 0 }
+                SpinBox { id: cropWidth; from: 1; to: 100000; value: 1 }
+                SpinBox { id: cropHeight; from: 1; to: 100000; value: 1 }
+                ToolButton {
+                    objectName: "cropButton"
+                    text: qsTr("Crop")
+                    enabled: detail.session && detail.mediaKind === 1
+                    onClicked: detail.session.cropImage(detail.mediaId, cropX.value, cropY.value,
+                                                        cropWidth.value, cropHeight.value)
+                }
+            }
+            Row {
+                spacing: 4
+                ToolButton {
+                    objectName: "rotateLeftButton"
+                    text: qsTr("Rotate left")
+                    enabled: detail.session && detail.mediaKind === 1
+                    onClicked: {
+                        if (detail.session.rotateImage(detail.mediaId, -90))
+                            preview.rotation = preview.rotation - 90
+                    }
+                    SpinBox {
+                        id: orientationField
+                        objectName: "orientationValue"
+                        from: 1
+                        to: 8
+                        value: 1
+                    }
+                    ToolButton {
+                        objectName: "orientationButton"
+                        text: qsTr("Orientation")
+                        enabled: detail.session && detail.mediaKind === 1
+                        onClicked: detail.session.orientImage(detail.mediaId, orientationField.value)
+                    }
+                }
+                ToolButton {
+                    objectName: "rotateRightButton"
+                    text: qsTr("Rotate right")
+                    enabled: detail.session && detail.mediaKind === 1
+                    onClicked: {
+                        if (detail.session.rotateImage(detail.mediaId, 90))
+                            preview.rotation = preview.rotation + 90
+                    }
+                }
+                ToolButton {
+                    objectName: "saveEditsButton"
+                    text: qsTr("Save")
+                    enabled: detail.session
+                    onClicked: {
+                        detail.session.stageMetadata(detail.mediaId, captionField.text,
+                                                     ratingField.value, tagsField.text)
+                        detail.session.saveEdits()
+                    }
+                }
+                ToolButton {
+                    objectName: "discardEditsButton"
+                    text: qsTr("Discard")
+                    enabled: detail.session && detail.session.hasStagedEdits
+                    onClicked: detail.session.discardEdits()
+                }
+            }
+            TextField {
+                id: exportPath
+                objectName: "exportPath"
+                width: parent.width
+                placeholderText: qsTr("Export path (.jpg, .png, …)")
+            }
+            ToolButton {
+                objectName: "exportButton"
+                text: qsTr("Export")
+                enabled: detail.session && exportPath.text !== ""
+                onClicked: {
+                    detail.session.stageMetadata(detail.mediaId, captionField.text,
+                                                 ratingField.value, tagsField.text)
+                    detail.session.exportEdited(detail.mediaId, exportPath.text)
+                }
+            }
+            Label {
+                width: parent.width
+                color: "#ffcc80"
+                wrapMode: Text.Wrap
+                visible: detail.session && detail.session.editStatus !== ""
+                text: detail.session ? detail.session.editStatus : ""
             }
         }
     }

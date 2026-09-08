@@ -48,6 +48,8 @@ class LibrarySession : public QObject
                        NOTIFY currentLibraryChanged)
     Q_PROPERTY(bool hasOpenLibrary READ hasOpenLibrary NOTIFY currentLibraryChanged)
     Q_PROPERTY(QString lifecycleStatus READ lifecycleStatus NOTIFY lifecycleStatusChanged)
+    Q_PROPERTY(bool hasStagedEdits READ hasStagedEdits NOTIFY stagedEditsChanged)
+    Q_PROPERTY(QString editStatus READ editStatus NOTIFY editStatusChanged)
 
 public:
     explicit LibrarySession(QObject *parent = nullptr);
@@ -80,6 +82,8 @@ public:
     QString currentLibraryLocation() const;
     bool hasOpenLibrary() const;
     QString lifecycleStatus() const;
+    bool hasStagedEdits() const;
+    QString editStatus() const;
 
     Q_INVOKABLE bool createLibrary(const QString &name, const QString &location);
     Q_INVOKABLE bool openLibrary(const QString &location);
@@ -88,6 +92,14 @@ public:
     Q_INVOKABLE bool moveLibrary(const QString &location);
     Q_INVOKABLE bool backupLibrary(const QString &archivePath);
     Q_INVOKABLE bool restoreLibrary(const QString &archivePath, const QString &location);
+    Q_INVOKABLE bool stageMetadata(const QString &mediaId, const QString &caption, int rating,
+                                   const QString &tags);
+    Q_INVOKABLE bool rotateImage(const QString &mediaId, int degrees);
+    Q_INVOKABLE bool orientImage(const QString &mediaId, int orientation);
+    Q_INVOKABLE bool cropImage(const QString &mediaId, int x, int y, int width, int height);
+    Q_INVOKABLE bool saveEdits();
+    Q_INVOKABLE void discardEdits();
+    Q_INVOKABLE bool exportEdited(const QString &mediaId, const QString &destinationPath);
 
     /// Promotes the open local library to an existing or new LORE server URL.
     /// This is disabled while a scan is mutating the durable store.
@@ -98,6 +110,8 @@ signals:
     void promotionStatusChanged();
     void currentLibraryChanged();
     void lifecycleStatusChanged();
+    void stagedEditsChanged();
+    void editStatusChanged();
 
 private:
     /// Pushes the current user settings (sort order, tile size, and scan
@@ -121,6 +135,7 @@ private:
     void shutdown();
     bool activateLibrary(const QString &location);
     void setLifecycleStatus(const QString &status);
+    void setEditStatus(const QString &status);
 
     class Private;
     std::unique_ptr<Private> d;

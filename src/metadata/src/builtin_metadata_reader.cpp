@@ -290,6 +290,10 @@ BuiltinMetadataReader::read(const QString &absolutePath, core::Error *error) con
 
     core::MetadataReadResult result;
     result.metadata = metadata;
+    if (sidecar.recipe.has_value()) {
+        result.recipe = *sidecar.recipe;
+        result.hasRecipe = true;
+    }
     result.usedSidecar = usedSidecar;
     for (const QString &warning : std::as_const(warnings)) {
         result.warnings.append(

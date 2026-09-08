@@ -31,6 +31,24 @@ struct Checkpoint
     bool operator==(const Checkpoint &other) const = default;
 };
 
+/// Identifies a rendered file without relying on a filename convention.
+///
+/// Derivatives are normal media records so they can be searched, backed up, and
+/// restored. Previews and thumbnails deliberately do not use this type: they
+/// are disposable fingerprint-keyed cache entries.
+struct DerivativeRelationship
+{
+    MediaId sourceMediaId;
+    int recipeRevision = 0;
+    QString kind;
+
+    QJsonObject toJson() const;
+    static DerivativeRelationship fromJson(const QJsonObject &object);
+
+    bool isValid() const;
+    bool operator==(const DerivativeRelationship &other) const = default;
+};
+
 /// Everything durably stored about one media item.
 ///
 /// The SQLite projection is rebuildable from these records; the durable store
@@ -52,6 +70,9 @@ struct MediaRecord
     QString managedOriginalPath;
     MediaMetadata metadata;
     EditRecipe recipe;
+    std::optional<DerivativeRelationship> derivative;
+    /// Forward-compatible record fields survive a read/modify/write cycle.
+    QJsonObject unrecognizedFields;
 
     QJsonObject toJson() const;
     static MediaRecord fromJson(const QJsonObject &object);

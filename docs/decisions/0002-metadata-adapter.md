@@ -85,3 +85,17 @@ record should then be superseded rather than edited:
 
 The reversal cost is bounded: `core::MetadataReader` is the only surface the
 rest of pimio sees, and `pimio::metadata` is the only implementation of it.
+
+## Increment 8 write-path review
+
+Increment 8 did not trigger a reversal. Rather than attempting unsafe
+conflict-aware embedded rewrites with the bounded reader, v1 writes only XMP
+sidecars. The writer retains unknown XML, atomically replaces the sidecar, and
+uses an edit-session snapshot plus a writer lock to report a conflict instead
+of overwriting a concurrent change. This keeps originals byte-for-byte stable
+and adds no dependency or license obligation.
+
+The reversal criteria remain active: support for non-header formats or maker
+notes, evidence that real files are misread, or a future requirement to rewrite
+embedded metadata while preserving every unknown tag requires superseding this
+decision with a metadata-library evaluation.

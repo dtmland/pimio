@@ -144,6 +144,26 @@ void TestAppSmoke::detailLoadsModernImage()
     QCOMPARE(preview->property("source").toUrl(), QUrl::fromLocalFile(absolutePath));
 }
 
+void TestAppSmoke::detailExposesSaveDiscardAndExportControls()
+{
+    SyntheticMediaModel model(1);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("mediaLibraryModel"), &model);
+    QVERIFY(pimio::app::loadMainQml(engine));
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+    QVERIFY(window != nullptr);
+    QVERIFY(QMetaObject::invokeMethod(window, "showDetail", Q_ARG(QVariant, 0)));
+
+    for (const QString &name : {QStringLiteral("editCaption"), QStringLiteral("editTags"),
+                                QStringLiteral("editRating"), QStringLiteral("rotateLeftButton"),
+                                QStringLiteral("rotateRightButton"), QStringLiteral("saveEditsButton"),
+                                QStringLiteral("discardEditsButton"), QStringLiteral("cropButton"),
+                                QStringLiteral("orientationValue"), QStringLiteral("orientationButton"),
+                                QStringLiteral("exportPath"), QStringLiteral("exportButton")}) {
+        QVERIFY2(window->findChild<QObject *>(name) != nullptr, qPrintable(name));
+    }
+}
+
 void TestAppSmoke::wheelScrollingFollowsTheConfiguredSpeed()
 {
     pimio::settings::Settings settings;

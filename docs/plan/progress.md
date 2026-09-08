@@ -26,11 +26,27 @@ Update this file in the same change that moves an increment forward.
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Complete |
-| 8 | Save, portable metadata, and image recipes | Not started |
+| 8 | Save, portable metadata, and image recipes | Complete |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
+
+## Increment 8 — Save, Portable Metadata, and Image Recipes — Complete
+
+- The detail view stages captions, ratings, tags, crop, and quarter-turn
+  rotation until explicit Save; Save writes a LORE checkpoint with the existing
+  author, application-version, and parent linkage. Discard only clears staged
+  state.
+- `XmpSidecarWriter` never writes embedded metadata or originals. It uses
+  same-directory atomic replacement, preserves non-pimio XMP XML, and rejects
+  stale sidecar snapshots or another pimio writer's lock rather than clobbering
+  them.
+- `ImageRecipeRenderer` replays crop, orientation, and rotation recipes for
+  preview and atomic image export. Export records carry explicit source-media
+  identity and recipe revision; previews and thumbnails remain disposable.
+- Evidence: `metadata.xmp_sidecar_writer`, `editing.image_recipes`,
+  `core.serialization`, and `app.smoke`.
 
 Increments 7.7–7.9, including the 7.8a–7.8c correction gates, were added when
 the plans were reoriented around the

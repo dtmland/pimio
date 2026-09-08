@@ -266,6 +266,13 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
         if (byPath.contains(currentPathKey)) {
             // File was known at this path.
             core::MediaRecord existing = byPath.value(currentPathKey).constFirst();
+            if (existing.derivative.has_value()) {
+                // Export records carry an explicit source and recipe revision.
+                // Re-importing their bytes would erase that provenance.
+                seenIds.insert(existing.id.value());
+                ++result->unchanged;
+                continue;
+            }
 
             if (identity.looksUnchangedFrom(existing.identity)
                 && existing.originalStorage == core::MediaRecord::OriginalStorage::Managed) {
@@ -299,6 +306,9 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
                 const auto metaResult = d->reader->read(path, &metaError);
                 if (metaResult.has_value()) {
                     existing.metadata = metaResult->metadata;
+                    if (metaResult->hasRecipe) {
+                        existing.recipe = metaResult->recipe;
+                    }
                     // Damage the reader recovered from still has to reach the
                     // user; the item is indexed, but not silently.
                     for (const core::Error &warning : std::as_const(metaResult->warnings)) {
@@ -381,6 +391,7 @@ core::Error Scanner::scan(const LibraryRoot &root, const std::atomic<bool> &isCa
                 const auto metaResult = d->reader->read(path, &metaError);
                 if (metaResult.has_value()) {
                     newRecord.metadata = metaResult->metadata;
+                    newRecord.recipe = metaResult->recipe;
                     newRecord.metadata.fileName = QFileInfo(path).fileName();
                     newRecord.metadata.folderPath = QFileInfo(path).absolutePath();
                     for (const core::Error &warning : std::as_const(metaResult->warnings)) {

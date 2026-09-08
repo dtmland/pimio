@@ -8,6 +8,8 @@ qt_add_library(pimio_app_lib STATIC
     src/library_manager.cpp
     src/library_manager_storage.cpp
     src/library_manager_storage.h
+    src/library_edit_controller.cpp
+    src/library_edit_controller.h
     src/library_session.cpp
 )
 
@@ -17,6 +19,7 @@ target_include_directories(pimio_app_lib PUBLIC include)
 
 target_link_libraries(pimio_app_lib PUBLIC
     pimio::core
+    pimio::editing
     pimio::browser
     pimio::metadata
     pimio::projection

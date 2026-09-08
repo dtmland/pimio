@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pimio/core/error.h"
+#include "pimio/core/edit_recipe.h"
 #include "pimio/core/metadata.h"
 
 #include <QString>
@@ -13,6 +14,9 @@ namespace pimio::core {
 struct MetadataReadResult
 {
     MediaMetadata metadata;
+    /// A pimio recipe carried by the XMP sidecar, if present.
+    EditRecipe recipe;
+    bool hasRecipe = false;
 
     /// True when an adjacent XMP sidecar contributed to the result.
     bool usedSidecar = false;

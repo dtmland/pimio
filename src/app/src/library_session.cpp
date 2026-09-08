@@ -3,6 +3,7 @@
 #include "pimio/app/application.h"
 #include "pimio/app/library_activity.h"
 #include "pimio/app/library_manager.h"
+#include "library_edit_controller.h"
 #include "pimio/browser/media_library_model.h"
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/core/error.h"
@@ -41,6 +42,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <optional>
 #include <vector>
 
 namespace pimio::app {
@@ -117,6 +119,7 @@ public:
 
     std::unique_ptr<scan::QtFileSystem> fileSystem;
     std::unique_ptr<metadata::BuiltinMetadataReader> metadataReader;
+    std::unique_ptr<LibraryEditController> editController;
 
 #ifdef PIMIO_HAVE_LORE
     std::unique_ptr<lore::LoreDurableStore> loreStore;
@@ -152,6 +155,7 @@ public:
     bool started = false;
     QString promotionStatus;
     QString lifecycleStatus;
+    QString editStatus;
 };
 
 LibrarySession::LibrarySession(QObject *parent)
@@ -209,6 +213,16 @@ QString LibrarySession::lifecycleStatus() const
     return d->lifecycleStatus;
 }
 
+bool LibrarySession::hasStagedEdits() const
+{
+    return d->editController && d->editController->hasStagedEdits();
+}
+
+QString LibrarySession::editStatus() const
+{
+    return d->editStatus;
+}
+
 void LibrarySession::setLifecycleStatus(const QString &status)
 {
     if (d->lifecycleStatus == status) {
@@ -216,6 +230,15 @@ void LibrarySession::setLifecycleStatus(const QString &status)
     }
     d->lifecycleStatus = status;
     emit lifecycleStatusChanged();
+}
+
+void LibrarySession::setEditStatus(const QString &status)
+{
+    if (d->editStatus == status) {
+        return;
+    }
+    d->editStatus = status;
+    emit editStatusChanged();
 }
 
 bool LibrarySession::promoteToServer(const QString &remoteUrl)
@@ -343,6 +366,12 @@ void LibrarySession::shutdown()
     d->loreStore.reset();
 #endif
     d->store = nullptr;
+    if (d->editController) {
+        d->editController->discard();
+    }
+    emit stagedEditsChanged();
+    setEditStatus({});
+    d->editController.reset();
     d->metadataReader.reset();
     d->fileSystem.reset();
     d->libraryPaths.clear();
@@ -356,6 +385,106 @@ void LibrarySession::shutdown()
     emit currentLibraryChanged();
 }
 
+bool LibrarySession::stageMetadata(const QString &mediaId, const QString &caption, int rating,
+                                   const QString &tags)
+{
+    core::Error error;
+    const bool staged = d->editController && d->editController->stageMetadata(
+            *d->store, mediaId, caption, rating, tags, &error);
+    setEditStatus(staged ? tr("Metadata staged. Save to create a checkpoint.")
+                         : tr("Cannot stage metadata: %1").arg(error.message()));
+    emit stagedEditsChanged();
+    return staged;
+}
+
+bool LibrarySession::rotateImage(const QString &mediaId, int degrees)
+{
+    core::Error error;
+    const bool staged = d->editController && d->editController->rotate(*d->store, mediaId, degrees, &error);
+    setEditStatus(staged ? tr("Rotation staged. Save to create a checkpoint.")
+                         : tr("Cannot stage rotation: %1").arg(error.message()));
+    emit stagedEditsChanged();
+    return staged;
+}
+
+bool LibrarySession::orientImage(const QString &mediaId, int orientation)
+{
+    core::Error error;
+    const bool staged = d->editController && d->editController->orient(*d->store, mediaId, orientation, &error);
+    setEditStatus(staged ? tr("Orientation staged. Save to create a checkpoint.")
+                         : tr("Cannot stage orientation: %1").arg(error.message()));
+    emit stagedEditsChanged();
+    return staged;
+}
+
+bool LibrarySession::cropImage(const QString &mediaId, int x, int y, int width, int height)
+{
+    core::Error error;
+    const bool staged = d->editController
+            && d->editController->crop(*d->store, mediaId, x, y, width, height, &error);
+    setEditStatus(staged ? tr("Crop staged. Save to create a checkpoint.")
+                         : tr("Cannot stage crop: %1").arg(error.message()));
+    emit stagedEditsChanged();
+    return staged;
+}
+
+bool LibrarySession::saveEdits()
+{
+    core::Error error;
+    const auto checkpoint = d->editController ? d->editController->save(*d->store, &error)
+                                              : std::nullopt;
+    if (!checkpoint) {
+        setEditStatus(tr("Save failed: %1").arg(error.message()));
+        return false;
+    }
+    emit stagedEditsChanged();
+    if (d->projectionDb) {
+        d->projectionDb->rebuildFrom(*d->store, nullptr);
+    }
+    if (d->model) {
+        d->model->reload();
+    }
+    setEditStatus(tr("Saved checkpoint %1.").arg(checkpoint->id));
+    return true;
+}
+
+void LibrarySession::discardEdits()
+{
+    if (d->editController) {
+        d->editController->discard();
+    }
+    emit stagedEditsChanged();
+    setEditStatus(tr("Staged edits discarded; no files were changed."));
+}
+
+bool LibrarySession::exportEdited(const QString &mediaId, const QString &destinationPath)
+{
+    if (d->editController && d->editController->hasStagedEdits() && !saveEdits()) {
+        return false;
+    }
+    core::Error error;
+    const auto derivative = d->editController
+            ? d->editController->exportImage(*d->store, mediaId, destinationPath, &error)
+            : std::nullopt;
+    if (!derivative || !d->store->stage(*derivative, &error)) {
+        setEditStatus(tr("Export failed: %1").arg(error.message()));
+        return false;
+    }
+    const auto checkpoint = d->store->commit(
+            QStringLiteral("Export %1").arg(QFileInfo(destinationPath).fileName()), &error);
+    if (!checkpoint) {
+        setEditStatus(tr("Export was written but its record is staged: %1").arg(error.message()));
+        return false;
+    }
+    if (d->projectionDb) {
+        d->projectionDb->rebuildFrom(*d->store, nullptr);
+    }
+    if (d->model) {
+        d->model->reload();
+    }
+    setEditStatus(tr("Exported and checkpointed %1.").arg(QFileInfo(destinationPath).fileName()));
+    return true;
+}
 bool LibrarySession::activateLibrary(const QString &location)
 {
     if (!d->prepared || !d->manager) {
@@ -638,6 +767,7 @@ void LibrarySession::start()
 
     d->fileSystem = std::make_unique<scan::QtFileSystem>();
     d->metadataReader = std::make_unique<metadata::BuiltinMetadataReader>(d->fileSystem.get());
+    d->editController = std::make_unique<LibraryEditController>();
     d->scanner = std::make_unique<scan::Scanner>(d->fileSystem.get(), d->metadataReader.get(),
                                                  d->store);
     // Committing in batches is what lets the grid fill in while the scan is

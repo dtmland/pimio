@@ -13,6 +13,10 @@ constexpr QLatin1StringView kOriginalStorageKey{"originalStorage"};
 constexpr QLatin1StringView kManagedOriginalPathKey{"managedOriginalPath"};
 constexpr QLatin1StringView kMetadataKey{"metadata"};
 constexpr QLatin1StringView kRecipeKey{"recipe"};
+constexpr QLatin1StringView kDerivativeKey{"derivative"};
+constexpr QLatin1StringView kSourceMediaIdKey{"sourceMediaId"};
+constexpr QLatin1StringView kRecipeRevisionKey{"recipeRevision"};
+constexpr QLatin1StringView kDerivativeKindKey{"kind"};
 constexpr QLatin1StringView kMessageKey{"message"};
 constexpr QLatin1StringView kCreatedAtUtcKey{"createdAtUtc"};
 constexpr QLatin1StringView kAuthorIdKey{"authorId"};
@@ -20,6 +24,27 @@ constexpr QLatin1StringView kApplicationVersionKey{"applicationVersion"};
 constexpr QLatin1StringView kParentIdKey{"parentId"};
 
 } // namespace
+
+QJsonObject DerivativeRelationship::toJson() const
+{
+    return {{kSourceMediaIdKey, sourceMediaId.value()},
+            {kRecipeRevisionKey, recipeRevision},
+            {kDerivativeKindKey, kind}};
+}
+
+DerivativeRelationship DerivativeRelationship::fromJson(const QJsonObject &object)
+{
+    DerivativeRelationship relationship;
+    relationship.sourceMediaId = MediaId(object.value(kSourceMediaIdKey).toString());
+    relationship.recipeRevision = object.value(kRecipeRevisionKey).toInt();
+    relationship.kind = object.value(kDerivativeKindKey).toString();
+    return relationship;
+}
+
+bool DerivativeRelationship::isValid() const
+{
+    return sourceMediaId.isValid() && recipeRevision >= 0 && !kind.isEmpty();
+}
 
 QJsonObject Checkpoint::toJson() const
 {
@@ -53,7 +78,7 @@ Checkpoint Checkpoint::fromJson(const QJsonObject &object)
 
 QJsonObject MediaRecord::toJson() const
 {
-    QJsonObject object;
+    QJsonObject object = unrecognizedFields;
     object.insert(kSchemaVersionKey, kRecordSchemaVersion);
     object.insert(kIdKey, id.value());
     object.insert(kFingerprintAlgorithmKey, fingerprint.algorithm());
@@ -65,6 +90,9 @@ QJsonObject MediaRecord::toJson() const
     object.insert(kManagedOriginalPathKey, managedOriginalPath);
     object.insert(kMetadataKey, metadata.toJson());
     object.insert(kRecipeKey, recipe.toJson());
+    if (derivative) {
+        object.insert(kDerivativeKey, derivative->toJson());
+    }
     return object;
 }
 
@@ -82,6 +110,13 @@ MediaRecord MediaRecord::fromJson(const QJsonObject &object)
     record.managedOriginalPath = object.value(kManagedOriginalPathKey).toString();
     record.metadata = MediaMetadata::fromJson(object.value(kMetadataKey).toObject());
     record.recipe = EditRecipe::fromJson(object.value(kRecipeKey).toObject());
+    if (object.contains(kDerivativeKey)) {
+        record.derivative = DerivativeRelationship::fromJson(object.value(kDerivativeKey).toObject());
+    }
+    record.unrecognizedFields = unknownFields(
+            object, {kIdKey, kFingerprintAlgorithmKey, kFingerprintDigestKey, kIdentityKey,
+                     kOriginalStorageKey, kManagedOriginalPathKey, kMetadataKey, kRecipeKey,
+                     kDerivativeKey});
     return record;
 }
 

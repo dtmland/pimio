@@ -87,6 +87,7 @@ private slots:
     void jobOrderingIsDeterministic();
     void errorRoundTripPreservesCodeAndContext();
     void mediaRecordRoundTrip();
+    void mediaRecordRoundTripPreservesDerivativeAndUnknownFields();
     void libraryAndCheckpointRoundTrip();
     void legacyCheckpointUsesCompatibleDefaults();
     void everyRecordWritesSchemaVersion();
@@ -371,6 +372,19 @@ void TestCoreSerialization::mediaRecordRoundTrip()
     const MediaRecord referenced = MediaRecord::fromJson(legacy);
     QCOMPARE(referenced.originalStorage, MediaRecord::OriginalStorage::Referenced);
     QVERIFY(referenced.managedOriginalPath.isEmpty());
+}
+
+void TestCoreSerialization::mediaRecordRoundTripPreservesDerivativeAndUnknownFields()
+{
+    MediaRecord record;
+    record.id = MediaId(QStringLiteral("derivative"));
+    record.derivative = DerivativeRelationship{MediaId(QStringLiteral("source")), 7,
+                                                QStringLiteral("export")};
+    QJsonObject serialized = record.toJson();
+    serialized.insert(QStringLiteral("futureRecordField"), true);
+    const MediaRecord restored = MediaRecord::fromJson(reparse(serialized));
+    QVERIFY(restored.derivative == record.derivative);
+    QCOMPARE(restored.toJson().value(QStringLiteral("futureRecordField")).toBool(), true);
 }
 
 void TestCoreSerialization::libraryAndCheckpointRoundTrip()

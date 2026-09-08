@@ -14,6 +14,7 @@ private slots:
     void readyThumbnailUsesImageProvider();
     void detailLoadsModernImage_data();
     void detailLoadsModernImage();
+    void detailExposesSaveDiscardAndExportControls();
     void arrowKeysMoveTheSelectionByRowsAndColumns();
     void gridFocusFollowsTheBrowsingContext();
     void holdingANavigationKeyAcceleratesUnlessDisabled();
