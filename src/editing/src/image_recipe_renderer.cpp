@@ -116,7 +116,10 @@ QImage ImageRecipeRenderer::preview(const QString &sourcePath, const core::EditR
                                     const QSize &targetSize, core::Error *error) const
 {
     QImage image = render(sourcePath, recipe, error);
-    if (!image.isNull() && targetSize.isValid() && !targetSize.isEmpty()) {
+    // targetSize is a maximum preview bound: never upscale a smaller recipe result
+    // (for example a 1x1 crop) just to fill the requested box.
+    if (!image.isNull() && targetSize.isValid() && !targetSize.isEmpty()
+        && (image.width() > targetSize.width() || image.height() > targetSize.height())) {
         image = image.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     }
     return image;

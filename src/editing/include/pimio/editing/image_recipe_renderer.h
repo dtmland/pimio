@@ -12,6 +12,8 @@ namespace pimio::editing {
 class ImageRecipeRenderer
 {
 public:
+    /// Renders a recipe preview. When targetSize is set it is treated as a maximum
+    /// bound: the image is downscaled to fit, never upscaled.
     QImage preview(const QString &sourcePath, const core::EditRecipe &recipe,
                    const QSize &targetSize, core::Error *error) const;
     bool exportImage(const QString &sourcePath, const core::EditRecipe &recipe,

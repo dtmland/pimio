@@ -47,14 +47,32 @@ void TestImageEditing::recipePreviewAndExportPreserveSource()
     sourceFile.close();
     core::Error error;
     editing::ImageRecipeRenderer renderer;
-    const QImage preview = renderer.preview(fixture(), sourceRecord().recipe, {100, 100}, &error);
+    const core::EditRecipe recipe = sourceRecord().recipe;
+
+    // Full-size recipe result stays 1x1 after crop+rotate.
+    const QImage full = renderer.preview(fixture(), recipe, {}, &error);
+    QVERIFY2(!full.isNull(), qPrintable(error.message()));
+    QCOMPARE(full.size(), QSize(1, 1));
+
+    // A larger targetSize is only a downscale bound; never upscale a tiny crop.
+    const QImage preview = renderer.preview(fixture(), recipe, {100, 100}, &error);
     QVERIFY2(!preview.isNull(), qPrintable(error.message()));
     QCOMPARE(preview.size(), QSize(1, 1));
 
+    // A smaller bound does downscale a larger recipe result.
+    core::EditRecipe noCrop;
+    noCrop.setRevision(1);
+    noCrop.append(core::EditOperation(core::EditOperationKind::Rotate, {{"degrees", 90}}));
+    const QImage downscaled = renderer.preview(fixture(), noCrop, {8, 8}, &error);
+    QVERIFY2(!downscaled.isNull(), qPrintable(error.message()));
+    QCOMPARE(downscaled.size(), QSize(8, 8));
+
     QTemporaryDir directory;
-    QVERIFY(renderer.exportImage(fixture(), sourceRecord().recipe,
+    QVERIFY(renderer.exportImage(fixture(), recipe,
                                  directory.filePath(QStringLiteral("export.png")), &error));
-    QVERIFY(QImageReader(directory.filePath(QStringLiteral("export.png"))).canRead());
+    QImageReader exported(directory.filePath(QStringLiteral("export.png")));
+    QVERIFY(exported.canRead());
+    QCOMPARE(exported.size(), QSize(1, 1));
     QVERIFY(sourceFile.open(QIODevice::ReadOnly));
     QCOMPARE(sourceFile.readAll(), before);
 }
