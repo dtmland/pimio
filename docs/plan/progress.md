@@ -32,6 +32,12 @@ Update this file in the same change that moves an increment forward.
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
 
+Increment 8 retains its image recipe renderer, export service, and explicit
+source-to-derivative provenance model. A custom sidecar-only metadata writer was
+evaluated and rejected; [decision 0007](../decisions/0007-embedded-metadata-writes.md)
+records the embedded-write direction and the conditions for any future sidecar
+exception. Save and metadata writing remain unimplemented.
+
 Increments 7.7–7.9, including the 7.8a–7.8c correction gates, were added when
 the plans were reoriented around the
 library-centric LORE design; the gap analysis motivating them is recorded in

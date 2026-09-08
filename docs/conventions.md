@@ -12,6 +12,7 @@ These conventions apply to all implementation increments described in
 | `src/core/src/` | Core implementation files. |
 | `src/lore/` | LORE-backed durable store (`pimio::lore`). Built only when LORE is available. `lore.h` stays private to this directory so the dependency has one boundary. |
 | `src/metadata/` | Metadata read adapters (`pimio::metadata`). Container parsers are private to `src/metadata/src/`; the only public surface is the `core::MetadataReader` implementation. |
+| `src/editing/` | UI-independent image recipe rendering and export (`pimio::editing`). It consumes core recipes and records explicit derivative provenance; metadata persistence remains outside this module. |
 | `src/scan/` | Incremental scan and media identity (`pimio::scan`). Reaches the filesystem only through `core::FileSystem`. |
 | `src/projection/` | SQLite query cache (`pimio::projection`). The only place Qt Sql is linked. Holds nothing that cannot be rebuilt from the durable store. |
 | `src/settings/` | User settings (`pimio::settings`). Links only Qt Core so any component can read settings without a cycle. Stored settings persist to `pimio.conf`; session settings do not. See [decisions/0003-settings-and-view-controls.md](decisions/0003-settings-and-view-controls.md). |

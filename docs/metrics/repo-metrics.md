@@ -1,24 +1,24 @@
 # pimio repository health metrics
 
-- Generated: 2026-09-07 23:25:11 UTC
+- Generated: 2026-09-08 13:09:09 UTC
 - Repository: pimio
-- Commit: b60cfe0
+- Commit: c5515e5
 
 ## Summary
-- Included files: 280
-- Total lines: 42278
-- Code lines: 32519
-- Blank lines: 6411
-- Comment lines: 3348
+- Included files: 288
+- Total lines: 42836
+- Code lines: 32987
+- Blank lines: 6480
+- Comment lines: 3369
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 108 |
-| C/C++ Header | 73 |
-| CMake | 30 |
-| Markdown | 28 |
+| C++ | 111 |
+| C/C++ Header | 75 |
+| CMake | 32 |
+| Markdown | 29 |
 | Shell | 10 |
 | QML | 9 |
 | PowerShell | 8 |
@@ -33,10 +33,10 @@
 
 | Directory | Files |
 | --- | ---: |
-| src | 132 |
-| tests | 80 |
+| src | 137 |
+| tests | 82 |
 | tools | 28 |
-| docs | 23 |
+| docs | 24 |
 | packaging | 7 |
 | .github | 4 |
 | cmake | 3 |
