@@ -142,11 +142,13 @@ reports which one it is.
 
 **A download fails checksum verification** — re-run with `-Force`. If it fails
 again, the vendor changed the artifact behind a pinned URL; do not bypass the
-check, update the pin in `pinned.ps1` instead.
+check. Verify the vendor artifact independently before updating its authoritative
+pin: `cmake/PimioLore.cmake` for LORE, `pinned.ps1` for Windows portable tools.
 
-**"The pinned versions do not match the repository"** — `pinned.ps1` cross-checks
-its pins against `.github/workflows/ci.yml` and `cmake/PimioLore.cmake` so a
-local build cannot drift from CI. Update `pinned.ps1` to match.
+**Invalid shared build inputs** — Qt/modules come from `tools/build/qt.env`;
+LORE version, URL, and Windows checksums come directly from
+`cmake/PimioLore.cmake`. Restore malformed/missing inputs instead of adding
+copies to `pinned.ps1`. No host CMake installation is needed to read these pins.
 
 **Qt cannot be found in the sandbox** — the Qt download was incomplete. Re-run
 `prepare.ps1` without `-SkipQt`.
@@ -164,7 +166,9 @@ checkout that includes that change.
 
 ## Changing a pinned version
 
-Edit `$PimioPinned` in `pinned.ps1`, keeping it consistent with
-`.github/workflows/ci.yml` and `cmake/PimioLore.cmake`, then run
-`prepare.ps1 -Force`. Pins exist so a local build reproduces CI; changing one
-here without changing CI defeats the point.
+Edit `tools/build/qt.env` for Qt/modules/aqtinstall, `cmake/PimioLore.cmake` for
+LORE, and `$PimioPinned` in `pinned.ps1` only for Windows-specific portable tools.
+Run `python -m unittest discover -s tests/build -v`, then `prepare.ps1` to refresh
+the cache (use `-Force` to redownload valid cached files too). Validate portable
+tool or orchestration changes in a fresh Sandbox; CI's PowerShell 5.1 reader
+tests do not replace that end-to-end check.

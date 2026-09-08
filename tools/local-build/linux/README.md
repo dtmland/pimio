@@ -153,9 +153,13 @@ and, when present, `XAUTHORITY`; Wayland forwards the current
 rootless mode or add your account to the distribution's Docker group, then log
 in again. Do not run the script with `sudo`; that creates root-owned results.
 
-**The pinned versions do not match the repository** — `pinned.sh` cross-checks
-Qt against `.github/workflows/ci.yml` and LORE against
-`cmake/PimioLore.cmake`. Update all authoritative pins together.
+**Invalid shared build pins** — Qt comes from `tools/build/qt.env` and LORE
+from `cmake/PimioLore.cmake`. Restore malformed/missing inputs; do not add local
+copies to `pinned.sh`.
+
+**libaom cannot find NASM** — rebuild the committed image (the default mode).
+`--use-image` or `--pull` may select an older image without the common packages
+from `tools/build/linux-packages.txt`.
 
 **Qt or LORE cannot download** — the image build needs Qt's download service,
 and CMake needs GitHub release downloads for LORE. Restore network/proxy access
@@ -176,7 +180,9 @@ its own image store. Build once with the selected engine or use a registry image
 
 ## Changing a pinned version
 
-Update `pinned.sh`, the `Containerfile` defaults, `.github/workflows/ci.yml`, and
-`cmake/PimioLore.cmake` together. For a new Ubuntu base, resolve and review the
-amd64 image digest before changing it. Pins exist so local results remain
-comparable with CI.
+Update Qt/modules/aqtinstall in `tools/build/qt.env`, or LORE in
+`cmake/PimioLore.cmake`; the workflows and local readers consume those inputs.
+Only Linux-specific values belong in `pinned.sh`. For a new Ubuntu base, resolve
+and review the amd64 image digest before changing it. The wrapper supplies the
+Containerfile arguments and uses `tools/build/` as its build context.
+Run `python -m unittest discover -s tests/build -v` and rebuild the image.

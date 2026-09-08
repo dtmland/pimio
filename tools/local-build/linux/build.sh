@@ -3,7 +3,7 @@ set -uo pipefail
 
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 # shellcheck source=/dev/null
-source "$script_dir/pinned.sh"
+source "$script_dir/pinned.sh" || exit 1
 
 usage() {
     cat <<'EOF'

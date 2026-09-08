@@ -2,6 +2,7 @@
 /build/
 /install/
 CMakeUserPresets.json
+__pycache__/
 
 # Downloaded, checksum-verified third-party artifacts (see cmake/PimioLore.cmake)
 /.cache/

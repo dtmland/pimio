@@ -17,3 +17,8 @@ tests/fixtures/data/** -text
 # are the mirror image and need CRLF.
 packaging/*.sh text eol=lf
 packaging/*.bat text eol=crlf
+
+# The shared pins are also sourced by Git Bash on Windows CI.
+tools/build/*.env text eol=lf
+tools/build/*.sh text eol=lf
+tools/local-build/linux/*.sh text eol=lf

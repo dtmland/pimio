@@ -12,9 +12,9 @@ context.** The commands that configure, build, test, and install pimio come from
 one file that every context invokes. The step of *provisioning a machine to run
 those commands* is re-implemented per context, because a GitHub runner, a
 container, and a Windows Sandbox are genuinely different starting points. That
-split is the source of the whole class of "works in CI, breaks locally" (and
-vice-versa) bugs, so the duplicated surface is guarded by drift-asserts wherever
-it can be.
+split is the source of "works in CI, breaks locally" bugs. Product pins and
+common Linux prerequisites are now consumed directly from shared inputs;
+offline contracts and a real local Linux CI build guard that boundary.
 
 ## The build contexts
 
@@ -51,46 +51,68 @@ they contain.
 - **[`packaging/`](../packaging/)** — the launcher, `README.txt`, and
   `pimio-doctor` that ship at the root of every archive. Installed by
   `cmake --install`, so a local install reproduces the released tree.
+- **[`tools/build/qt.env`](../tools/build/qt.env)** — Qt version, Qt add-on
+  modules, and local aqtinstall version. Both workflows and both local harnesses
+  consume this file; the container receives its values as build arguments.
+- **[`tools/build/linux-packages.txt`](../tools/build/linux-packages.txt)** —
+  the common apt prerequisites for CI, Release builds, and the local container.
+  The archive-verification environment intentionally does not consume it.
 
 ## The duplicated surface (provisioned per context)
 
 Each context must provision "a machine that can run the shared commands." This is
-where duplication lives. Where a value must be identical across contexts, it is
-pinned once and re-read by a drift-assert; where it can legitimately differ, it
-is documented below.
+where differences live. Identical product inputs are loaded rather than copied;
+legitimate provisioning differences are documented below.
 
-### Pinned versions — must be identical, guarded by drift-asserts
+### Product pins — loaded, not duplicated
 
-The pinned Qt version, the Qt add-on module list, and the LORE version must be
-identical everywhere, or a local result stops being comparable with CI and a
-release ships bytes CI never verified. They appear in several files:
+| Input | Authoritative source | Consumers |
+| --- | --- | --- |
+| Qt version/modules; local aqtinstall | `tools/build/qt.env` | Both workflows and local harnesses |
+| LORE version/base URL/checksums | `cmake/PimioLore.cmake` | CMake acquisition; Windows pre-download reader; workflow cache keys and Linux reporting use its version |
+| Ubuntu image/digest, Linux Qt arch | Linux `pinned.sh` | Container build arguments |
+| Windows portable tools, Qt arch, VS components | Windows `pinned.ps1` | Windows host cache and Sandbox |
 
-| Pin | `ci.yml` | `release.yml` | Linux `pinned.sh` / `Containerfile` | Windows `pinned.ps1` |
-| --- | --- | --- | --- | --- |
-| Qt version | `PIMIO_QT_VERSION` env | `PIMIO_QT_VERSION` env | `PIMIO_QT_VERSION` / `ARG QT_VERSION` | `QtVersion` |
-| Qt modules | `modules:` | `qt_modules:` matrix | `PIMIO_QT_MODULES` / `ARG QT_MODULES` | `QtModules` |
-| LORE version | `PIMIO_LORE_VERSION` env | `PIMIO_LORE_VERSION` env | `PIMIO_LORE_VERSION` | `LoreVersion` (+ checksums) |
+`tools/build/pins.sh` loads Qt inputs and reads the LORE version. CI and Release
+export these values to `GITHUB_ENV` before Qt acquisition and LORE caching.
+`tools/build/pins.ps1` reads the same Qt inputs and the version-selected LORE
+checksum table, including the base URL, before Windows downloads anything.
+Unknown versions or missing/malformed Windows checksums fail closed. The existing
+local assertion entry points now reload/validate shared inputs rather than
+compare hard-coded copies.
 
-**How drift is prevented.** `ci.yml` and `cmake/PimioLore.cmake` are treated as
-authoritative. The local harnesses re-read them and refuse to run on drift:
+Two bootstrap readers are necessary because a Linux host only needs Bash and a
+container engine, while the Windows host/Sandbox can start with PowerShell 5.1
+and no CMake. They use existing shell/PowerShell capabilities, not a new parser
+dependency. Offline tests compare their output against real CMake evaluation
+and mutate the source pins to prove changes propagate.
 
-- Linux: `pimio_assert_pins_match_repository` in
-  [`tools/local-build/linux/pinned.sh`](../tools/local-build/linux/pinned.sh),
-  called by `build.sh` before every build.
-- Windows: `Assert-PimioPinsMatchRepository` in
-  [`tools/local-build/windows/pinned.ps1`](../tools/local-build/windows/pinned.ps1),
-  called by `prepare.ps1` and `new-sandbox.ps1`.
+The Linux image is built through `pimio_prepare_image`, which supplies every
+build argument; its build context is the small shared `tools/build/` directory.
+There are no independently maintained Containerfile defaults. Use `build.sh`
+or `run-studio.sh`, rather than a bare `docker build` without those arguments.
 
-Both asserts also confirm that **`release.yml` agrees with `ci.yml`** on the Qt
-version, the module set, and the LORE version — so the release pipeline cannot
-silently diverge from what CI verifies. (This was the gap behind the Qt
-Multimedia fix: `pimio` links `Qt6::Multimedia`, the module list was pinned in
-only one place, and nothing asserted the others matched.)
+### Why the previous safeguards missed the failures
+
+The old local assertions detected stale Windows LORE checksums but only when a
+developer ran the harness. Neither CI nor Release invoked them. A green hosted
+build therefore did not demonstrate that either local environment still worked.
+The Linux Containerfile also maintained a separate apt list without NASM, even
+though CI and Release installed it for libavif's libaom codec. A checklist saying
+"review every context" did not test these assumptions.
+
+Both workflows now run `python -m unittest discover -s tests/build -v` before
+provisioning. These standard-library tests need no Qt/downloads, exercise both
+local pin readers (Windows CI uses PowerShell 5.1), and check shared-input wiring.
+CI additionally runs the actual local Linux harness through build, offscreen
+tests, and staging, uploading its evidence on failure as well as success.
+Windows reader tests do **not** exercise Windows Sandbox, VS installation, or
+vendor downloads; changes to those still require a fresh Sandbox run when available.
 
 ### Qt acquisition — three mechanisms, same result
 
 The *way* Qt is obtained differs because the starting environments differ; the
-*version and modules* obtained are held identical by the pins above.
+*version and modules* obtained come from the shared input above.
 
 | Context | Mechanism |
 | --- | --- |
@@ -100,18 +122,17 @@ The *way* Qt is obtained differs because the starting environments differ; the
 
 ### System package lists — deliberately not identical
 
-The apt lists (Linux) and portable-tool sets are **hand-maintained per context
-and legitimately differ**, because each context does a different subset of the
-work. They are *not* force-merged; the differences below are intentional. When
-you add a build-time or runtime system dependency, decide which of these it
-belongs to.
+The common Linux apt list is shared; **extras and portable-tool sets legitimately
+differ**, because each context does a different subset of the work. When adding
+a dependency, put shared requirements in the common list and only genuinely
+context-specific extras in the consumers.
 
 | Context | List location | Notable contents | Why it differs |
 | --- | --- | --- | --- |
-| CI build+test | `ci.yml` | xcb libs, `nasm`, `ninja-build`, `xvfb` | Builds and runs GUI tests, so it needs `xvfb`; it never deploys, so no `patchelf`. |
-| Release build+deploy | `release.yml` | xcb libs, wayland libs, `nasm`, `ninja-build`, `patchelf` | Deploys with `cmake --install`, which rewrites ELF RPATH (`patchelf`) and bundles the Wayland plugin; it does not run GUI tests, so no `xvfb`. |
+| CI build+test | common list + `ci.yml` | xcb libs, `libpulse0`, `nasm`, `perl`, `ninja-build`, `xvfb` | Builds and runs GUI tests, so it needs `xvfb`; it never deploys, so no `patchelf`. |
+| Release build+deploy | common list + `release.yml` | xcb libs, `libpulse0`, wayland libs, `nasm`, `perl`, `ninja-build`, `patchelf` | Deploys with `cmake --install`, which rewrites ELF RPATH (`patchelf`) and bundles the Wayland plugin; it does not run GUI tests, so no `xvfb`. |
 | Release archive verify | `release.yml` | `libgl1`, `libegl1`, `libxcb-cursor0`, `libxkbcommon-x11-0`, `libpulse0` | Deliberately minimal: proves the archive is self-contained on a machine that never built pimio. Mirrors the runtime packages the README asks users to install. |
-| Local Linux | `Containerfile` | superset: build-essential, cmake, git, xcb + wayland libs, `patchelf`, `xvfb`, python venv for aqt, 7zip, xz | A from-scratch container image that must build, test *and* deploy, so it is the union of the CI and Release needs plus its own toolchain. |
+| Local Linux | common list + `Containerfile` | common codec tools + xcb libs, `libpulse0`, build-essential, cmake, git, wayland libs, `patchelf`, `xvfb`, python venv for aqt, 7zip, xz | A from-scratch container image that must build, test *and* deploy, so it is the union of the CI and Release needs plus its own toolchain. Hosted runners may already provide PulseAudio; the clean container must install `libpulse0` explicitly so Qt Multimedia can link. |
 
 **Perl on Windows.** `libavif` builds its AV1 codec (libaom) from source via CMake
 FetchContent. libaom's CMake configuration requires Perl to generate assembly
@@ -120,8 +141,8 @@ Perl pre-installed, so CI passes silently; the Windows Sandbox starts from a
 bare image and has no Perl. The sandbox toolchain therefore downloads a
 [Strawberry Perl portable zip](https://github.com/shogo82148/strawberry-perl-releases)
 as a pinned, checksum-verified artifact alongside CMake, Ninja, NASM, and MinGit.
-Linux CI and the Linux container image both inherit Perl from the Ubuntu base image,
-so no explicit Perl install is needed on those paths.
+Linux build contexts explicitly request Perl in the common list rather than
+depending on incidental packages in a runner or base image.
 
 **Bundled image decoders.** AVIF and HEIC are acquired and configured centrally
 by `cmake/PimioImageFormats.cmake`; no context installs a system codec package.
@@ -143,8 +164,10 @@ CI and Release get CMake and Ninja from the runner image or a marketplace action
 (`gha-setup-ninja`). The local harnesses pin them explicitly (`Containerfile`
 installs distro CMake/Ninja; Windows `pinned.ps1` pins exact CMake/Ninja/NASM/Perl
 URLs and checksums, plus `aqtinstall`). These tool versions are **not**
-cross-checked between CI and local; they are a smaller, lower-risk duplicated
-surface than the Qt/LORE pins.
+cross-checked between CI and local: platform package managers and portable
+archives have different release cadences. They are not product pin authorities.
+The local Linux CI job tests the distro-provisioned toolchain; Windows portable
+tool changes still need cache/download and Sandbox validation.
 
 ## What differs across platforms
 
@@ -211,10 +234,11 @@ a local build, a CI run, or an extracted release archive.
 
 ## Summary: the blast radius
 
-Anything covered by a preset or a drift-assert stays in lockstep across contexts.
-Anything provisioned per context by a hand-maintained list is a potential drift
-source. The largest remaining hand-maintained surface is the system package
-lists, which are intentionally different (above) and therefore documented rather
-than auto-reconciled. When you touch the build, consult
+Shared inputs remove copy-and-paste drift, but neither presets nor static
+contracts prove an environment works. CI must exercise the actual local
+entrypoint, and Windows Sandbox validation remains a separate requirement.
+Context-specific deployment/runtime-library collection and portable tools still
+need cross-context review; this change does not unify those platform operations.
+When you touch the build, consult
 [`.github/copilot-instructions.md`](../.github/copilot-instructions.md) for the
 short propagation checklist.

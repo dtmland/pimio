@@ -9,16 +9,6 @@ on:
 permissions:
   contents: write
 
-env:
-  # Pinned Qt release for the product. Must match PIMIO_QT_VERSION in
-  # .github/workflows/ci.yml; the local drift-asserts re-read both workflows and
-  # refuse to run if they disagree. See docs/build-architecture.md.
-  PIMIO_QT_VERSION: 6.8.3
-  # Pinned LORE release. Must match PIMIO_LORE_VERSION in cmake/PimioLore.cmake
-  # and .github/workflows/ci.yml; repeated here only so the download cache can be
-  # keyed by it.
-  PIMIO_LORE_VERSION: 0.9.0
-
 jobs:
   build-binaries:
     name: Build binaries (${{ matrix.name }})
@@ -30,42 +20,36 @@ jobs:
           - name: Linux
             runner: ubuntu-24.04
             archive: tar.gz
-            qt_modules: qtmultimedia qtimageformats
           - name: Windows
             runner: windows-2025
             archive: zip
-            qt_modules: qtmultimedia qtimageformats
           - name: macOS
             runner: macos-15
             archive: tar.gz
-            qt_modules: qtmultimedia qtimageformats
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+
+      - name: Validate build contracts
+        run: python -m unittest discover -s tests/build -v
+
+      - name: Load shared build pins
+        shell: bash
+        run: |
+          source tools/build/pins.sh
+          printf '%s\n' "PIMIO_QT_VERSION=$PIMIO_QT_VERSION" \
+            "PIMIO_QT_MODULES=$PIMIO_QT_MODULES" \
+            "PIMIO_LORE_VERSION=$PIMIO_LORE_VERSION" >> "$GITHUB_ENV"
 
       - name: Install Linux native dependencies
         if: matrix.name == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            libgl1-mesa-dev \
-            libegl1 \
-            libxkbcommon-dev \
-            libxkbcommon-x11-0 \
-            libxcb-cursor0 \
-            libxcb-icccm4 \
-            libxcb-image0 \
-            libxcb-keysyms1 \
-            libxcb-randr0 \
-            libxcb-render-util0 \
-            libxcb-shape0 \
-            libxcb-xinerama0 \
-            libxcb-xkb1 \
+          xargs -a tools/build/linux-packages.txt \
+            sudo apt-get install -y --no-install-recommends \
             libwayland-client0 \
             libwayland-cursor0 \
             libwayland-egl1 \
-            nasm \
-            ninja-build \
             patchelf   # needed by cmake --install to rewrite ELF RPATH for the Qt deployment
 
       - name: Install Ninja (Windows and macOS)
@@ -86,7 +70,7 @@ jobs:
           version: ${{ env.PIMIO_QT_VERSION }}
           cache: true
           cache-key-prefix: qt-multimedia-imageformats-${{ matrix.runner }}-${{ env.PIMIO_QT_VERSION }}
-          modules: ${{ matrix.qt_modules }}
+          modules: ${{ env.PIMIO_QT_MODULES }}
           extra: --base https://download.qt.io
 
       - name: Cache LORE ${{ env.PIMIO_LORE_VERSION }}

@@ -16,7 +16,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = REPO_ROOT / "docs" / "metrics"
 MARKDOWN_OUTPUT = OUTPUT_DIR / "repo-metrics.md"
 
-EXCLUDED_DIRS = {".git", ".cache", "build", "install"}
+EXCLUDED_DIRS = {".git", ".cache", "__pycache__"}
+EXCLUDED_ROOT_DIRS = {"build", "install"}
 EXCLUDED_PATH_PREFIXES = ("docs/metrics/", "tools/metrics/")
 
 LANGUAGE_BY_EXTENSION = {
@@ -33,6 +34,7 @@ LANGUAGE_BY_EXTENSION = {
     ".qml": "QML",
     ".py": "Python",
     ".sh": "Shell",
+    ".env": "Shell",
     ".ps1": "PowerShell",
     ".bat": "Batch",
     ".cmake": "CMake",
@@ -66,6 +68,7 @@ LANGUAGE_BY_EXTENSION = {
 FILENAME_LANGUAGE = {
     "CMakeLists.txt": "CMake",
     "Dockerfile": "Docker",
+    "Containerfile": "Docker",
     "Makefile": "Make",
     "README": "Text",
     "LICENSE": "Text",
@@ -81,6 +84,8 @@ def is_supported_path(path: Path) -> bool:
     if path.name.startswith(".") and path.name not in {".gitignore", ".gitattributes"}:
         return False
     if any(part in EXCLUDED_DIRS for part in rel.parts):
+        return False
+    if rel.parts[0] in EXCLUDED_ROOT_DIRS:
         return False
     return True
 
