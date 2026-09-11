@@ -37,7 +37,7 @@ jobs:
             runner: macos-15
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Validate build contracts
         run: python -m unittest discover -s tests/build -v
