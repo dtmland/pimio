@@ -26,17 +26,23 @@ Update this file in the same change that moves an increment forward.
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Complete |
-| 8 | Save, portable metadata, and image recipes | Not started |
+| 8 | Save, portable metadata, and image recipes | Complete |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
 
-Increment 8 retains its image recipe renderer, export service, and explicit
-source-to-derivative provenance model. A custom sidecar-only metadata writer was
-evaluated and rejected; [decision 0007](../decisions/0007-embedded-metadata-writes.md)
-records the embedded-write direction and the conditions for any future sidecar
-exception. Save and metadata writing remain unimplemented.
+Increment 8 combines the retained image recipe renderer, export service, and
+explicit source-to-derivative provenance model with staged editing and
+LORE-backed Save. The ExifTool adapter writes rating, caption, and tags into a
+private copy, verifies the result with the production reader, and lets the
+durable store atomically publish the managed original and record in one
+checkpoint. Conflicts and failures preserve the prior committed bytes. A custom
+sidecar-only writer remains rejected; [decision 0007](../decisions/0007-embedded-metadata-writes.md)
+records the dependency evaluation and embedded-write policy.
+
+Evidence: `metadata.embedded_write`, `editing.metadata_save`,
+`editing.image_recipes`, and `lore.binary_content`.
 
 Increments 7.7–7.9, including the 7.8a–7.8c correction gates, were added when
 the plans were reoriented around the

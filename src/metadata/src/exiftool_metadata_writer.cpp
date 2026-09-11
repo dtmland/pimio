@@ -171,6 +171,7 @@ bool ExifToolMetadataWriter::write(const QString &absolutePath,
                     absolutePath);
         return false;
     }
+
     return true;
 }
 

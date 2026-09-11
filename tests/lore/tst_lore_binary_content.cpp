@@ -120,7 +120,48 @@ private slots:
     void commitRestartReloadAndDeduplicate();
     void scannerIngestsManagedOriginal();
     void failedManagedCommitRetainsRecordAndBytesForRetry();
+    void replacesManagedOriginalWithoutExposingPartialBytes();
 };
+
+void TestLoreBinaryContent::replacesManagedOriginalWithoutExposingPartialBytes()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const QString first = temporary.filePath(QStringLiteral("first.jpg"));
+    const QString second = temporary.filePath(QStringLiteral("second.jpg"));
+    QVERIFY(writeBinaryFile(first, 128 * 1024));
+    QVERIFY(writeBinaryFile(second, 192 * 1024));
+
+    LoreDurableStore store(temporary.filePath(QStringLiteral("store")));
+    Error error;
+    QVERIFY2(store.open(&error), qPrintable(error.message()));
+    MediaRecord record = makeLoreRecord(QStringLiteral("metadata-update"),
+                                        QStringLiteral("before"));
+    record.originalStorage = MediaRecord::OriginalStorage::Managed;
+    record.managedOriginalPath = QStringLiteral("originals/me/metadata-update.jpg");
+    record.fingerprint = ContentFingerprint(
+            QStringLiteral("sha256"), QString::fromLatin1(fileHash(first).toHex()));
+    QVERIFY2(store.stageOriginal(record, first, &error), qPrintable(error.message()));
+    QVERIFY2(store.commit(QStringLiteral("Import"), &error).has_value(),
+             qPrintable(error.message()));
+    const QString managed = store.originalPath(record, &error);
+    QCOMPARE(fileHash(managed), fileHash(first));
+
+    record.metadata.caption = QStringLiteral("after");
+    record.fingerprint = ContentFingerprint(
+            QStringLiteral("sha256"), QString::fromLatin1(fileHash(second).toHex()));
+    QVERIFY2(store.stageOriginal(record, second, &error), qPrintable(error.message()));
+    QVERIFY2(store.commit(QStringLiteral("Embedded metadata update"), &error).has_value(),
+             qPrintable(error.message()));
+    QCOMPARE(fileHash(managed), fileHash(second));
+
+    store.close();
+    QVERIFY2(store.open(&error), qPrintable(error.message()));
+    QCOMPARE(fileHash(store.originalPath(record, &error)), fileHash(second));
+    QCOMPARE(store.load(record.id, &error)->metadata.caption, QStringLiteral("after"));
+}
 
 void TestLoreBinaryContent::commitRestartReloadAndDeduplicate()
 {

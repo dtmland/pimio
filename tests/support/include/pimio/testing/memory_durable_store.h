@@ -5,6 +5,7 @@
 
 #include <QHash>
 #include <QSet>
+#include <QTemporaryDir>
 
 namespace pimio::testing {
 
@@ -28,6 +29,7 @@ public:
 
     /// Simulates a change made outside pimio, for example through a CLI.
     void applyExternalChange(const core::MediaRecord &record);
+    void setOriginalPath(const core::MediaId &id, const QString &path);
 
     // DurableStore
     bool isAvailable() const override;
@@ -37,6 +39,8 @@ public:
     bool stage(const core::MediaRecord &record, core::Error *error) override;
     bool stageOriginal(const core::MediaRecord &record, const QString &sourcePath,
                        core::Error *error) override;
+    QString stageOriginalForEdit(const core::MediaRecord &record,
+                                 core::Error *error) override;
     QString originalPath(const core::MediaRecord &record,
                          core::Error *error) const override;
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;
@@ -62,6 +66,9 @@ private:
     QSet<QString> m_stagedRemovals;
     QSet<QString> m_committedOriginals;
     QSet<QString> m_stagedOriginals;
+    QHash<QString, QString> m_originalPaths;
+    QHash<QString, QString> m_stagedEditPaths;
+    QTemporaryDir m_stagingDirectory;
     QList<core::Checkpoint> m_history;
     quint64 m_stateCounter = 0;
 };

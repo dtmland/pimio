@@ -113,6 +113,11 @@ public:
     virtual bool stageOriginal(const MediaRecord &record, const QString &sourcePath,
                                Error *error) = 0;
 
+    /// Copies a committed managed original into the durable staging area and
+    /// returns the private path a metadata adapter may modify. The committed
+    /// checkout remains the recovery source until commit() succeeds.
+    virtual QString stageOriginalForEdit(const MediaRecord &record, Error *error) = 0;
+
     /// Resolves the path consumers should read. Legacy referenced records remain
     /// readable from their source path and explicitly report Referenced storage.
     virtual QString originalPath(const MediaRecord &record, Error *error) const = 0;

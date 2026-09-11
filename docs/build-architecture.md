@@ -48,6 +48,10 @@ they contain.
   and in every context. CI's LORE server promotion contract acquires
   `loreserver` through this same shared mechanism; local builds can opt in, and
   release archives neither acquire nor package the server.
+- **[`cmake/PimioExifTool.cmake`](../cmake/PimioExifTool.cmake)** — the ExifTool
+  version and source checksum used by the embedded metadata writer. Every
+  context runs the same script and modules through Perl; Windows deployment
+  also installs its discovered Perl runtime.
 - **[`packaging/`](../packaging/)** — the launcher, `README.txt`, and
   `pimio-doctor` that ship at the root of every archive. Installed by
   `cmake --install`, so a local install reproduces the released tree.
@@ -143,6 +147,13 @@ bare image and has no Perl. The sandbox toolchain therefore downloads a
 as a pinned, checksum-verified artifact alongside CMake, Ninja, NASM, and MinGit.
 Linux build contexts explicitly request Perl in the common list rather than
 depending on incidental packages in a runner or base image.
+
+**ExifTool.** The checksum-pinned ExifTool source distribution is populated by
+CMake in every context and installed beside the application. It is invoked as a
+separate process, not linked. Linux and macOS use the platform Perl interpreter;
+the Windows deployment includes the same Strawberry Perl runtime discovered at
+configure time. This placement keeps metadata behavior and the Artistic-license
+files identical without duplicating a product pin in workflows or local scripts.
 
 **Bundled image decoders.** AVIF and HEIC are acquired and configured centrally
 by `cmake/PimioImageFormats.cmake`; no context installs a system codec package.

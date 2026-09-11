@@ -8,6 +8,12 @@ Rectangle {
     property string absolutePath
     property string captureTime
     property int mediaKind
+    property int rating
+    property string caption
+    property var tags: []
+    onCaptionChanged: captionEditor.text = caption
+    onRatingChanged: ratingEditor.value = rating
+    onTagsChanged: tagsEditor.text = tags.join(", ")
     property int thumbnailStatus
     property url thumbnailSource
     // Whether holding an arrow key jumps progressively further.
@@ -130,8 +136,74 @@ Rectangle {
         anchors {
             left: parent.left
             right: parent.right
-            bottom: parent.bottom
+            bottom: editPanel.top
             margins: 24
+        }
+
+        Row {
+            id: editPanel
+            anchors {
+                left: parent.left
+                right: parent.right
+                bottom: parent.bottom
+                margins: 16
+            }
+
+            Label {
+                anchors {
+                    right: parent.right
+                    bottom: editPanel.top
+                    margins: 16
+                }
+                color: "#ffffff"
+                text: librarySession.saveStatus
+                visible: text !== ""
+            }
+            spacing: 8
+
+            TextField {
+                id: captionEditor
+                width: Math.max(180, parent.width * 0.35)
+                placeholderText: qsTr("Caption")
+                text: detail.caption
+            }
+            SpinBox {
+                id: ratingEditor
+                from: 0
+                to: 5
+                value: detail.rating
+                editable: true
+            }
+            TextField {
+                id: tagsEditor
+                width: Math.max(160, parent.width * 0.25)
+                placeholderText: qsTr("Tags, comma separated")
+                text: detail.tags.join(", ")
+            }
+            Button {
+                text: qsTr("Stage")
+                onClicked: {
+                    const values = tagsEditor.text.split(",").map(
+                        value => value.trim()).filter(value => value.length > 0)
+                    librarySession.stageMetadataEdit(
+                        detail.mediaId, captionEditor.text, ratingEditor.value, values)
+                }
+            }
+            Button {
+                text: qsTr("Rotate")
+                enabled: detail.mediaKind === 1
+                onClicked: librarySession.stageRotation(detail.mediaId, 90)
+            }
+            Button {
+                text: qsTr("Save")
+                enabled: librarySession.hasUnsavedEdits
+                onClicked: librarySession.saveEdits(qsTr("Save metadata and image edits"))
+            }
+            Button {
+                text: qsTr("Cancel")
+                enabled: librarySession.hasUnsavedEdits
+                onClicked: librarySession.cancelEdits()
+            }
         }
         color: "#ffffff"
         elide: Text.ElideMiddle

@@ -7,7 +7,9 @@
 #include "pimio/browser/thumbnail_image_provider.h"
 #include "pimio/core/error.h"
 #include "pimio/core/job.h"
+#include "pimio/editing/metadata_edit_service.h"
 #include "pimio/metadata/builtin_metadata_reader.h"
+#include "pimio/metadata/exiftool_metadata_writer.h"
 #include "pimio/projection/job_dispatcher.h"
 #include "pimio/projection/job_queue.h"
 #include "pimio/projection/projection_database.h"
@@ -117,6 +119,8 @@ public:
 
     std::unique_ptr<scan::QtFileSystem> fileSystem;
     std::unique_ptr<metadata::BuiltinMetadataReader> metadataReader;
+    std::unique_ptr<metadata::ExifToolMetadataWriter> metadataWriter;
+    std::unique_ptr<editing::MetadataEditService> editService;
 
 #ifdef PIMIO_HAVE_LORE
     std::unique_ptr<lore::LoreDurableStore> loreStore;
@@ -152,6 +156,7 @@ public:
     bool started = false;
     QString promotionStatus;
     QString lifecycleStatus;
+    QString saveStatus;
 };
 
 LibrarySession::LibrarySession(QObject *parent)
@@ -207,6 +212,16 @@ bool LibrarySession::hasOpenLibrary() const
 QString LibrarySession::lifecycleStatus() const
 {
     return d->lifecycleStatus;
+}
+
+bool LibrarySession::hasUnsavedEdits() const
+{
+    return d->editService && d->editService->hasStagedEdits();
+}
+
+QString LibrarySession::saveStatus() const
+{
+    return d->saveStatus;
 }
 
 void LibrarySession::setLifecycleStatus(const QString &status)
@@ -336,6 +351,8 @@ void LibrarySession::shutdown()
     d->thumbnailCache.reset();
     d->jobQueue.reset();
     d->projectionDb.reset();
+    d->editService.reset();
+    d->metadataWriter.reset();
 #ifdef PIMIO_HAVE_LORE
     if (d->loreStore) {
         d->loreStore->close();
@@ -354,6 +371,137 @@ void LibrarySession::shutdown()
     }
     emit promotionAvailabilityChanged();
     emit currentLibraryChanged();
+}
+
+bool LibrarySession::stageMetadataEdit(const QString &mediaId, const QString &caption,
+                                       int rating, const QStringList &tags)
+{
+    if (!d->editService || !d->store) {
+        d->saveStatus = tr("No Library is open.");
+        emit saveStatusChanged();
+        return false;
+    }
+    core::Error error;
+    const core::MediaId id(mediaId);
+    auto record = d->editService->staged(id);
+    if (!record) {
+        record = d->store->load(id, &error);
+    }
+    if (!record) {
+        d->saveStatus = tr("Could not load the item: %1").arg(error.message());
+        emit saveStatusChanged();
+        return false;
+    }
+    record->metadata.caption = caption;
+    record->metadata.rating = rating;
+    record->metadata.tags = tags;
+    const bool staged =
+            d->editService->stage(id, record->metadata, record->recipe, &error);
+    d->saveStatus = staged ? tr("Edits staged.") : tr("Could not stage edits: %1")
+                                                       .arg(error.message());
+    emit saveStatusChanged();
+    emit unsavedEditsChanged();
+    return staged;
+}
+
+bool LibrarySession::stageRotation(const QString &mediaId, int clockwiseDegrees)
+{
+    if (!d->editService || !d->store) {
+        return false;
+    }
+    core::Error error;
+    const core::MediaId id(mediaId);
+    auto record = d->editService->staged(id);
+    if (!record) {
+        record = d->store->load(id, &error);
+    }
+    if (!record) {
+        d->saveStatus = tr("Could not load the item: %1").arg(error.message());
+        emit saveStatusChanged();
+        return false;
+    }
+    record->recipe.append(core::EditOperation(
+            core::EditOperationKind::Rotate, {{QStringLiteral("degrees"), clockwiseDegrees}}));
+    const bool staged =
+            d->editService->stage(id, record->metadata, record->recipe, &error);
+    d->saveStatus = staged ? tr("Rotation staged.") : tr("Could not stage rotation: %1")
+                                                          .arg(error.message());
+    emit saveStatusChanged();
+    emit unsavedEditsChanged();
+    return staged;
+}
+
+bool LibrarySession::stageCrop(const QString &mediaId, int x, int y, int width, int height)
+{
+    if (width <= 0 || height <= 0 || !d->editService || !d->store) {
+        return false;
+    }
+    core::Error error;
+    const core::MediaId id(mediaId);
+    auto record = d->editService->staged(id);
+    if (!record) {
+        record = d->store->load(id, &error);
+    }
+    if (!record) {
+        d->saveStatus = tr("Could not load the item: %1").arg(error.message());
+        emit saveStatusChanged();
+        return false;
+    }
+    record->recipe.append(core::EditOperation(
+            core::EditOperationKind::Crop,
+            {{QStringLiteral("x"), x}, {QStringLiteral("y"), y},
+             {QStringLiteral("width"), width}, {QStringLiteral("height"), height}}));
+    const bool staged =
+            d->editService->stage(id, record->metadata, record->recipe, &error);
+    d->saveStatus = staged ? tr("Crop staged.") : tr("Could not stage crop: %1")
+                                                      .arg(error.message());
+    emit saveStatusChanged();
+    emit unsavedEditsChanged();
+    return staged;
+}
+
+bool LibrarySession::saveEdits(const QString &message)
+{
+    if (!d->editService) {
+        return false;
+    }
+    core::Error error;
+    const auto checkpoint =
+            d->editService->save(message.trimmed().isEmpty() ? tr("Save edits")
+                                                             : message.trimmed(),
+                                 &error);
+    if (!checkpoint) {
+        d->saveStatus = tr("Save failed: %1").arg(error.message());
+        emit saveStatusChanged();
+        return false;
+    }
+    if (d->projectionDb && !d->projectionDb->rebuildFrom(*d->store, &error)) {
+        d->saveStatus = tr("Saved, but the Library view could not refresh: %1")
+                                .arg(error.message());
+    } else {
+        d->saveStatus = tr("Saved as checkpoint %1.").arg(checkpoint->id);
+        if (d->model) {
+            d->model->setDatabase(nullptr);
+            d->model->setDatabase(d->projectionDb.get());
+        }
+    }
+    emit saveStatusChanged();
+    emit unsavedEditsChanged();
+    return true;
+}
+
+bool LibrarySession::cancelEdits()
+{
+    if (!d->editService) {
+        return false;
+    }
+    core::Error error;
+    const bool cancelled = d->editService->cancel(&error);
+    d->saveStatus = cancelled ? tr("Edits cancelled.")
+                              : tr("Could not cancel edits: %1").arg(error.message());
+    emit saveStatusChanged();
+    emit unsavedEditsChanged();
+    return cancelled;
 }
 
 bool LibrarySession::activateLibrary(const QString &location)
@@ -589,6 +737,9 @@ void LibrarySession::start()
         return;
     }
     d->store = d->loreStore.get();
+    d->metadataWriter = std::make_unique<metadata::ExifToolMetadataWriter>();
+    d->editService =
+            std::make_unique<editing::MetadataEditService>(*d->store, *d->metadataWriter);
     emit promotionAvailabilityChanged();
 
     core::Error descriptorError;

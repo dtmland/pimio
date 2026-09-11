@@ -90,6 +90,9 @@ Window {
         detail.absolutePath = item.absolutePath
         detail.captureTime = item.captureTimeString
         detail.mediaKind = item.mediaKind
+        detail.rating = item.rating
+        detail.caption = item.caption
+        detail.tags = item.tags
         detail.thumbnailStatus = item.thumbnailStatus
         detail.thumbnailSource = "image://thumbnail/" + detail.mediaId
         detail.visible = true

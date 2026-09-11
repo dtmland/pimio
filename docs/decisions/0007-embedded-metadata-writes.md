@@ -59,3 +59,27 @@ independent of sidecars and remain useful.
   GPL-2.0-or-later licensing and linking strategy require explicit review before
   distribution, and any dependency must be provisioned consistently in CI,
   Release, Local Linux, and Local Windows.
+
+## Increment 8 outcome
+
+ExifTool 13.59 is the write adapter. It runs as a separate process from a
+checksum-pinned upstream distribution and is redistributed under the Perl
+Artistic License option. This avoids linking GPL-2.0-or-later libexiv2 into the
+application while providing mature embedded EXIF/IPTC/XMP handling for JPEG,
+PNG, and TIFF on every supported platform.
+
+libexiv2 0.28.9 was evaluated and rejected for this path. Direct linking would
+bring GPL-2.0-or-later obligations into the application, and its published
+support matrix does not provide EXIF writes for PNG. ExifTool supports embedded
+writes for all three containers and preserves metadata it does not edit, though
+metadata block ordering and padding are not byte-stable.
+
+pimio therefore writes only a private copy, rereads the result with the
+production reader, and publishes it through the durable store. The store checks
+the committed fingerprint before replacement, uses same-directory atomic
+replacement, and restores the committed checkout after any failed commit.
+Unsupported formats fail visibly; there is no automatic sidecar fallback.
+
+The adapter updates the portable user fields delivered in this increment:
+rating, caption, and tags. Timestamp repair and location editing remain assigned
+to Increments 9 and 11.

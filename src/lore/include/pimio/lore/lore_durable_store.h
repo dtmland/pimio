@@ -109,6 +109,8 @@ public:
     bool stage(const core::MediaRecord &record, core::Error *error) override;
     bool stageOriginal(const core::MediaRecord &record, const QString &sourcePath,
                        core::Error *error) override;
+    QString stageOriginalForEdit(const core::MediaRecord &record,
+                                 core::Error *error) override;
     QString originalPath(const core::MediaRecord &record,
                          core::Error *error) const override;
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;

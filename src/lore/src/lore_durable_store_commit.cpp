@@ -123,6 +123,28 @@ bool LoreDurableStore::stageOriginal(const core::MediaRecord &record, const QStr
     return true;
 }
 
+QString LoreDurableStore::stageOriginalForEdit(const core::MediaRecord &record, Error *error)
+{
+    if (record.originalStorage != core::MediaRecord::OriginalStorage::Managed) {
+        detail::setError(error, ErrorCode::UnsupportedMedia,
+                         QStringLiteral("Only managed originals can be edited."));
+        return {};
+    }
+    const QString committed = originalPath(record, error);
+    if (committed.isEmpty() || !fileMatchesSha256(committed, record.fingerprint.digest())) {
+        if (committed.isEmpty()) {
+            return {};
+        }
+        detail::setError(error, ErrorCode::Conflict,
+                         QStringLiteral("The managed original changed after editing began."));
+        return {};
+    }
+    if (!stageOriginal(record, committed, error)) {
+        return {};
+    }
+    return d->stagedOriginalPath(record);
+}
+
 bool LoreDurableStore::hasStagedChanges() const
 {
     if (!d->available()) {

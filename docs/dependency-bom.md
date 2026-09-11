@@ -24,6 +24,7 @@ Legal review is a release gate. CI cannot certify it.
 | libde265 | 1.1.1 | HEVC decoder only | Dynamically linked into libheif | LGPL-3.0-or-later | https://github.com/strukturag/libde265/releases/tag/v1.1.1 | Yes (build-only CMake target rename) | Yes |
 | qt-heic-image-plugin | 0.7.1 | Qt 6 HEIC/HEIF image I/O adapter, read capability enabled | Dynamically loaded Qt image plugin | LGPL-2.0-or-later | https://github.com/novomesk/qt-heic-image-plugin/releases/tag/v0.7.1 | No | Yes |
 | LORE (`liblore`) | 0.9.0 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.9.0 | No | Yes |
+| ExifTool | 13.59 | Embedded XMP writes for rating, caption, and tags | Separate Perl process; never linked into pimio | Perl Artistic License or GPL (pimio redistributes under Artistic terms) | https://github.com/exiftool/exiftool/releases/tag/13.59 | No | Yes |
 
 Qt is used under the LGPL dynamic-linking path. The application must keep Qt
 replaceable by the user, ship the required license text and notices, and avoid
@@ -45,6 +46,11 @@ gate that CI cannot certify.
 Metadata is read by `pimio::metadata`, parsers written for this project, so the
 read path adds no row here. The reasoning and what would reverse it are in
 [decisions/0002-metadata-adapter.md](decisions/0002-metadata-adapter.md).
+Metadata writes use the separately executed ExifTool distribution. The source
+archive is checksum-pinned by `cmake/PimioExifTool.cmake`; release archives
+include the unmodified script, modules, and license. Windows archives also carry
+the Perl runtime already used by the build environment, while Linux and macOS
+use the platform Perl interpreter.
 
 SQLite reaches pimio through Qt's bundled QSQLITE driver rather than as a
 separate dependency, so it carries no obligation of its own. If pimio ever
@@ -99,7 +105,6 @@ integration.
 
 | Candidate | Purpose | Known licensing concern |
 | --- | --- | --- |
-| libexiv2 | Candidate for EXIF/IPTC/XMP embedded writes, and read coverage beyond plain container headers | GPL-2.0-or-later. Linking strategy must be resolved before distribution. Increment 5 declined it for the read path; Increment 8 must evaluate it for embedded writes. See [decision 0002](decisions/0002-metadata-adapter.md) and [decision 0007](decisions/0007-embedded-metadata-writes.md). |
 | libraw | RAW decode | LGPL-2.1 / CDDL dual license. |
 | libjpeg-turbo | Lossless JPEG transforms | Permissive. Low risk. |
 | FFmpeg | Video decode, thumbnails, trim | License depends on configure flags. An LGPL build is required unless the product license changes. |

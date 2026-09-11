@@ -18,6 +18,7 @@ target_include_directories(pimio_app_lib PUBLIC include)
 target_link_libraries(pimio_app_lib PUBLIC
     pimio::core
     pimio::browser
+    pimio::editing
     pimio::metadata
     pimio::projection
     pimio::scan

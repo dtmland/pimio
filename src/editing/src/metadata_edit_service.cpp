@@ -1,10 +1,7 @@
 #include "pimio/editing/metadata_edit_service.h"
 
 #include <QCryptographicHash>
-#include <QDir>
 #include <QFile>
-#include <QFileInfo>
-#include <QTemporaryDir>
 
 namespace pimio::editing {
 namespace {
@@ -24,16 +21,6 @@ QString sha256(const QString &path)
         return {};
     }
     return QString::fromLatin1(hash.result().toHex());
-}
-
-bool copyFile(const QString &source, const QString &target, core::Error *error)
-{
-    if (!QFile::copy(source, target)) {
-        assignError(error, core::ErrorCode::OutOfSpace,
-                    QStringLiteral("Could not prepare a metadata working copy."));
-        return false;
-    }
-    return true;
 }
 
 } // namespace
@@ -127,13 +114,6 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
         return std::nullopt;
     }
 
-    QTemporaryDir workingDirectory;
-    if (!workingDirectory.isValid()) {
-        assignError(error, core::ErrorCode::OutOfSpace,
-                    QStringLiteral("Could not create a metadata working directory."));
-        return std::nullopt;
-    }
-
     for (auto edit = m_edits.begin(); edit != m_edits.end(); ++edit) {
         const auto current = m_store.load(edit->original.id, error);
         if (!current || *current != edit->original) {
@@ -169,10 +149,8 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
         }
 
         const QString workingPath =
-                QDir(workingDirectory.path())
-                        .filePath(edit->original.id.value() + QLatin1Char('.')
-                                  + QFileInfo(sourcePath).suffix());
-        if (!copyFile(sourcePath, workingPath, error)
+                m_store.stageOriginalForEdit(edit->original, error);
+        if (workingPath.isEmpty()
             || !m_writer.write(workingPath, edit->edited.metadata,
                                edit->original.fingerprint, error)) {
             m_store.discardStaged(nullptr);
@@ -185,8 +163,9 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
             m_store.discardStaged(nullptr);
             return std::nullopt;
         }
-        edit->edited.fingerprint = core::ContentFingerprint(digest);
-        if (!m_store.stageOriginal(edit->edited, workingPath, error)) {
+        edit->edited.fingerprint =
+                core::ContentFingerprint(QStringLiteral("sha256"), digest);
+        if (!m_store.stage(edit->edited, error)) {
             m_store.discardStaged(nullptr);
             return std::nullopt;
         }
