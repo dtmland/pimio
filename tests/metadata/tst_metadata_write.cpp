@@ -4,6 +4,8 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QImage>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -39,18 +41,39 @@ class TestMetadataWrite : public QObject
     Q_OBJECT
 
 private slots:
+    void writesAndRereadsEmbeddedMetadata_data();
     void writesAndRereadsEmbeddedMetadata();
     void conflictAndToolFailurePreserveBytes();
     void rejectsUnsupportedFormats();
 };
 
+void TestMetadataWrite::writesAndRereadsEmbeddedMetadata_data()
+{
+    QTest::addColumn<QString>("format");
+    QTest::newRow("JPEG") << QStringLiteral("jpg");
+    QTest::newRow("PNG") << QStringLiteral("png");
+    QTest::newRow("TIFF") << QStringLiteral("tiff");
+}
+
 void TestMetadataWrite::writesAndRereadsEmbeddedMetadata()
 {
+    QFETCH(QString, format);
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
-    const QString target = directory.filePath(QStringLiteral("photo.jpg"));
-    QVERIFY(QFile::copy(fixture(), target));
-    const QByteArray fixtureBytes = contents(fixture());
+    const QString target =
+            directory.filePath(QStringLiteral("photo.%1").arg(format));
+    if (format == QLatin1String("jpg")) {
+        QVERIFY(QFile::copy(fixture(), target));
+    } else if (format == QLatin1String("png")) {
+        const QString png = QDir(QStringLiteral(PIMIO_FIXTURES_DIR))
+                                    .filePath(QStringLiteral("images/png-solid.png"));
+        QVERIFY(QFile::copy(png, target));
+    } else {
+        QImage image(2, 2, QImage::Format_RGB32);
+        image.fill(Qt::red);
+        QVERIFY2(image.save(target, "TIFF"), "The pinned Qt image formats must write TIFF.");
+    }
+    const QByteArray sourceBytes = contents(target);
 
     metadata::BuiltinMetadataReader reader;
     core::Error error;
@@ -74,7 +97,11 @@ void TestMetadataWrite::writesAndRereadsEmbeddedMetadata()
     QCOMPARE(after->metadata.tags, edited.tags);
     QCOMPARE(after->metadata.cameraMake, before->metadata.cameraMake);
     QCOMPARE(after->metadata.cameraModel, before->metadata.cameraModel);
-    QCOMPARE(contents(fixture()), fixtureBytes);
+    QVERIFY(contents(target).contains("A portable caption"));
+    QVERIFY(!QFileInfo::exists(target + QStringLiteral(".xmp")));
+    QVERIFY(!QFileInfo::exists(
+            directory.filePath(QFileInfo(target).completeBaseName() + QStringLiteral(".xmp"))));
+    QVERIFY(contents(target) != sourceBytes);
 }
 
 void TestMetadataWrite::conflictAndToolFailurePreserveBytes()

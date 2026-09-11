@@ -1,5 +1,6 @@
 #include "pimio/editing/metadata_edit_service.h"
 
+#include "pimio/metadata/exiftool_metadata_writer.h"
 #include "pimio/testing/fake_clock.h"
 #include "pimio/testing/memory_durable_store.h"
 
@@ -31,15 +32,21 @@ core::ContentFingerprint fingerprint(const QString &path)
 class FakeWriter final : public core::MetadataWriter
 {
 public:
+    enum class Failure {
+        None,
+        BeforeWrite,
+        AfterWrite,
+    };
+
     bool supportsEmbeddedWrite(const QString &) const override { return supported; }
 
     bool writeBatch(const QList<core::MetadataWriteRequest> &requests,
                     core::Error *error) override
     {
         ++calls;
-        if (fail) {
+        if (failure == Failure::BeforeWrite) {
             if (error) {
-                *error = core::Error(core::ErrorCode::OutOfSpace,
+                *error = core::Error(failureCode,
                                      QStringLiteral("Injected write failure."));
             }
             return false;
@@ -60,11 +67,19 @@ public:
             file.write(QByteArrayLiteral("\nmetadata=")
                        + QByteArray::number(request.metadata.rating));
         }
+        if (failure == Failure::AfterWrite) {
+            if (error) {
+                *error = core::Error(core::ErrorCode::Internal,
+                                     QStringLiteral("The metadata process was interrupted."));
+            }
+            return false;
+        }
         return true;
     }
 
     bool supported = true;
-    bool fail = false;
+    Failure failure = Failure::None;
+    core::ErrorCode failureCode = core::ErrorCode::OutOfSpace;
     int calls = 0;
     QList<int> batchSizes;
 };
@@ -91,7 +106,8 @@ private slots:
     void stageCancelAndSave();
     void batchSaveUsesOneWriterCall();
     void conflictsPreserveOriginal();
-    void failedWriteAndCommitRemainRecoverable();
+    void permissionLossAndInterruptedWriteRemainRecoverable();
+    void concurrentSidecarConflictRestoresOriginal();
 };
 
 void TestMetadataEditService::batchSaveUsesOneWriterCall()
@@ -206,7 +222,7 @@ void TestMetadataEditService::conflictsPreserveOriginal()
     QCOMPARE(writer.calls, 0);
 }
 
-void TestMetadataEditService::failedWriteAndCommitRemainRecoverable()
+void TestMetadataEditService::permissionLossAndInterruptedWriteRemainRecoverable()
 {
     QTemporaryDir directory;
     const QString path = directory.filePath(QStringLiteral("original.jpg"));
@@ -229,19 +245,78 @@ void TestMetadataEditService::failedWriteAndCommitRemainRecoverable()
     metadata.rating = 2;
     QVERIFY(edits.stage(record.id, metadata, record.recipe, &error));
 
-    writer.fail = true;
+    writer.failure = FakeWriter::Failure::BeforeWrite;
+    writer.failureCode = core::ErrorCode::PermissionDenied;
     QVERIFY(!edits.save(QStringLiteral("Save"), &error));
+    QCOMPARE(static_cast<int>(error.code()),
+             static_cast<int>(core::ErrorCode::PermissionDenied));
     QCOMPARE(contents(path), before);
     QVERIFY(edits.hasStagedEdits());
     QVERIFY(!store.hasStagedChanges());
 
-    writer.fail = false;
+    writer.failure = FakeWriter::Failure::AfterWrite;
+    QVERIFY(!edits.save(QStringLiteral("Save"), &error));
+    QCOMPARE(static_cast<int>(error.code()), static_cast<int>(core::ErrorCode::Internal));
+    QCOMPARE(contents(path), before);
+    QVERIFY(edits.hasStagedEdits());
+    QVERIFY(!store.hasStagedChanges());
+
+    writer.failure = FakeWriter::Failure::None;
     store.failNextCommit(core::ErrorCode::OutOfSpace);
     QVERIFY(!edits.save(QStringLiteral("Save"), &error));
     QVERIFY(!store.hasStagedChanges());
     QCOMPARE(contents(path), before);
     QVERIFY(edits.save(QStringLiteral("Save"), &error).has_value());
     QVERIFY(!edits.hasStagedEdits());
+    QVERIFY(contents(path) != before);
+}
+
+void TestMetadataEditService::concurrentSidecarConflictRestoresOriginal()
+{
+    QTemporaryDir directory;
+    const QString path = directory.filePath(QStringLiteral("original.jpg"));
+    QFile source(QDir(QStringLiteral(PIMIO_FIXTURES_DIR))
+                         .filePath(QStringLiteral("images/jpeg-no-exif.jpg")));
+    QVERIFY(source.copy(path));
+    const QByteArray before = contents(path);
+
+    testing::FakeClock clock(QDateTime::fromString(QStringLiteral("2026-09-11T00:00:00Z"),
+                                                   Qt::ISODate));
+    testing::MemoryDurableStore store(clock);
+    core::Error error;
+    const core::MediaRecord record = managedRecord(path);
+    QVERIFY(store.stage(record, &error));
+    QVERIFY(store.commit(QStringLiteral("Import"), &error).has_value());
+    store.setOriginalPath(record.id, path);
+    metadata::ExifToolMetadataWriter writer;
+    QVERIFY(writer.isAvailable());
+    editing::MetadataEditService edits(store, writer);
+    core::MediaMetadata edited = record.metadata;
+    edited.caption = QStringLiteral("embedded edit");
+    QVERIFY(edits.stage(record.id, edited, record.recipe, &error));
+
+    QFile sidecar(directory.filePath(QStringLiteral("original.xmp")));
+    QVERIFY(sidecar.open(QIODevice::WriteOnly));
+    const QByteArray sidecarContents = R"(<?xml version="1.0"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+          xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <rdf:Description><dc:description><rdf:Alt>
+   <rdf:li xml:lang="x-default">racing sidecar</rdf:li>
+  </rdf:Alt></dc:description></rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>)";
+    QVERIFY(sidecar.write(sidecarContents) > 0);
+    sidecar.close();
+
+    QVERIFY(!edits.save(QStringLiteral("Save"), &error));
+    QCOMPARE(static_cast<int>(error.code()), static_cast<int>(core::ErrorCode::CorruptData));
+    QCOMPARE(contents(path), before);
+    QVERIFY(edits.hasStagedEdits());
+    QVERIFY(QFile::remove(sidecar.fileName()));
+
+    QVERIFY2(edits.save(QStringLiteral("Retry without conflict"), &error).has_value(),
+             qPrintable(error.message()));
     QVERIFY(contents(path) != before);
 }
 
