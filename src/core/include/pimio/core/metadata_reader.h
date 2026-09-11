@@ -57,13 +57,10 @@ public:
     /// cannot, and must use a sidecar instead.
     virtual bool supportsEmbeddedWrite(const QString &absolutePath) const = 0;
 
-    /// Path of the sidecar pimio would use for \a absolutePath.
-    virtual QString sidecarPathFor(const QString &absolutePath) const = 0;
-
-    /// Applies \a metadata. \a expectedOrigin records what pimio believed the
-    /// current state was; a mismatch must produce ErrorCode::Conflict.
+    /// Applies \a metadata. \a expectedFingerprint records the exact bytes
+    /// pimio read before editing; a mismatch must produce ErrorCode::Conflict.
     virtual bool write(const QString &absolutePath, const MediaMetadata &metadata,
-                       MetadataOrigin expectedOrigin, Error *error) = 0;
+                       const ContentFingerprint &expectedFingerprint, Error *error) = 0;
 };
 
 } // namespace pimio::core

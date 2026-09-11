@@ -62,6 +62,8 @@ qt_standard_project_setup(REQUIRES ${PIMIO_QT_MINIMUM_VERSION})
 
 include(PimioLore)
 pimio_acquire_lore()
+include(PimioExifTool)
+pimio_acquire_exiftool()
 if(PIMIO_LORE_FOUND)
     message(STATUS "LORE ${PIMIO_LORE_VERSION}: ${PIMIO_LORE_SHARED_LIBRARY}")
     if(PIMIO_LORE_CLI)

@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QJsonDocument>
+#include <QSaveFile>
 #include <QSet>
 
 #include <algorithm>
@@ -30,6 +31,23 @@ bool fileMatchesSha256(const QString &path, const QString &expectedDigest)
     QCryptographicHash hash(QCryptographicHash::Sha256);
     return file.open(QIODevice::ReadOnly) && hash.addData(&file)
            && QString::fromLatin1(hash.result().toHex()) == expectedDigest;
+}
+
+bool copyAtomically(const QString &sourcePath, const QString &targetPath)
+{
+    QFile source(sourcePath);
+    QSaveFile target(targetPath);
+    if (!source.open(QIODevice::ReadOnly) || !target.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    QByteArray buffer(1024 * 1024, Qt::Uninitialized);
+    while (!source.atEnd()) {
+        const qint64 count = source.read(buffer.data(), buffer.size());
+        if (count <= 0 || target.write(buffer.constData(), count) != count) {
+            return false;
+        }
+    }
+    return target.commit();
 }
 
 } // namespace
@@ -86,25 +104,16 @@ bool LoreDurableStore::stageOriginal(const core::MediaRecord &record, const QStr
                          QStringLiteral("The staged original resolves outside the staging area."));
         return false;
     }
-    const QString temporary = target + QStringLiteral(".part");
-    QFile::remove(temporary);
-    if (!QFile::copy(sourcePath, temporary)) {
+    if (!copyAtomically(sourcePath, target)) {
         detail::setError(error, ErrorCode::OutOfSpace,
                          QStringLiteral("Could not stage the original %1.").arg(sourcePath));
         return false;
     }
 
-    if (!fileMatchesSha256(temporary, record.fingerprint.digest())) {
-        QFile::remove(temporary);
+    if (!fileMatchesSha256(target, record.fingerprint.digest())) {
+        QFile::remove(target);
         detail::setError(error, ErrorCode::CorruptData,
                          QStringLiteral("The staged original does not match its fingerprint."));
-        return false;
-    }
-    QFile::remove(target);
-    if (!QFile::rename(temporary, target)) {
-        QFile::remove(temporary);
-        detail::setError(error, ErrorCode::PermissionDenied,
-                         QStringLiteral("Could not publish the staged original."));
         return false;
     }
     if (!stage(record, error)) {
@@ -157,6 +166,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
 
     QSet<QString> expectedOriginals;
     QHash<QString, QString> expectedOriginalDigests;
+    QHash<QString, QString> previousOriginalDigests;
     for (const QString &stagedFile : std::as_const(stagedFiles)) {
         const auto record = detail::readRecordFile(stagedFile, nullptr);
         if (record && record->originalStorage == core::MediaRecord::OriginalStorage::Managed
@@ -164,6 +174,12 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
             expectedOriginals.insert(record->managedOriginalPath);
             expectedOriginalDigests.insert(record->managedOriginalPath,
                                            record->fingerprint.digest());
+            const auto committed =
+                    detail::readRecordFile(d->committedRecordPath(record->id), nullptr);
+            if (committed && committed->managedOriginalPath == record->managedOriginalPath) {
+                previousOriginalDigests.insert(record->managedOriginalPath,
+                                              committed->fingerprint.digest());
+            }
         }
     }
     for (auto it = stagedOriginalFiles.begin(); it != stagedOriginalFiles.end();) {
@@ -261,27 +277,20 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
             return std::nullopt;
         }
         if (QFileInfo::exists(target)) {
-            if (!fileMatchesSha256(target, expectedDigest)) {
+            if (fileMatchesSha256(target, expectedDigest)) {
+                continue;
+            }
+            if (!fileMatchesSha256(target, previousOriginalDigests.value(relative))) {
                 d->restoreCheckoutToCommittedState(nullptr);
                 detail::setError(error, ErrorCode::CorruptData,
-                                 QStringLiteral("A managed original does not match its fingerprint."));
+                                 QStringLiteral("A managed original changed outside pimio."));
                 return std::nullopt;
             }
-            continue;
         }
-        const QString temporary = target + QStringLiteral(".pimio-write");
-        QFile::remove(temporary);
-        if (!QFile::copy(stagedOriginal, temporary)) {
+        if (!copyAtomically(stagedOriginal, target)) {
             d->restoreCheckoutToCommittedState(nullptr);
             detail::setError(error, ErrorCode::OutOfSpace,
-                             QStringLiteral("Could not copy a staged original into the checkout."));
-            return std::nullopt;
-        }
-        if (!QFile::rename(temporary, target)) {
-            QFile::remove(temporary);
-            d->restoreCheckoutToCommittedState(nullptr);
-            detail::setError(error, ErrorCode::PermissionDenied,
-                             QStringLiteral("Could not publish a managed original."));
+                             QStringLiteral("Could not atomically publish a managed original."));
             return std::nullopt;
         }
     }
@@ -317,8 +326,7 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
                      QStringLiteral("Could not create %1.").arg(targetInfo.absolutePath()));
             return std::nullopt;
         }
-        QFile::remove(target);
-        if (!QFile::copy(stagedFile, target)) {
+        if (!copyAtomically(stagedFile, target)) {
             d->restoreCheckoutToCommittedState(nullptr);
             detail::setError(error, ErrorCode::OutOfSpace,
                      QStringLiteral("Could not copy the staged record %1 into the checkout.")
