@@ -23,6 +23,20 @@ QString sha256(const QString &path)
     return QString::fromLatin1(hash.result().toHex());
 }
 
+void restoreAfterFailedSave(core::DurableStore &store, core::Error *error)
+{
+    const QString saveFailure = error ? error->message() : QString();
+    core::Error restoreError;
+    const bool restored = store.restoreFromDurableState(&restoreError);
+    const bool discarded = store.discardStaged(&restoreError);
+    if ((!restored || !discarded) && error) {
+        *error = core::Error(
+                core::ErrorCode::StorageUnavailable,
+                QStringLiteral("%1 The committed Library checkout could not be restored: %2")
+                        .arg(saveFailure, restoreError.message()));
+    }
+}
+
 } // namespace
 
 MetadataEditService::MetadataEditService(core::DurableStore &store,
@@ -139,8 +153,7 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
         writes.append({sourcePath, edit->edited.metadata, edit->original.fingerprint});
     }
     if (!m_writer.writeBatch(writes, error)) {
-        m_store.restoreFromDurableState(nullptr);
-        m_store.discardStaged(nullptr);
+        restoreAfterFailedSave(m_store, error);
         return std::nullopt;
     }
     for (auto edit = m_edits.begin(); edit != m_edits.end(); ++edit) {
@@ -152,15 +165,13 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
         if (digest.isEmpty()) {
             assignError(error, core::ErrorCode::CorruptData,
                         QStringLiteral("Could not fingerprint the updated original."));
-            m_store.restoreFromDurableState(nullptr);
-            m_store.discardStaged(nullptr);
+            restoreAfterFailedSave(m_store, error);
             return std::nullopt;
         }
         edit->edited.fingerprint =
                 core::ContentFingerprint(QStringLiteral("sha256"), digest);
         if (!m_store.stage(edit->edited, error)) {
-            m_store.restoreFromDurableState(nullptr);
-            m_store.discardStaged(nullptr);
+            restoreAfterFailedSave(m_store, error);
             return std::nullopt;
         }
     }
@@ -169,8 +180,7 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
     if (checkpoint) {
         m_edits.clear();
     } else {
-        m_store.restoreFromDurableState(nullptr);
-        m_store.discardStaged(nullptr);
+        restoreAfterFailedSave(m_store, error);
     }
     return checkpoint;
 }
