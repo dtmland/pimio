@@ -6,6 +6,10 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QProcess>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -32,6 +36,23 @@ core::ContentFingerprint fingerprint(const QString &path)
             QString::fromLatin1(QCryptographicHash::hash(contents(path),
                                                          QCryptographicHash::Sha256)
                                         .toHex()));
+}
+
+QJsonObject readWithExifTool(const QString &path)
+{
+    QProcess process;
+    process.start(QStringLiteral(PIMIO_TEST_EXIFTOOL_PERL),
+                  {QStringLiteral(PIMIO_TEST_EXIFTOOL_SCRIPT), QStringLiteral("-json"),
+                   QStringLiteral("-struct"), QStringLiteral("-Rating"),
+                   QStringLiteral("-Description"), QStringLiteral("-Subject"), path});
+    if (!process.waitForStarted() || !process.waitForFinished()
+        || process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
+        return {};
+    }
+    const QJsonDocument output = QJsonDocument::fromJson(process.readAllStandardOutput());
+    return output.isArray() && !output.array().isEmpty()
+            ? output.array().first().toObject()
+            : QJsonObject();
 }
 
 } // namespace
@@ -97,6 +118,14 @@ void TestMetadataWrite::writesAndRereadsEmbeddedMetadata()
     QCOMPARE(after->metadata.tags, edited.tags);
     QCOMPARE(after->metadata.cameraMake, before->metadata.cameraMake);
     QCOMPARE(after->metadata.cameraModel, before->metadata.cameraModel);
+    const QJsonObject compatible = readWithExifTool(target);
+    QCOMPARE(compatible.value(QStringLiteral("Rating")).toInt(), edited.rating);
+    QCOMPARE(compatible.value(QStringLiteral("Description")).toString(), edited.caption);
+    const QJsonArray compatibleTags = compatible.value(QStringLiteral("Subject")).toArray();
+    QCOMPARE(compatibleTags.size(), edited.tags.size());
+    for (qsizetype index = 0; index < edited.tags.size(); ++index) {
+        QCOMPARE(compatibleTags.at(index).toString(), edited.tags.at(index));
+    }
     QVERIFY(contents(target).contains("A portable caption"));
     QVERIFY(!QFileInfo::exists(target + QStringLiteral(".xmp")));
     QVERIFY(!QFileInfo::exists(
