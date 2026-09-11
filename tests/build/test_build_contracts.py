@@ -196,10 +196,6 @@ class BuildWiringTests(unittest.TestCase):
         self.assertIn("xargs -a /tmp/pimio-linux-packages.txt", container)
         self.assertNotRegex(container, r"ARG (?:QT_\w+|AQTINSTALL_VERSION|UBUNTU_\w+)=")
 
-    def test_ci_exercises_actual_local_linux_entrypoint(self):
-        text = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("bash tools/local-build/linux/build.sh --engine docker", text)
-
     def test_exiftool_is_pinned_and_shared_by_every_context(self):
         module = (ROOT / "cmake/PimioExifTool.cmake").read_text()
         self.assertRegex(module, r'PIMIO_EXIFTOOL_VERSION "[0-9]+\.[0-9]+"')

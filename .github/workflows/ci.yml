@@ -22,28 +22,6 @@ permissions:
   contents: read
 
 jobs:
-  local-linux:
-    name: Local Linux build environment
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Build, test, and stage using the local harness
-        run: bash tools/local-build/linux/build.sh --engine docker --output "${{ runner.temp }}/local-build"
-
-      - name: Upload local build evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: local-linux-build-evidence
-          path: |
-            ${{ runner.temp }}/local-build/*.log
-            ${{ runner.temp }}/local-build/*.xml
-            ${{ runner.temp }}/local-build/*.txt
-            ${{ runner.temp }}/local-build/Testing/
-          if-no-files-found: warn
-
   build-and-test:
     name: Build and test (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}

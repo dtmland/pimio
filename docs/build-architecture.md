@@ -105,11 +105,13 @@ The Linux Containerfile also maintained a separate apt list without NASM, even
 though CI and Release installed it for libavif's libaom codec. A checklist saying
 "review every context" did not test these assumptions.
 
-Both workflows now run `python -m unittest discover -s tests/build -v` before
+Both workflows run `python -m unittest discover -s tests/build -v` before
 provisioning. These standard-library tests need no Qt/downloads, exercise both
 local pin readers (Windows CI uses PowerShell 5.1), and check shared-input wiring.
-CI additionally runs the actual local Linux harness through build, offscreen
-tests, and staging, uploading its evidence on failure as well as success.
+The actual local Linux container build is temporarily excluded from CI because
+its from-scratch image build exceeds the useful CI feedback window. Run
+`tools/local-build/linux/build.sh` manually when changing its provisioning; the
+hosted Linux job remains the automated Linux build and test gate.
 Windows reader tests do **not** exercise Windows Sandbox, VS installation, or
 vendor downloads; changes to those still require a fresh Sandbox run when available.
 

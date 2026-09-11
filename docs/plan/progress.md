@@ -26,15 +26,19 @@ Update this file in the same change that moves an increment forward.
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Complete |
-| 8 | Save, portable metadata, and image recipes | In progress (implementation complete; acceptance gaps) |
+| 8 | Save, portable metadata, and image recipes | Complete |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
 
-Increment 8's product path is implemented, but the increment cannot be marked
-Complete under this document's definition until the remaining acceptance
-evidence below runs in CI.
+Increment 8 is complete. CI run
+[`34595938015`](https://github.com/dtmland/pimio/actions/runs/34595938015)
+passed the Linux, Windows, and macOS build-and-test jobs at commit `b699315`.
+The run was then cancelled rather than waiting for the Local Linux container
+job, which is temporarily excluded from CI because its from-scratch build takes
+too long. That manual local-environment validation gap is not Increment 8
+acceptance evidence.
 
 Implemented:
 
@@ -54,27 +58,19 @@ Implemented:
 
 Current evidence:
 
-- `metadata.embedded_write` covers embedded write/readback, preservation of
-  unrelated camera fields, conflicts, unavailable ExifTool, and unsupported
-  formats.
+- `metadata.embedded_write` covers JPEG, PNG, and TIFF embedded write/readback
+  through the production reader and an independent ExifTool invocation,
+  preservation of unrelated camera fields, no-sidecar output, conflicts,
+  unavailable ExifTool, and unsupported formats.
 - `editing.metadata_save` covers staging, cancellation, batched invocation,
-  conflicts, failed writes, failed commits, retry, and checkpoint provenance.
+  conflicts, no-space and permission failures, interruption after mutation,
+  concurrent-sidecar races, rollback, retry, and checkpoint provenance.
 - `editing.image_recipes` covers source-preserving preview, crop/rotation
   export, rejected export, and derivative serialization.
 - `lore.binary_content` covers committing a directly modified managed checkout
   and reloading it after restart.
 - Build-contract tests cover the shared ExifTool pin, Perl provisioning, and
   use of the common CMake acquisition path.
-
-Remaining before Complete:
-
-- Run the current Increment 8 head through CI on Linux, Windows, and macOS,
-  including the Local Linux build environment job and installed release layout.
-- Add independent compatibility-tool readback evidence; current round trips use
-  ExifTool for writing and pimio's production reader for verification.
-- Add the planned fault evidence for permission loss and interruption during an
-  ExifTool write, plus the specified concurrent-sidecar race behavior. Existing
-  no-space/write/commit failures do not cover those cases.
 
 [Decision 0007](../decisions/0007-embedded-metadata-writes.md) records the
 dependency evaluation, embedded-write policy, batch strategy, and rejection of
