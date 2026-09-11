@@ -120,10 +120,10 @@ private slots:
     void commitRestartReloadAndDeduplicate();
     void scannerIngestsManagedOriginal();
     void failedManagedCommitRetainsRecordAndBytesForRetry();
-    void replacesManagedOriginalWithoutExposingPartialBytes();
+    void commitsModifiedCheckoutWithoutExtraStagingCopy();
 };
 
-void TestLoreBinaryContent::replacesManagedOriginalWithoutExposingPartialBytes()
+void TestLoreBinaryContent::commitsModifiedCheckoutWithoutExtraStagingCopy()
 {
     PIMIO_SKIP_WITHOUT_LORE();
 
@@ -152,7 +152,9 @@ void TestLoreBinaryContent::replacesManagedOriginalWithoutExposingPartialBytes()
     record.metadata.caption = QStringLiteral("after");
     record.fingerprint = ContentFingerprint(
             QStringLiteral("sha256"), QString::fromLatin1(fileHash(second).toHex()));
-    QVERIFY2(store.stageOriginal(record, second, &error), qPrintable(error.message()));
+    QVERIFY(QFile::remove(managed));
+    QVERIFY(QFile::copy(second, managed));
+    QVERIFY2(store.stage(record, &error), qPrintable(error.message()));
     QVERIFY2(store.commit(QStringLiteral("Embedded metadata update"), &error).has_value(),
              qPrintable(error.message()));
     QCOMPARE(fileHash(managed), fileHash(second));

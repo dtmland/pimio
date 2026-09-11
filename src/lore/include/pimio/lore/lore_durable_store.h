@@ -65,7 +65,7 @@ public:
     /// Deleting or corrupting the checkout must therefore be recoverable, and
     /// this is the primitive that recovers it. Staged records live outside the
     /// checkout and are untouched.
-    bool restoreFromDurableState(core::Error *error);
+    bool restoreFromDurableState(core::Error *error) override;
 
     /// True when open() had to repair an interrupted write to get the store
     /// open. Callers surface this so a silent recovery never looks like a
@@ -109,8 +109,6 @@ public:
     bool stage(const core::MediaRecord &record, core::Error *error) override;
     bool stageOriginal(const core::MediaRecord &record, const QString &sourcePath,
                        core::Error *error) override;
-    QString stageOriginalForEdit(const core::MediaRecord &record,
-                                 core::Error *error) override;
     QString originalPath(const core::MediaRecord &record,
                          core::Error *error) const override;
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;

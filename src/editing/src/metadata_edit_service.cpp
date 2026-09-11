@@ -35,12 +35,6 @@ MetadataEditService::MetadataEditService(core::DurableStore &store,
 bool MetadataEditService::stage(const core::MediaId &id, core::MediaMetadata metadata,
                                 core::EditRecipe recipe, core::Error *error)
 {
-    if (m_preparedForCommit) {
-        assignError(error, core::ErrorCode::Conflict,
-                    QStringLiteral("Retry or cancel the failed Save before changing edits."));
-        return false;
-    }
-
     const auto existing = m_edits.constFind(id.value());
     core::MediaRecord original;
     if (existing != m_edits.constEnd()) {
@@ -84,11 +78,10 @@ bool MetadataEditService::hasStagedEdits() const
 
 bool MetadataEditService::cancel(core::Error *error)
 {
-    if (m_preparedForCommit && !m_store.discardStaged(error)) {
+    if (m_store.hasStagedChanges() && !m_store.discardStaged(error)) {
         return false;
     }
     m_edits.clear();
-    m_preparedForCommit = false;
     return true;
 }
 
@@ -100,20 +93,14 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
                     QStringLiteral("There are no edits to save."));
         return std::nullopt;
     }
-    if (m_preparedForCommit) {
-        const auto checkpoint = m_store.commit(message, error);
-        if (checkpoint) {
-            m_edits.clear();
-            m_preparedForCommit = false;
-        }
-        return checkpoint;
-    }
     if (m_store.hasStagedChanges()) {
         assignError(error, core::ErrorCode::Conflict,
                     QStringLiteral("Other Library changes must finish before Save."));
         return std::nullopt;
     }
 
+    QList<core::MetadataWriteRequest> writes;
+    QHash<QString, QString> editedPaths;
     for (auto edit = m_edits.begin(); edit != m_edits.end(); ++edit) {
         const auto current = m_store.load(edit->original.id, error);
         if (!current || *current != edit->original) {
@@ -148,34 +135,42 @@ std::optional<core::Checkpoint> MetadataEditService::save(const QString &message
             return std::nullopt;
         }
 
-        const QString workingPath =
-                m_store.stageOriginalForEdit(edit->original, error);
-        if (workingPath.isEmpty()
-            || !m_writer.write(workingPath, edit->edited.metadata,
-                               edit->original.fingerprint, error)) {
-            m_store.discardStaged(nullptr);
-            return std::nullopt;
+        editedPaths.insert(edit.key(), sourcePath);
+        writes.append({sourcePath, edit->edited.metadata, edit->original.fingerprint});
+    }
+    if (!m_writer.writeBatch(writes, error)) {
+        m_store.restoreFromDurableState(nullptr);
+        m_store.discardStaged(nullptr);
+        return std::nullopt;
+    }
+    for (auto edit = m_edits.begin(); edit != m_edits.end(); ++edit) {
+        const QString editedPath = editedPaths.value(edit.key());
+        if (editedPath.isEmpty()) {
+            continue;
         }
-        const QString digest = sha256(workingPath);
+        const QString digest = sha256(editedPath);
         if (digest.isEmpty()) {
             assignError(error, core::ErrorCode::CorruptData,
                         QStringLiteral("Could not fingerprint the updated original."));
+            m_store.restoreFromDurableState(nullptr);
             m_store.discardStaged(nullptr);
             return std::nullopt;
         }
         edit->edited.fingerprint =
                 core::ContentFingerprint(QStringLiteral("sha256"), digest);
         if (!m_store.stage(edit->edited, error)) {
+            m_store.restoreFromDurableState(nullptr);
             m_store.discardStaged(nullptr);
             return std::nullopt;
         }
     }
 
-    m_preparedForCommit = true;
     const auto checkpoint = m_store.commit(message, error);
     if (checkpoint) {
         m_edits.clear();
-        m_preparedForCommit = false;
+    } else {
+        m_store.restoreFromDurableState(nullptr);
+        m_store.discardStaged(nullptr);
     }
     return checkpoint;
 }

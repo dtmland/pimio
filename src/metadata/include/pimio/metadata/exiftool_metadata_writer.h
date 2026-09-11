@@ -10,8 +10,9 @@ namespace pimio::metadata {
 /// Embedded metadata writer backed by the pinned ExifTool distribution.
 ///
 /// ExifTool runs as a separate process so its Artistic/GPL dual licence does
-/// not change the linking terms of the application. Callers pass a private
-/// working copy; the durable store publishes that copy atomically.
+/// not change the linking terms of the application. The edit service writes
+/// LORE checkout files directly and resets them from the committed revision
+/// when a Save fails.
 class ExifToolMetadataWriter final : public core::MetadataWriter
 {
 public:
@@ -20,9 +21,8 @@ public:
 
     bool isAvailable() const;
     bool supportsEmbeddedWrite(const QString &absolutePath) const override;
-    bool write(const QString &absolutePath, const core::MediaMetadata &metadata,
-               const core::ContentFingerprint &expectedFingerprint,
-               core::Error *error) override;
+    bool writeBatch(const QList<core::MetadataWriteRequest> &requests,
+                    core::Error *error) override;
 
 private:
     QString m_program;

@@ -49,6 +49,10 @@ void MemoryDurableStore::applyExternalChange(const core::MediaRecord &record)
 void MemoryDurableStore::setOriginalPath(const core::MediaId &id, const QString &path)
 {
     m_originalPaths.insert(id.value(), path);
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly)) {
+        m_committedOriginalBytes.insert(id.value(), file.readAll());
+    }
 }
 
 bool MemoryDurableStore::isAvailable() const
@@ -164,24 +168,6 @@ bool MemoryDurableStore::stageOriginal(const core::MediaRecord &record, const QS
     return true;
 }
 
-QString MemoryDurableStore::stageOriginalForEdit(const core::MediaRecord &record,
-                                                 core::Error *error)
-{
-    const QString source = originalPath(record, error);
-    const QString target =
-            m_stagingDirectory.filePath(record.id.value() + QLatin1Char('.')
-                                        + QFileInfo(source).suffix());
-    QFile::remove(target);
-    if (source.isEmpty() || !QFile::copy(source, target) || !stage(record, error)) {
-        setError(error, core::ErrorCode::OutOfSpace,
-                 QStringLiteral("Could not prepare a staged original."));
-        return {};
-    }
-    m_stagedOriginals.insert(record.id.value());
-    m_stagedEditPaths.insert(record.id.value(), target);
-    return target;
-}
-
 QString MemoryDurableStore::originalPath(const core::MediaRecord &record, core::Error *) const
 {
     const auto configured = m_originalPaths.constFind(record.id.value());
@@ -218,17 +204,17 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
 
     for (auto it = m_staged.constBegin(); it != m_staged.constEnd(); ++it) {
         m_committed.insert(it.key(), it.value());
-        const QString stagedPath = m_stagedEditPaths.value(it.key());
         const QString destination = m_originalPaths.value(it.key());
-        if (!stagedPath.isEmpty() && !destination.isEmpty()) {
-            QFile::remove(destination);
-            QFile::copy(stagedPath, destination);
+        if (!destination.isEmpty()) {
+            QFile file(destination);
+            if (file.open(QIODevice::ReadOnly)) {
+                m_committedOriginalBytes.insert(it.key(), file.readAll());
+            }
         }
     }
     m_committedOriginals.unite(m_stagedOriginals);
     m_staged.clear();
     m_stagedOriginals.clear();
-    m_stagedEditPaths.clear();
 
     for (const QString &id : std::as_const(m_stagedRemovals)) {
         m_committed.remove(id);
@@ -254,9 +240,23 @@ bool MemoryDurableStore::discardStaged(core::Error *)
 {
     m_staged.clear();
     m_stagedOriginals.clear();
-    m_stagedEditPaths.clear();
     m_stagedRemovals.clear();
     return true;
+}
+
+bool MemoryDurableStore::restoreFromDurableState(core::Error *error)
+{
+    for (auto it = m_committedOriginalBytes.constBegin();
+         it != m_committedOriginalBytes.constEnd(); ++it) {
+        QFile file(m_originalPaths.value(it.key()));
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)
+            || file.write(it.value()) != it.value().size()) {
+            setError(error, core::ErrorCode::PermissionDenied,
+                     QStringLiteral("Could not restore a committed original."));
+            return false;
+        }
+    }
+    return discardStaged(error);
 }
 
 bool MemoryDurableStore::hasStagedChanges() const

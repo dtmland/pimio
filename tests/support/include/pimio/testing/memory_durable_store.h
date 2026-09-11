@@ -5,7 +5,6 @@
 
 #include <QHash>
 #include <QSet>
-#include <QTemporaryDir>
 
 namespace pimio::testing {
 
@@ -39,12 +38,11 @@ public:
     bool stage(const core::MediaRecord &record, core::Error *error) override;
     bool stageOriginal(const core::MediaRecord &record, const QString &sourcePath,
                        core::Error *error) override;
-    QString stageOriginalForEdit(const core::MediaRecord &record,
-                                 core::Error *error) override;
     QString originalPath(const core::MediaRecord &record,
                          core::Error *error) const override;
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;
     bool discardStaged(core::Error *error) override;
+    bool restoreFromDurableState(core::Error *error) override;
     bool hasStagedChanges() const override;
     bool remove(const core::MediaId &id, core::Error *error) override;
     std::optional<core::MediaRecord> load(const core::MediaId &id,
@@ -67,8 +65,7 @@ private:
     QSet<QString> m_committedOriginals;
     QSet<QString> m_stagedOriginals;
     QHash<QString, QString> m_originalPaths;
-    QHash<QString, QString> m_stagedEditPaths;
-    QTemporaryDir m_stagingDirectory;
+    QHash<QString, QByteArray> m_committedOriginalBytes;
     QList<core::Checkpoint> m_history;
     quint64 m_stateCounter = 0;
 };

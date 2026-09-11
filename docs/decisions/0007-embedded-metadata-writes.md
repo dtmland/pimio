@@ -74,11 +74,21 @@ support matrix does not provide EXIF writes for PNG. ExifTool supports embedded
 writes for all three containers and preserves metadata it does not edit, though
 metadata block ordering and padding are not byte-stable.
 
-pimio therefore writes only a private copy, rereads the result with the
-production reader, and publishes it through the durable store. The store checks
-the committed fingerprint before replacement, uses same-directory atomic
-replacement, and restores the committed checkout after any failed commit.
-Unsupported formats fail visibly; there is no automatic sidecar fallback.
+pimio therefore verifies each LORE checkout file against its committed
+fingerprint, submits every item in one Save to one ExifTool JSON-import process,
+rereads each result with the production reader, and commits the changed files
+and records as one LORE revision. It does not make an application-level working
+or backup copy: the prior committed LORE revision is the recovery source, and a
+failed Save resets the checkout before a retry. ExifTool's normal overwrite
+still uses its own temporary output and rename while rewriting each file. Its
+similarly named
+`overwrite_original_in_place` mode is deliberately not used because it first
+builds that output and then copies the entire file back to preserve the inode,
+adding a full-file write rather than patching only metadata bytes.
+
+The store checks the committed fingerprint before writing and checks the new
+fingerprint again when committing. Unsupported formats fail visibly; there is
+no automatic sidecar fallback.
 
 The adapter updates the portable user fields delivered in this increment:
 rating, caption, and tags. Timestamp repair and location editing remain assigned

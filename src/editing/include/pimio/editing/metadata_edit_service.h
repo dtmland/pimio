@@ -31,7 +31,6 @@ private:
     core::DurableStore &m_store;
     core::MetadataWriter &m_writer;
     QHash<QString, Edit> m_edits;
-    bool m_preparedForCommit = false;
 };
 
 } // namespace pimio::editing

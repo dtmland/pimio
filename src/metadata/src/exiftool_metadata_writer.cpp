@@ -7,8 +7,12 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QTemporaryFile>
 
 namespace pimio::metadata {
 namespace {
@@ -32,20 +36,18 @@ QString sha256(const QString &path)
     return QString::fromLatin1(hash.result().toHex());
 }
 
-QStringList writerArguments(const core::MediaMetadata &metadata)
+QJsonObject writeObject(const core::MetadataWriteRequest &request)
 {
-    QStringList arguments{
-        QStringLiteral("-config"),
-        QString(),
-        QStringLiteral("-overwrite_original"),
-        QStringLiteral("-XMP-xmp:Rating=%1").arg(qBound(0, metadata.rating, 5)),
-        QStringLiteral("-XMP-dc:Description=%1").arg(metadata.caption),
-        QStringLiteral("-XMP-dc:Subject="),
-    };
-    for (const QString &tag : metadata.tags) {
-        arguments.append(QStringLiteral("-XMP-dc:Subject+=%1").arg(tag));
+    QJsonArray tags;
+    for (const QString &tag : request.metadata.tags) {
+        tags.append(tag);
     }
-    return arguments;
+    return {
+        {QStringLiteral("SourceFile"), request.absolutePath},
+        {QStringLiteral("XMP-xmp:Rating"), qBound(0, request.metadata.rating, 5)},
+        {QStringLiteral("XMP-dc:Description"), request.metadata.caption},
+        {QStringLiteral("XMP-dc:Subject"), tags},
+    };
 }
 
 bool metadataMatches(const core::MediaMetadata &expected, const core::MediaMetadata &actual)
@@ -78,7 +80,7 @@ std::pair<QString, QStringList> defaultCommand()
     if (perl.isEmpty()) {
         const QString packagedPerl =
                 QDir(appDir).filePath(QStringLiteral("../perl/bin/perl.exe"));
-        if (QFileInfo::isExecutable(packagedPerl)) {
+        if (QFileInfo(packagedPerl).isExecutable()) {
             perl = packagedPerl;
         }
     }
@@ -86,7 +88,7 @@ std::pair<QString, QStringList> defaultCommand()
     if (perl.isEmpty()) {
         perl = QStringLiteral(PIMIO_EXIFTOOL_PERL);
     }
-    if (QFileInfo::isFile(packagedScript)) {
+    if (QFileInfo(packagedScript).isFile()) {
         return {perl, {QDir::cleanPath(packagedScript)}};
     }
     return {perl, {QStringLiteral(PIMIO_EXIFTOOL_SCRIPT)}};
@@ -110,7 +112,7 @@ ExifToolMetadataWriter::ExifToolMetadataWriter(QString program, QStringList pref
 bool ExifToolMetadataWriter::isAvailable() const
 {
     return !m_program.isEmpty()
-           && (QFileInfo::isExecutable(m_program)
+           && (QFileInfo(m_program).isExecutable()
                || !QStandardPaths::findExecutable(m_program).isEmpty());
 }
 
@@ -122,31 +124,51 @@ bool ExifToolMetadataWriter::supportsEmbeddedWrite(const QString &absolutePath) 
     return extensions.contains(QFileInfo(absolutePath).suffix().toLower());
 }
 
-bool ExifToolMetadataWriter::write(const QString &absolutePath,
-                                   const core::MediaMetadata &metadata,
-                                   const core::ContentFingerprint &expectedFingerprint,
-                                   core::Error *error)
+bool ExifToolMetadataWriter::writeBatch(
+        const QList<core::MetadataWriteRequest> &requests, core::Error *error)
 {
-    if (!supportsEmbeddedWrite(absolutePath)) {
-        assignError(error, core::ErrorCode::UnsupportedMedia,
-                    QStringLiteral("This format does not support safe embedded metadata writes."),
-                    absolutePath);
-        return false;
+    if (requests.isEmpty()) {
+        return true;
     }
     if (!isAvailable()) {
         assignError(error, core::ErrorCode::StorageUnavailable,
-                    QStringLiteral("The ExifTool metadata adapter is unavailable."), absolutePath);
+                    QStringLiteral("The ExifTool metadata adapter is unavailable."), {});
         return false;
     }
-    if (sha256(absolutePath) != expectedFingerprint.digest()) {
-        assignError(error, core::ErrorCode::Conflict,
-                    QStringLiteral("The file changed after editing began."), absolutePath);
+
+    QJsonArray edits;
+    QStringList paths;
+    for (const core::MetadataWriteRequest &request : requests) {
+        if (!supportsEmbeddedWrite(request.absolutePath)) {
+            assignError(error, core::ErrorCode::UnsupportedMedia,
+                        QStringLiteral("This format does not support safe embedded metadata writes."),
+                        request.absolutePath);
+            return false;
+        }
+        if (sha256(request.absolutePath) != request.expectedFingerprint.digest()) {
+            assignError(error, core::ErrorCode::Conflict,
+                        QStringLiteral("The file changed after editing began."),
+                        request.absolutePath);
+            return false;
+        }
+        edits.append(writeObject(request));
+        paths.append(request.absolutePath);
+    }
+
+    QTemporaryFile importFile;
+    if (!importFile.open()
+        || importFile.write(QJsonDocument(edits).toJson(QJsonDocument::Compact)) < 0
+        || !importFile.flush()) {
+        assignError(error, core::ErrorCode::OutOfSpace,
+                    QStringLiteral("Could not prepare the ExifTool batch."), {});
         return false;
     }
 
     QStringList arguments = m_prefixArguments;
-    arguments.append(writerArguments(metadata));
-    arguments.append(absolutePath);
+    arguments.append({QStringLiteral("-config"), QString(),
+                      QStringLiteral("-overwrite_original"),
+                      QStringLiteral("-json=%1").arg(importFile.fileName())});
+    arguments.append(paths);
     QProcess process;
     process.start(m_program, arguments);
     if (!process.waitForStarted() || !process.waitForFinished(-1)
@@ -156,20 +178,22 @@ bool ExifToolMetadataWriter::write(const QString &absolutePath,
                     detail.isEmpty() ? QStringLiteral("ExifTool could not write metadata.")
                                      : QStringLiteral("ExifTool could not write metadata: %1")
                                                .arg(detail),
-                    absolutePath);
+                    {});
         return false;
     }
 
     BuiltinMetadataReader reader;
-    core::Error readError;
-    const auto result = reader.read(absolutePath, &readError);
-    if (!result || !metadataMatches(metadata, result->metadata)) {
-        assignError(error, core::ErrorCode::CorruptData,
-                    result ? QStringLiteral("The embedded metadata failed verification.")
-                           : QStringLiteral("The written file could not be reread: %1")
-                                     .arg(readError.message()),
-                    absolutePath);
-        return false;
+    for (const core::MetadataWriteRequest &request : requests) {
+        core::Error readError;
+        const auto result = reader.read(request.absolutePath, &readError);
+        if (!result || !metadataMatches(request.metadata, result->metadata)) {
+            assignError(error, core::ErrorCode::CorruptData,
+                        result ? QStringLiteral("The embedded metadata failed verification.")
+                               : QStringLiteral("The written file could not be reread: %1")
+                                         .arg(readError.message()),
+                        request.absolutePath);
+            return false;
+        }
     }
 
     return true;

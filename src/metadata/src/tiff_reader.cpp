@@ -1,5 +1,6 @@
 #include "image_reader.h"
 #include "tiff_reader_private.h"
+#include "xmp_reader.h"
 
 #include <QDateTime>
 #include <QtEndian>
@@ -449,6 +450,23 @@ bool readExifTiffBlock(const QByteArray &tiff, FieldSet *fields, QStringList *wa
     }
 
     applyGps(gpsIfd, bigEndian, fields);
+    if (const TiffEntry *xmp = find(ifd0, 0x02BC)) {
+        FieldSet xmpFields;
+        if (readXmpPacket(xmp->value, &xmpFields, warnings)) {
+            if (xmpFields.captureTime) {
+                fields->captureTime = xmpFields.captureTime;
+            }
+            if (xmpFields.caption) {
+                fields->caption = xmpFields.caption;
+            }
+            if (xmpFields.rating) {
+                fields->rating = xmpFields.rating;
+            }
+            if (xmpFields.tags) {
+                fields->tags = xmpFields.tags;
+            }
+        }
+    }
     return true;
 }
 

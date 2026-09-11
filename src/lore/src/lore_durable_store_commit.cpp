@@ -123,28 +123,6 @@ bool LoreDurableStore::stageOriginal(const core::MediaRecord &record, const QStr
     return true;
 }
 
-QString LoreDurableStore::stageOriginalForEdit(const core::MediaRecord &record, Error *error)
-{
-    if (record.originalStorage != core::MediaRecord::OriginalStorage::Managed) {
-        detail::setError(error, ErrorCode::UnsupportedMedia,
-                         QStringLiteral("Only managed originals can be edited."));
-        return {};
-    }
-    const QString committed = originalPath(record, error);
-    if (committed.isEmpty() || !fileMatchesSha256(committed, record.fingerprint.digest())) {
-        if (committed.isEmpty()) {
-            return {};
-        }
-        detail::setError(error, ErrorCode::Conflict,
-                         QStringLiteral("The managed original changed after editing began."));
-        return {};
-    }
-    if (!stageOriginal(record, committed, error)) {
-        return {};
-    }
-    return d->stagedOriginalPath(record);
-}
-
 bool LoreDurableStore::hasStagedChanges() const
 {
     if (!d->available()) {
@@ -237,6 +215,18 @@ std::optional<core::Checkpoint> LoreDurableStore::commit(const QString &message,
             detail::setError(error, ErrorCode::CorruptData,
                              QStringLiteral("A staged managed record has no matching original."));
             return std::nullopt;
+        }
+        if (keepsCommittedOriginal
+            && !QFileInfo::exists(d->stagedOriginalPath(*record))
+            && committed->fingerprint != record->fingerprint) {
+            const QString checkoutOriginal = d->committedOriginalPath(*record);
+            if (!fileMatchesSha256(checkoutOriginal, record->fingerprint.digest())) {
+                d->restoreCheckoutToCommittedState(nullptr);
+                detail::setError(error, ErrorCode::Conflict,
+                                 QStringLiteral("The edited original does not match its record."));
+                return std::nullopt;
+            }
+            originalsChanged = true;
         }
     }
 

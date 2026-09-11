@@ -34,10 +34,11 @@ Update this file in the same change that moves an increment forward.
 
 Increment 8 combines the retained image recipe renderer, export service, and
 explicit source-to-derivative provenance model with staged editing and
-LORE-backed Save. The ExifTool adapter writes rating, caption, and tags into a
-private copy, verifies the result with the production reader, and lets the
-durable store atomically publish the managed original and record in one
-checkpoint. Conflicts and failures preserve the prior committed bytes. A custom
+LORE-backed Save. One ExifTool process writes an entire Save batch's rating,
+caption, and tag edits into the managed LORE checkout, verifies every result
+with the production reader, and commits the managed originals and records in
+one checkpoint. Conflicts and failures reset to the prior committed bytes
+without another pimio working or backup copy. A custom
 sidecar-only writer remains rejected; [decision 0007](../decisions/0007-embedded-metadata-writes.md)
 records the dependency evaluation and embedded-write policy.
 

@@ -33,8 +33,8 @@ class FakeWriter final : public core::MetadataWriter
 public:
     bool supportsEmbeddedWrite(const QString &) const override { return supported; }
 
-    bool write(const QString &path, const core::MediaMetadata &metadata,
-               const core::ContentFingerprint &expected, core::Error *error) override
+    bool writeBatch(const QList<core::MetadataWriteRequest> &requests,
+                    core::Error *error) override
     {
         ++calls;
         if (fail) {
@@ -44,24 +44,29 @@ public:
             }
             return false;
         }
-        if (fingerprint(path) != expected) {
-            if (error) {
-                *error = core::Error(core::ErrorCode::Conflict,
-                                     QStringLiteral("Unexpected working copy."));
+        batchSizes.append(requests.size());
+        for (const core::MetadataWriteRequest &request : requests) {
+            if (fingerprint(request.absolutePath) != request.expectedFingerprint) {
+                if (error) {
+                    *error = core::Error(core::ErrorCode::Conflict,
+                                         QStringLiteral("Unexpected working copy."));
+                }
+                return false;
             }
-            return false;
+            QFile file(request.absolutePath);
+            if (!file.open(QIODevice::Append)) {
+                return false;
+            }
+            file.write(QByteArrayLiteral("\nmetadata=")
+                       + QByteArray::number(request.metadata.rating));
         }
-        QFile file(path);
-        if (!file.open(QIODevice::Append)) {
-            return false;
-        }
-        file.write(QByteArrayLiteral("\nmetadata=") + QByteArray::number(metadata.rating));
         return true;
     }
 
     bool supported = true;
     bool fail = false;
     int calls = 0;
+    QList<int> batchSizes;
 };
 
 core::MediaRecord managedRecord(const QString &path)
@@ -84,9 +89,45 @@ class TestMetadataEditService : public QObject
 
 private slots:
     void stageCancelAndSave();
+    void batchSaveUsesOneWriterCall();
     void conflictsPreserveOriginal();
     void failedWriteAndCommitRemainRecoverable();
 };
+
+void TestMetadataEditService::batchSaveUsesOneWriterCall()
+{
+    QTemporaryDir directory;
+    testing::FakeClock clock(QDateTime::fromString(QStringLiteral("2026-09-11T00:00:00Z"),
+                                                   Qt::ISODate));
+    testing::MemoryDurableStore store(clock);
+    core::Error error;
+    QList<core::MediaRecord> records;
+    for (int index = 0; index < 2; ++index) {
+        const QString path = directory.filePath(QStringLiteral("original-%1.jpg").arg(index));
+        QFile source(QDir(QStringLiteral(PIMIO_FIXTURES_DIR))
+                             .filePath(QStringLiteral("images/jpeg-no-exif.jpg")));
+        QVERIFY(source.copy(path));
+        core::MediaRecord record = managedRecord(path);
+        record.id = core::MediaId(QStringLiteral("media-%1").arg(index));
+        record.managedOriginalPath =
+                QStringLiteral("originals/media-%1.jpg").arg(index);
+        QVERIFY(store.stage(record, &error));
+        store.setOriginalPath(record.id, path);
+        records.append(record);
+    }
+    QVERIFY(store.commit(QStringLiteral("Import"), &error).has_value());
+
+    FakeWriter writer;
+    editing::MetadataEditService edits(store, writer);
+    for (core::MediaRecord record : records) {
+        record.metadata.rating = 3;
+        QVERIFY(edits.stage(record.id, record.metadata, record.recipe, &error));
+    }
+    QVERIFY2(edits.save(QStringLiteral("Batch edit"), &error).has_value(),
+             qPrintable(error.message()));
+    QCOMPARE(writer.calls, 1);
+    QCOMPARE(writer.batchSizes, QList<int>({2}));
+}
 
 void TestMetadataEditService::stageCancelAndSave()
 {
@@ -197,7 +238,7 @@ void TestMetadataEditService::failedWriteAndCommitRemainRecoverable()
     writer.fail = false;
     store.failNextCommit(core::ErrorCode::OutOfSpace);
     QVERIFY(!edits.save(QStringLiteral("Save"), &error));
-    QVERIFY(store.hasStagedChanges());
+    QVERIFY(!store.hasStagedChanges());
     QCOMPARE(contents(path), before);
     QVERIFY(edits.save(QStringLiteral("Save"), &error).has_value());
     QVERIFY(!edits.hasStagedEdits());
