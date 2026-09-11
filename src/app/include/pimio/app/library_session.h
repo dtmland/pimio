@@ -48,6 +48,8 @@ class LibrarySession : public QObject
                        NOTIFY currentLibraryChanged)
     Q_PROPERTY(bool hasOpenLibrary READ hasOpenLibrary NOTIFY currentLibraryChanged)
     Q_PROPERTY(QString lifecycleStatus READ lifecycleStatus NOTIFY lifecycleStatusChanged)
+    Q_PROPERTY(bool hasUnsavedEdits READ hasUnsavedEdits NOTIFY unsavedEditsChanged)
+    Q_PROPERTY(QString saveStatus READ saveStatus NOTIFY saveStatusChanged)
 
 public:
     explicit LibrarySession(QObject *parent = nullptr);
@@ -80,6 +82,8 @@ public:
     QString currentLibraryLocation() const;
     bool hasOpenLibrary() const;
     QString lifecycleStatus() const;
+    bool hasUnsavedEdits() const;
+    QString saveStatus() const;
 
     Q_INVOKABLE bool createLibrary(const QString &name, const QString &location);
     Q_INVOKABLE bool openLibrary(const QString &location);
@@ -88,6 +92,12 @@ public:
     Q_INVOKABLE bool moveLibrary(const QString &location);
     Q_INVOKABLE bool backupLibrary(const QString &archivePath);
     Q_INVOKABLE bool restoreLibrary(const QString &archivePath, const QString &location);
+    Q_INVOKABLE bool stageMetadataEdit(const QString &mediaId, const QString &caption,
+                                       int rating, const QStringList &tags);
+    Q_INVOKABLE bool stageRotation(const QString &mediaId, int clockwiseDegrees);
+    Q_INVOKABLE bool stageCrop(const QString &mediaId, int x, int y, int width, int height);
+    Q_INVOKABLE bool saveEdits(const QString &message);
+    Q_INVOKABLE bool cancelEdits();
 
     /// Promotes the open local library to an existing or new LORE server URL.
     /// This is disabled while a scan is mutating the durable store.
@@ -98,6 +108,8 @@ signals:
     void promotionStatusChanged();
     void currentLibraryChanged();
     void lifecycleStatusChanged();
+    void unsavedEditsChanged();
+    void saveStatusChanged();
 
 private:
     /// Pushes the current user settings (sort order, tile size, and scan

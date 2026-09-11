@@ -127,6 +127,10 @@ public:
     /// Discards staged changes that have not been committed.
     virtual bool discardStaged(Error *error) = 0;
 
+    /// Restores checkout files from the current committed revision while
+    /// preserving no uncommitted record changes.
+    virtual bool restoreFromDurableState(Error *error) = 0;
+
     /// True when there are staged changes that are not yet committed.
     virtual bool hasStagedChanges() const = 0;
 

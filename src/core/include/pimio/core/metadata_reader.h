@@ -43,6 +43,13 @@ public:
                                                    Error *error) const = 0;
 };
 
+struct MetadataWriteRequest
+{
+    QString absolutePath;
+    MediaMetadata metadata;
+    ContentFingerprint expectedFingerprint;
+};
+
 /// Portable metadata write boundary.
 ///
 /// Writes must never destroy the previous valid file. Implementations are
@@ -57,13 +64,13 @@ public:
     /// cannot, and must use a sidecar instead.
     virtual bool supportsEmbeddedWrite(const QString &absolutePath) const = 0;
 
-    /// Path of the sidecar pimio would use for \a absolutePath.
-    virtual QString sidecarPathFor(const QString &absolutePath) const = 0;
+    bool write(const QString &absolutePath, const MediaMetadata &metadata,
+               const ContentFingerprint &expectedFingerprint, Error *error);
 
-    /// Applies \a metadata. \a expectedOrigin records what pimio believed the
-    /// current state was; a mismatch must produce ErrorCode::Conflict.
-    virtual bool write(const QString &absolutePath, const MediaMetadata &metadata,
-                       MetadataOrigin expectedOrigin, Error *error) = 0;
+    /// Applies all edits with one adapter process/session. Each expected
+    /// fingerprint records the exact staged bytes pimio prepared.
+    virtual bool writeBatch(const QList<MetadataWriteRequest> &requests,
+                            Error *error) = 0;
 };
 
 } // namespace pimio::core

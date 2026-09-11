@@ -90,6 +90,9 @@ Window {
         detail.absolutePath = item.absolutePath
         detail.captureTime = item.captureTimeString
         detail.mediaKind = item.mediaKind
+        detail.rating = item.rating === undefined ? 0 : item.rating
+        detail.caption = item.caption === undefined ? "" : item.caption
+        detail.tags = item.tags === undefined ? [] : item.tags
         detail.thumbnailStatus = item.thumbnailStatus
         detail.thumbnailSource = "image://thumbnail/" + detail.mediaId
         detail.visible = true
@@ -459,6 +462,7 @@ Window {
         id: detail
         anchors.fill: parent
         z: 10
+        session: root.session
         keyRepeatAcceleration: root.keyRepeatAcceleration
         onCloseRequested: {
             visible = false

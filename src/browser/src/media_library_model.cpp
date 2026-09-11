@@ -333,6 +333,9 @@ QVariantMap MediaLibraryModel::itemAt(int row) const
         {QStringLiteral("absolutePath"), data(itemIndex, AbsolutePathRole)},
         {QStringLiteral("captureTimeString"), data(itemIndex, CaptureTimeStringRole)},
         {QStringLiteral("mediaKind"), data(itemIndex, MediaKindRole)},
+        {QStringLiteral("rating"), data(itemIndex, RatingRole)},
+        {QStringLiteral("caption"), data(itemIndex, CaptionRole)},
+        {QStringLiteral("tags"), data(itemIndex, TagsRole)},
         {QStringLiteral("thumbnailStatus"), data(itemIndex, ThumbnailStatusRole)},
     };
 }
@@ -384,6 +387,21 @@ QVariant MediaLibraryModel::data(const QModelIndex &index, int role) const
                       : static_cast<int>(core::MediaKind::Unknown);
     }
 
+    case RatingRole: {
+        const core::MediaRecord *record = ensureRecord(row);
+        return record ? record->metadata.rating : 0;
+    }
+
+    case CaptionRole: {
+        const core::MediaRecord *record = ensureRecord(row);
+        return record ? record->metadata.caption : QString();
+    }
+
+    case TagsRole: {
+        const core::MediaRecord *record = ensureRecord(row);
+        return record ? record->metadata.tags : QStringList();
+    }
+
     case ThumbnailStatusRole:
         return static_cast<int>(item.thumbnailStatus);
 
@@ -402,6 +420,9 @@ QHash<int, QByteArray> MediaLibraryModel::roleNames() const
     names.insert(AbsolutePathRole, "absolutePath");
     names.insert(CaptureTimeStringRole, "captureTimeString");
     names.insert(MediaKindRole, "mediaKind");
+    names.insert(RatingRole, "rating");
+    names.insert(CaptionRole, "caption");
+    names.insert(TagsRole, "tags");
     names.insert(ThumbnailStatusRole, "thumbnailStatus");
     names.insert(ThumbnailImageRole, "thumbnailImage");
     return names;

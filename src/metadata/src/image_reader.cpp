@@ -1,5 +1,6 @@
 #include "image_reader.h"
 #include "tiff_reader_private.h"
+#include "xmp_reader.h"
 
 #include <QtEndian>
 
@@ -24,6 +25,26 @@ bool readBeU32(const QByteArray &bytes, qsizetype offset, quint32 *value)
     const uchar *data = reinterpret_cast<const uchar *>(bytes.constData()) + offset;
     *value = qFromBigEndian<quint32>(data);
     return true;
+}
+
+void applyXmp(const QByteArray &packet, FieldSet *fields, QStringList *warnings)
+{
+    FieldSet xmp;
+    if (!readXmpPacket(packet, &xmp, warnings)) {
+        return;
+    }
+    if (xmp.captureTime) {
+        fields->captureTime = xmp.captureTime;
+    }
+    if (xmp.caption) {
+        fields->caption = xmp.caption;
+    }
+    if (xmp.rating) {
+        fields->rating = xmp.rating;
+    }
+    if (xmp.tags) {
+        fields->tags = xmp.tags;
+    }
 }
 
 } // namespace
@@ -89,25 +110,33 @@ bool readJpeg(const QByteArray &bytes, FieldSet *fields, QStringList *warnings)
                 fields->pixelHeight = height;
                 sawFrameHeader = true;
             }
-        } else if (marker == 0xE1
-                   && bytes.mid(payloadOffset, 6) == QByteArrayLiteral("Exif\0\0")) {
-            const QByteArray tiff = bytes.mid(payloadOffset + 6, payloadSize - 6);
-            FieldSet exifFields;
-            if (readExifTiffBlock(tiff, &exifFields, warnings)) {
+        } else if (marker == 0xE1) {
+            const QByteArray payload = bytes.mid(payloadOffset, payloadSize);
+            if (payload.startsWith(QByteArrayLiteral("Exif\0\0"))) {
+                const QByteArray tiff = payload.mid(6);
+                FieldSet exifFields;
+                if (readExifTiffBlock(tiff, &exifFields, warnings)) {
                 // Frame-header dimensions win: they describe the actual stored
                 // image, whereas the EXIF values are only a claim about it.
-                const auto width = fields->pixelWidth;
-                const auto height = fields->pixelHeight;
-                *fields = exifFields;
-                if (width.has_value()) {
-                    fields->pixelWidth = width;
-                }
-                if (height.has_value()) {
-                    fields->pixelHeight = height;
+                   const auto width = fields->pixelWidth;
+                   const auto height = fields->pixelHeight;
+                   *fields = exifFields;
+                   if (width.has_value()) {
+                       fields->pixelWidth = width;
+                   }
+                   if (height.has_value()) {
+                       fields->pixelHeight = height;
+                   }
+                } else {
+                   warnings->append(QStringLiteral(
+                           "The EXIF metadata is damaged; the image is indexed without it."));
                 }
             } else {
-                warnings->append(QStringLiteral(
-                        "The EXIF metadata is damaged; the image is indexed without it."));
+                const QByteArray xmpHeader =
+                       QByteArrayLiteral("http://ns.adobe.com/xap/1.0/\0");
+                if (payload.startsWith(xmpHeader)) {
+                   applyXmp(payload.mid(xmpHeader.size()), fields, warnings);
+                }
             }
         }
 
@@ -165,6 +194,26 @@ bool readPng(const QByteArray &bytes, FieldSet *fields, QStringList *warnings)
                 *fields = exifFields;
                 fields->pixelWidth = width;
                 fields->pixelHeight = height;
+            }
+        } else if (type == QByteArrayLiteral("iTXt")) {
+            const QByteArray payload =
+                    bytes.mid(payloadOffset, static_cast<qsizetype>(chunkLength));
+            const QByteArray xmpKeyword = QByteArrayLiteral("XML:com.adobe.xmp");
+            if (payload.startsWith(xmpKeyword)
+                && payload.size() > xmpKeyword.size() + 5
+                && payload.at(xmpKeyword.size()) == '\0'
+                && payload.at(xmpKeyword.size() + 1) == '\0') {
+                qsizetype textOffset = xmpKeyword.size() + 3;
+                for (int emptyField = 0; emptyField < 2; ++emptyField) {
+                    textOffset = payload.indexOf('\0', textOffset);
+                    if (textOffset < 0) {
+                        break;
+                    }
+                    ++textOffset;
+                }
+                if (textOffset > 0) {
+                    applyXmp(payload.mid(textOffset), fields, warnings);
+                }
             }
         } else if (type == QByteArrayLiteral("IEND")) {
             break;

@@ -28,6 +28,7 @@ public:
 
     /// Simulates a change made outside pimio, for example through a CLI.
     void applyExternalChange(const core::MediaRecord &record);
+    void setOriginalPath(const core::MediaId &id, const QString &path);
 
     // DurableStore
     bool isAvailable() const override;
@@ -41,6 +42,7 @@ public:
                          core::Error *error) const override;
     std::optional<core::Checkpoint> commit(const QString &message, core::Error *error) override;
     bool discardStaged(core::Error *error) override;
+    bool restoreFromDurableState(core::Error *error) override;
     bool hasStagedChanges() const override;
     bool remove(const core::MediaId &id, core::Error *error) override;
     std::optional<core::MediaRecord> load(const core::MediaId &id,
@@ -62,6 +64,8 @@ private:
     QSet<QString> m_stagedRemovals;
     QSet<QString> m_committedOriginals;
     QSet<QString> m_stagedOriginals;
+    QHash<QString, QString> m_originalPaths;
+    QHash<QString, QByteArray> m_committedOriginalBytes;
     QList<core::Checkpoint> m_history;
     quint64 m_stateCounter = 0;
 };

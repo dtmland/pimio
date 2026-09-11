@@ -26,17 +26,56 @@ Update this file in the same change that moves an increment forward.
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Complete |
-| 8 | Save, portable metadata, and image recipes | Not started |
+| 8 | Save, portable metadata, and image recipes | Complete |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
 
-Increment 8 retains its image recipe renderer, export service, and explicit
-source-to-derivative provenance model. A custom sidecar-only metadata writer was
-evaluated and rejected; [decision 0007](../decisions/0007-embedded-metadata-writes.md)
-records the embedded-write direction and the conditions for any future sidecar
-exception. Save and metadata writing remain unimplemented.
+Increment 8 is complete. CI run
+[`34595938015`](https://github.com/dtmland/pimio/actions/runs/34595938015)
+passed the Linux, Windows, and macOS build-and-test jobs at commit `b699315`.
+The run was then cancelled rather than waiting for the Local Linux container
+job, which is temporarily excluded from CI because its from-scratch build takes
+too long. That manual local-environment validation gap is not Increment 8
+acceptance evidence.
+
+Implemented:
+
+- Explicit in-memory edit staging, Cancel, and LORE-backed Save/checkpoints with
+  author, application-version, and parent provenance.
+- One ExifTool JSON-import process per Save batch writes rating, caption, and
+  tags as embedded XMP in managed JPEG, PNG, and TIFF originals. pimio never
+  writes a metadata sidecar and has no automatic sidecar fallback.
+- Save verifies the committed fingerprint before writing, rereads every result
+  with the production metadata reader, and commits originals and records in one
+  LORE revision. A failed Save resets the checkout from the prior committed
+  revision without another application-level media copy.
+- Versioned crop/rotation recipes, source-preserving preview/export, and
+  explicit source-media/recipe-revision relationships for derivatives.
+- Shared, checksum-pinned ExifTool packaging is wired through CMake for Linux,
+  Windows, and macOS.
+
+Current evidence:
+
+- `metadata.embedded_write` covers JPEG, PNG, and TIFF embedded write/readback
+  through the production reader and an independent ExifTool invocation,
+  preservation of unrelated camera fields, no-sidecar output, conflicts,
+  unavailable ExifTool, and unsupported formats.
+- `editing.metadata_save` covers staging, cancellation, batched invocation,
+  conflicts, no-space and permission failures, interruption after mutation,
+  concurrent-sidecar races, rollback, retry, and checkpoint provenance.
+- `editing.image_recipes` covers source-preserving preview, crop/rotation
+  export, rejected export, and derivative serialization.
+- `lore.binary_content` covers committing a directly modified managed checkout
+  and reloading it after restart.
+- Build-contract tests cover the shared ExifTool pin, Perl provisioning, and
+  use of the common CMake acquisition path.
+
+[Decision 0007](../decisions/0007-embedded-metadata-writes.md) records the
+dependency evaluation, embedded-write policy, batch strategy, and rejection of
+sidecar writes. Timestamp repair remains Increment 9, and manual GPS assignment
+or correction remains Increment 11; neither is part of Increment 8 completion.
 
 Increments 7.7–7.9, including the 7.8a–7.8c correction gates, were added when
 the plans were reoriented around the

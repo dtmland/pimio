@@ -447,7 +447,8 @@ asserts still pass.
 ## License and third-party notices
 
 pimio redistributes Qt (LGPL dynamic linking), LORE (MIT, plus its
-`THIRD-PARTY-NOTICES.txt`), and image-decode stacks (AVIF/HEIC) as recorded in
+`THIRD-PARTY-NOTICES.txt`), ExifTool (Perl Artistic License process boundary),
+and image-decode stacks (AVIF/HEIC) as recorded in
 [docs/dependency-bom.md](docs/dependency-bom.md). Legal review remains a release
 gate. Ship license texts with binaries; do not replace upstream notice files
 with summaries.

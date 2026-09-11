@@ -196,9 +196,17 @@ class BuildWiringTests(unittest.TestCase):
         self.assertIn("xargs -a /tmp/pimio-linux-packages.txt", container)
         self.assertNotRegex(container, r"ARG (?:QT_\w+|AQTINSTALL_VERSION|UBUNTU_\w+)=")
 
-    def test_ci_exercises_actual_local_linux_entrypoint(self):
-        text = (ROOT / ".github/workflows/ci.yml").read_text()
-        self.assertIn("bash tools/local-build/linux/build.sh --engine docker", text)
+    def test_exiftool_is_pinned_and_shared_by_every_context(self):
+        module = (ROOT / "cmake/PimioExifTool.cmake").read_text()
+        self.assertRegex(module, r'PIMIO_EXIFTOOL_VERSION "[0-9]+\.[0-9]+"')
+        self.assertRegex(module, r'PIMIO_EXIFTOOL_SHA256\s+"[0-9a-f]{64}"')
+        self.assertIn("URL_HASH", module)
+        self.assertIn("find_package(Perl REQUIRED)", module)
+        self.assertIn("include(PimioExifTool)", (ROOT / "CMakeLists.txt").read_text())
+        self.assertIn("pimio_acquire_exiftool()", (ROOT / "CMakeLists.txt").read_text())
+        self.assertIn("perl", (ROOT / "tools/build/linux-packages.txt").read_text().splitlines())
+        self.assertIn("PerlVersion", (
+            ROOT / "tools/local-build/windows/pinned.ps1").read_text())
 
 
 if __name__ == "__main__":

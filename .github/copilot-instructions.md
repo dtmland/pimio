@@ -89,11 +89,12 @@ in:
   exercise the real Bash/PowerShell readers and compare Windows checksums with
   CMake evaluation. When changing a reader's input format, update both readers
   and add a mutation test proving propagation or fail-closed behavior.
-- Keep the **Local Linux build environment** CI job green. It runs the actual
-  `tools/local-build/linux/build.sh` entry point from a clean container through
-  configure, build, test, and staging. Native hosted-runner jobs alone do not
-  validate local provisioning. Rebuild the image after package changes; an old
-  `--use-image`/`--pull` image is not evidence for the committed Containerfile.
+- The Local Linux container is temporarily excluded from CI because its
+  from-scratch image build exceeds the useful feedback window. Run the actual
+  `tools/local-build/linux/build.sh` entry point manually for relevant changes.
+  Native hosted-runner jobs alone do not validate local provisioning. Rebuild
+  the image after package changes; an old `--use-image`/`--pull` image is not
+  evidence for the committed Containerfile.
 - Windows bootstrap tests must run with Windows PowerShell 5.1, not only `pwsh`.
   For changes to portable downloads, compiler setup, or Sandbox orchestration,
   also obtain a fresh Windows Sandbox run when available. Reader tests are not

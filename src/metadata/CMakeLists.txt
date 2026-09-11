@@ -1,6 +1,8 @@
 add_library(pimio_metadata STATIC
     include/pimio/metadata/builtin_metadata_reader.h
+    include/pimio/metadata/exiftool_metadata_writer.h
     src/builtin_metadata_reader.cpp
+    src/exiftool_metadata_writer.cpp
     src/field_set.h
     src/image_reader.cpp
     src/image_reader.h
@@ -23,4 +25,9 @@ target_link_libraries(pimio_metadata
         pimio::core
     PRIVATE
         Qt6::Core
+)
+
+target_compile_definitions(pimio_metadata PRIVATE
+    PIMIO_EXIFTOOL_SCRIPT="${PIMIO_EXIFTOOL_SCRIPT}"
+    PIMIO_EXIFTOOL_PERL="${PIMIO_EXIFTOOL_PERL}"
 )

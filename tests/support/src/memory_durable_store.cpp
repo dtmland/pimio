@@ -3,6 +3,8 @@
 #include "pimio/core/version.h"
 
 #include <algorithm>
+#include <QFile>
+#include <QFileInfo>
 
 namespace pimio::testing {
 namespace {
@@ -42,6 +44,15 @@ void MemoryDurableStore::applyExternalChange(const core::MediaRecord &record)
     m_history.prepend(checkpoint);
 
     bumpStateToken();
+}
+
+void MemoryDurableStore::setOriginalPath(const core::MediaId &id, const QString &path)
+{
+    m_originalPaths.insert(id.value(), path);
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly)) {
+        m_committedOriginalBytes.insert(id.value(), file.readAll());
+    }
 }
 
 bool MemoryDurableStore::isAvailable() const
@@ -159,6 +170,10 @@ bool MemoryDurableStore::stageOriginal(const core::MediaRecord &record, const QS
 
 QString MemoryDurableStore::originalPath(const core::MediaRecord &record, core::Error *) const
 {
+    const auto configured = m_originalPaths.constFind(record.id.value());
+    if (configured != m_originalPaths.constEnd()) {
+        return *configured;
+    }
     if (record.originalStorage == core::MediaRecord::OriginalStorage::Managed) {
         return QStringLiteral("/memory-store/") + record.managedOriginalPath;
     }
@@ -189,6 +204,13 @@ std::optional<core::Checkpoint> MemoryDurableStore::commit(const QString &messag
 
     for (auto it = m_staged.constBegin(); it != m_staged.constEnd(); ++it) {
         m_committed.insert(it.key(), it.value());
+        const QString destination = m_originalPaths.value(it.key());
+        if (!destination.isEmpty()) {
+            QFile file(destination);
+            if (file.open(QIODevice::ReadOnly)) {
+                m_committedOriginalBytes.insert(it.key(), file.readAll());
+            }
+        }
     }
     m_committedOriginals.unite(m_stagedOriginals);
     m_staged.clear();
@@ -220,6 +242,21 @@ bool MemoryDurableStore::discardStaged(core::Error *)
     m_stagedOriginals.clear();
     m_stagedRemovals.clear();
     return true;
+}
+
+bool MemoryDurableStore::restoreFromDurableState(core::Error *error)
+{
+    for (auto it = m_committedOriginalBytes.constBegin();
+         it != m_committedOriginalBytes.constEnd(); ++it) {
+        QFile file(m_originalPaths.value(it.key()));
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)
+            || file.write(it.value()) != it.value().size()) {
+            setError(error, core::ErrorCode::PermissionDenied,
+                     QStringLiteral("Could not restore a committed original."));
+            return false;
+        }
+    }
+    return discardStaged(error);
 }
 
 bool MemoryDurableStore::hasStagedChanges() const

@@ -41,6 +41,9 @@ public:
         AbsolutePathRole,               ///< QString: absolute filesystem path.
         CaptureTimeStringRole,          ///< QString: ISO-8601 wall-clock time, or empty.
         MediaKindRole,                  ///< int: core::MediaKind cast to int.
+        RatingRole,                     ///< int: portable zero-to-five rating.
+        CaptionRole,                    ///< QString: portable caption.
+        TagsRole,                       ///< QStringList: portable keywords.
         ThumbnailStatusRole,            ///< int: ThumbnailStatus cast to int.
         ThumbnailImageRole,             ///< QImage: the thumbnail, or a null QImage.
     };
