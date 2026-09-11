@@ -26,24 +26,60 @@ Update this file in the same change that moves an increment forward.
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Complete |
-| 8 | Save, portable metadata, and image recipes | Complete |
+| 8 | Save, portable metadata, and image recipes | In progress (implementation complete; acceptance gaps) |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
 | 12 | Resilience, performance, packaging, release candidate | Not started |
 
-Increment 8 combines the retained image recipe renderer, export service, and
-explicit source-to-derivative provenance model with staged editing and
-LORE-backed Save. One ExifTool process writes an entire Save batch's rating,
-caption, and tag edits into the managed LORE checkout, verifies every result
-with the production reader, and commits the managed originals and records in
-one checkpoint. Conflicts and failures reset to the prior committed bytes
-without another pimio working or backup copy. A custom
-sidecar-only writer remains rejected; [decision 0007](../decisions/0007-embedded-metadata-writes.md)
-records the dependency evaluation and embedded-write policy.
+Increment 8's product path is implemented, but the increment cannot be marked
+Complete under this document's definition until the remaining acceptance
+evidence below runs in CI.
 
-Evidence: `metadata.embedded_write`, `editing.metadata_save`,
-`editing.image_recipes`, and `lore.binary_content`.
+Implemented:
+
+- Explicit in-memory edit staging, Cancel, and LORE-backed Save/checkpoints with
+  author, application-version, and parent provenance.
+- One ExifTool JSON-import process per Save batch writes rating, caption, and
+  tags as embedded XMP in managed JPEG, PNG, and TIFF originals. pimio never
+  writes a metadata sidecar and has no automatic sidecar fallback.
+- Save verifies the committed fingerprint before writing, rereads every result
+  with the production metadata reader, and commits originals and records in one
+  LORE revision. A failed Save resets the checkout from the prior committed
+  revision without another application-level media copy.
+- Versioned crop/rotation recipes, source-preserving preview/export, and
+  explicit source-media/recipe-revision relationships for derivatives.
+- Shared, checksum-pinned ExifTool packaging is wired through CMake for Linux,
+  Windows, and macOS.
+
+Current evidence:
+
+- `metadata.embedded_write` covers embedded write/readback, preservation of
+  unrelated camera fields, conflicts, unavailable ExifTool, and unsupported
+  formats.
+- `editing.metadata_save` covers staging, cancellation, batched invocation,
+  conflicts, failed writes, failed commits, retry, and checkpoint provenance.
+- `editing.image_recipes` covers source-preserving preview, crop/rotation
+  export, rejected export, and derivative serialization.
+- `lore.binary_content` covers committing a directly modified managed checkout
+  and reloading it after restart.
+- Build-contract tests cover the shared ExifTool pin, Perl provisioning, and
+  use of the common CMake acquisition path.
+
+Remaining before Complete:
+
+- Run the current Increment 8 head through CI on Linux, Windows, and macOS,
+  including the Local Linux build environment job and installed release layout.
+- Add independent compatibility-tool readback evidence; current round trips use
+  ExifTool for writing and pimio's production reader for verification.
+- Add the planned fault evidence for permission loss and interruption during an
+  ExifTool write, plus the specified concurrent-sidecar race behavior. Existing
+  no-space/write/commit failures do not cover those cases.
+
+[Decision 0007](../decisions/0007-embedded-metadata-writes.md) records the
+dependency evaluation, embedded-write policy, batch strategy, and rejection of
+sidecar writes. Timestamp repair remains Increment 9, and manual GPS assignment
+or correction remains Increment 11; neither is part of Increment 8 completion.
 
 Increments 7.7–7.9, including the 7.8a–7.8c correction gates, were added when
 the plans were reoriented around the
