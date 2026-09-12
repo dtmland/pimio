@@ -4,7 +4,6 @@ MODES: Pimio should support two different types of modes: Browser, Library
 This is the standard operating mode of pimio. By default upon first-time launch (with no specicial invocation) pimio might open to the users home directory 'Pictures' folder. In browser mode pimio behaves much more like picasa did. It displays a folder heirarchy in a side bar and let's users navigate files and directories to view images/videos from the directories in the tile view similar to how picasa did. Pimio does all of this in browser mode without creating any lore repositories or libraries. In fact, in this mode pimio should not only behaves like picasa in the file browser sense - it should also create the ini sidecar files and '.originals' directories just like picasa did! This mode is intended to be used for adhoc pimio use where one might just want to open and view some photos/videos and perhaps modify some of them or adjust their metadata. In this mode pimio isn't copying files into any new areas or appdata directories - it is simply browsing the photos and videos where-ever they happen to originally live. In this mode if a user uses the OS file navigator (explorer/finder/dolphin/etc) to drag and drop a folder or file onto the pimio window then pimio simply interprets this to mean the user asking pimio to open the directory or if a file then the directory in which the file lives to be opened by pimio - all of this similar to how pimio might behave if the user selected 'File->Open Directory' in the pimio menu bar. In this sense pimio never really 'opens' an individual file for viewing it will always simply open the directory in which that file lives and then display the photo in the tile view as if the user had clicked on it. In file browser mode the lore features of pimio are entirely absent and irrelevant. If pimio encounters a pimio library directory in the course of its directory navigation or heirarchy - pimio should detect this and not treat it as a standard directory whose contents should be recursed and displayed like any other standard directory in the pimio view. The library directory should sort of be displayed as an object that if the user attempts to select it open it then pimio would prompt the user asking if they would like to open the library which would then switch pimio from 'Browser' mode to 'Library' mode.
 #TODO: The exact nature of the ini files and .originals behavior needs to be reviewed and fully defined
 
-
 -Library Mode
 Pimio is not in library mode by default - the user should either do one of the following to be in library mode: create a new library, or open an existing library using the 'File -> Open Library' menu. In library mode pimio no longer behaves like a file browser like the 'Browser' mode. It of course does not display a folder heiarchy in the side bar it instead displays some kind of timeline navigation widget view as the focus for pimio libraries is chronologically organized media - similar to how modern Apple Photos app behaves. After creating a new pimio library, it starts out empty and the user is instructed to add/import photos/videos whether by pointing to directories or dragging photos or direcoties onto the application. Library mode is where pimio starts to care about lore version control. It creates the lore repository as an integral part of the pimio library. It will eventually offer the ability to connect to remote lore servers for pulling down remote libraries (and eventually collaboration). Any media that is 'added/imported' into the library is of course copied into the relevant library directory to be part of the lore repository. By default libraries should be created in the some location that is not buried away from the user - pimio should created them in the standard user home directory pictures or photos folders. Pimio can of course offer the option to move the location of the library, as it is simple a directory. The user can close a library in pimio by choosing 'File -> Close Library' and then pimio simply returns to standard 'Browser' mode perhaps in the most recently open directory location by pimio. One creative idea I thought about is that if a user imports a file or directory into the library - and this is accompanied with the 'Browser' mode sidecar ini files or '.originals' folders whether at the root of the imported directory or recurisvely found throughout - pimio should detect the presense of these files and insteaed of just whole adding them into the lore repository pimio should instead translate the spirit of the ini file modifications and '.originals' into a version control of the media where the original file represents the first commit of the median and then a subsequent commit represents the modified file that sits above the '.originals' directory. In this fashion a lore repository within a pimio library should never store the ini files or the directory that housed the '.originals' - but only the original media file itself. 
 
@@ -31,3 +30,74 @@ get_version_history(id)
 restore_version(id, version)
 search_media(query)
 
+
+
+
+
+
+### The Pimio Replay & Ingestion Pipeline
+
+The core challenge of **Pimio** is translating a destructive, sidecar-dependent file layout (Picasa) into a clean, **linear Git-like history** via an embedded **Lore version control** client. 
+
+To accomplish this, Pimio maps Picasa’s fragmented folder states into three discrete database milestones: the **Baseline Commit** (the past), the **Saved-Edits Commit** (the present), and the **Working Index** (the uncommitted future).
+
+Here is the exact lifecycle of how Pimio ingests, reconstructs, and represents a legacy Picasa directory under the hood using Lore:
+
+---
+
+### Phase 1: State Matrix Scanning & Discovery
+Before running any version control operations, Pimio recursively scans the target folder structure to categorize every media file into one of four states based on the presence of `.picasa.ini` parameters and `.picasaoriginals` pairings:
+
+| Picasa State | Main File Context | `.picasaoriginals` Context | `.picasaini` Context | Pimio's Interpretation |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pure Pristine** | Untouched Original | None | No edits listed | A file that has never been altered. |
+| **Unsaved Edits** | Untouched Original | None | Contains active edit metadata | Edits exist only as metadata; file state is uncommitted. |
+| **Saved Edits** | Modified Baked Copy | Contains True Original | Flagged as "Saved" | A historic change has been permanently written to disk. |
+| **Saved + New Unsaved**| Modified Baked Copy | Contains True Original | Flagged as "Saved" + New unbaked metadata | A historic change was baked, followed by subsequent active edits. |
+
+---
+
+### Phase 2: Replaying History into the Lore Repository
+Once every file is classified, Pimio initializes a Lore repository (`lore init`) at the root directory and executes a structured multi-pass ingestion pipeline. This process moves forward through "virtual time" to recreate a logical commit graph.
+
+#### Pass 1: Reconstructing the Initial State (The Core Baseline)
+Pimio constructs a clean, uniform baseline containing exclusively the **original, unedited versions** of all media.
+1. **Targeting Originals:** Pimio queues up all **Pure Pristine** files, all **Unsaved Edits** files, and pulls the true originals out of the hidden **`.picasaoriginals`** directories for any saved entries.
+2. **Staging the Past:** It copies these files into a virtual layout matching their destination paths. 
+3. **Lore Commit #1:** It commits this entire collection as the primary baseline:
+   ```bash
+   lore commit -m "Initial baseline: Import original unedited media from Picasa"
+   ```
+
+#### Pass 2: Hard-Committing Historic Saves (The Saved State)
+Pimio now steps forward to capture the modifications that the user explicitly chose to write to disk while using Picasa.
+1. **Targeting Baked Changes:** Pimio locates all files classified as **Saved Edits**. It discards the cached versions inside `.picasaoriginals` and selects the modified JPEG files that were sitting in the primary parent folders.
+2. **Updating the Tree:** Pimio overwrites the original files in the working directory with these modified versions.
+3. **Lore Commit #2:** It creates a second commit representing the explicit actions taken in the past:
+   ```bash
+   lore commit -m "Picasa Save State: Commit historic modifications baked to disk"
+   ```
+
+#### Pass 3: Constructing the Modern Working Index (The Unsaved State)
+Finally, Pimio brings the repository up to the exact present moment by translating unbaked Picasa metadata into an active Lore staging area.
+1. **Targeting Active Metadata:** Pimio searches for any files with **Unsaved Edits** (from either Pass 1 or Pass 2).
+2. **Baking On-The-Fly:** Pimio's internal rendering engine processes the file through the exact filter or crop parameters detailed in the `.picasa.ini` string.
+3. **Dirtying the Index:** It writes this newly rendered image directly over the file in the working directory, but **does not invoke a commit command**.
+
+---
+
+### Phase 3: The UI Mapping (Representing the "Save" Button)
+Once the pipeline finishes, Pimio permanently purges the legacy `.picasa.ini` files and deletes all `.picasaoriginals` directories from the disk. The user interface seamlessly links its visual states directly to Lore's file tracking:
+
+* **The Active Interface:** When viewing the folder inside Pimio, files with unsaved edits appear modified because the image on disk is altered. 
+* **The "Unsaved" Indicator:** Pimio queries the embedded client (`lore status`). If a file is flagged as modified or staged but uncommitted, a **"Save Changes"** button lights up in the Pimio UI next to that asset.
+* **Clicking "Save":** When the user clicks the button, Pimio performs a native version control operation behind the scenes:
+  ```bash
+  lore commit -m "Pimio UI: Explicit user commit of active modifications"
+  ```
+  The button turns off because the working index is clean.
+* **Clicking "Undo / Revert":** If the user chooses to revert their changes instead of saving, Pimio simply checks out the previous commit:
+  ```bash
+  lore checkout -- photo.jpg
+  ```
+  Lore instantly swaps the modified image back to its last committed state safely, cleanly, and without doubling your storage footprint.
