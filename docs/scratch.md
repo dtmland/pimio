@@ -18,3 +18,16 @@ Initially I had thought that by default all objects should immediately be commit
 TZDATA: Timezones, Daylight savings, and using GPS location to properly tag and sort timestamps of media
 
 Pimio should have its own copy of the TZDATA database in order to reference timezone(s) and DST deltas and specifically the ability to lookup appropriate times based on gps location of media. This binary TZDATA file is not delivered with Pimio install artifacts but instead is a required download. Ideally this download could eventually be performed during a future installation step. However the manner we should use in the short-term is also a mannger we would like to keep in the long term also in the case the the user chooses a future offline install option. Pimio should offer the ability in-app for the user to update the copy of their tzdata database. Ideally it should attempt to source some common stable an reliable location to obtain the tzdata using some kind of tzdata dialog or add-ons dialog. Pimio should also offer the option for the user to manually add the tzdata file using a copy they have manually downloaded themselves - also convenient for offline or airgap cases. Ideally pimio could perform some level of verification that is is getting a proper tzdata artifact provided by the user.
+
+Another time related function pimio should have, whether supporter by opencv or other modern model weights: the ability to detect the date on old film based photos that had thr little red date superimposed onto the photo. 
+
+MCP Server
+
+Pimio should have an MCP server with functions such as thsoe below. This idea and this list needs more planning and development before being implemented:
+list_libraries()
+list_media(library, folder)
+get_media_metadata(id)
+get_version_history(id)
+restore_version(id, version)
+search_media(query)
+
