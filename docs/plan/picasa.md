@@ -171,3 +171,41 @@ Unlike most Windows apps of the 2000s, Picasa avoided relying on the Windows Reg
 
 - **Self-Healing Index:** The central database was transient. Copying photo folders to a new computer preserved custom albums, starred photos, face-tags, and non-destructive edits.
 - **Reconstruction:** Because state lived in `.picasa.ini` files, a fresh Picasa install could reconstruct a large, old library in minutes just by scanning folders.
+
+
+### 6.2. Picasa non-destructive editing
+
+The interaction between **Picasa**, **`.picasa.ini` files**, and the hidden **`.picasaoriginals`** directory represents one of the earliest mainstream implementations of non-destructive editing. 
+
+The exact lifecycle of a file during modification and saving follows a precise operational flow:
+
+### Phase 1: Making Modifications (The Real-Time Overlay)
+When you alter an image (e.g., crop, apply a filter, adjust contrast), Picasa **never alters your original file** on the disk. 
+
+1. **State:** Your original file (`photo.jpg`) remains entirely untouched in its parent folder.
+2. **Writing the INI:** The moment you make an edit, Picasa writes the exact parameters of that modification into a hidden text file named **`.picasa.ini`** (or `Picasa.ini` in older versions) located within that same folder. For example, it appends a block mapping to `photo.jpg` tracking instructions like `crop=rect(6867,b9a,908c,ed64)` or `filters=1`.
+3. **Picasa View:** When you view the image inside Picasa, the app reads the original `photo.jpg` and applies the instruction set from `.picasa.ini` on-the-fly. 
+4. **External View:** If you look at `photo.jpg` using a native explorer window or another app (like Facebook or Photoshop), you will only see the unedited original, because the file itself has not changed.
+
+---
+
+### Phase 2: Clicking the "Save" Button (The Physical Swap)
+When you click **"Save to Disk"** on a folder or select **File > Save**, Picasa hard-commits the changes to disk so that external programs can see your edits. It performs a seamless file substitution:
+
+1. **Creating the Hidden Directory:** Picasa creates a hidden subfolder called **`.picasaoriginals`** directly inside the parent folder if it doesn't already exist. 
+2. **Moving the Original:** The untouched original file (`photo.jpg`) is moved out of the main directory and into the `.picasaoriginals` subfolder. 
+3. **Baking the Edits:** Picasa generates a brand-new JPEG matching your applied modifications. It writes this newly edited image file directly into the main parent directory, naming it exactly what the original was (`photo.jpg`).
+4. **Updating the INI:** The `.picasa.ini` file is updated to flag that the file has been saved. This instructs Picasa's internal database to track that an "Undo" state exists inside `.picasaoriginals`.
+
+**The result outside Picasa:** Windows Explorer and other programs now see the modified file because it has overwritten the primary file slot. Your storage footprint for that photo doubles.
+
+---
+
+### Phase 3: The "Undo Save" Request (The Reverse Flow)
+Because Picasa meticulously manages this ecosystem, you can reverse a saved state at any point by clicking **Undo Save** or **File > Revert**. 
+
+1. **Reading the State:** Picasa checks `.picasa.ini` to verify that an original file is cached in the `.picasaoriginals` directory.
+2. **The Restoration:** Picasa deletes the edited `photo.jpg` sitting in the parent folder.
+3. **The Swap-Back:** It moves the true original `photo.jpg` out of the hidden `.picasaoriginals` folder and places it back into the main parent folder. 
+4. **Reverting the INI:** The `.picasa.ini` file strips the "saved" status but safely **retains your edit parameters**. This restores you exactly to Phase 1: external programs see the unedited original again, but Picasa still displays your modifications on-the-fly.
+
