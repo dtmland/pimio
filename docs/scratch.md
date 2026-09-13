@@ -56,12 +56,14 @@ search_media(query)
 * **.ai**: Adobe Illustrator Artwork. Modern vector asset format used broadly across digital design workflows.
 * **.heics / .heifs**: High Efficiency Image Sequence. Used for storing bursts of images, live photos, or animations within an HEIF infrastructure.
 
+### Multi-Copy Sidecar Version Control
 
-
+TODO: Finish
+The legacy picasa application used... Explanation to represent both picasas legacy method and Pimios modern *exact replica* of that method for its 'Browser' mode. Note how pimio 'Browser' mode should detect the presence of existing picasa ini files and .picasaoriginals subdirectories and instead of simply writing its own new pimio.ini files and .pimiooriginals folders in those cases - it will simply use the picasa files following their exact format to preserve all behavior in such a fashion that picasa could re-open the same folder and be none the wiser.
 
 ### The Pimio Replay & Ingestion Pipeline
 
-The core challenge of **Pimio** is multi-copy, sidecar-dependent file layout (Picasa) into a clean, **linear Git-like history** via an embedded **Lore version control** client.
+One core challenge of **Pimio** library import process is detecting the presence of and translating the 'multi-copy', 'sidecar-dependent' file layout of both Pimio file browser layouts and even legacy Picasa layouts into a clean, **linear Git-like history** via an embedded **Lore version control** client.
 
 To accomplish this, Pimio maps Picasa’s fragmented folder states into three discrete database milestones: the **Baseline Commit** (the past), the **Saved-Edits Commit** (the present), and the **Working Index** (the uncommitted future).
 
