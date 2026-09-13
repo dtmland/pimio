@@ -31,13 +31,37 @@ restore_version(id, version)
 search_media(query)
 
 
+### Support New File Types and Conversions (beyond picasa's original supported set)
+
+
+### Modern Image Formats
+* **.heic / .heif**: High Efficiency Image Container. The default format for modern iOS and Android devices, offering twice the compression of JPEG at identical quality.
+* **.webp**: Google's modern web image format. Widely adopted across the internet for its superior lossy and lossless compression.
+* **.avif**: AV1 Image File Format. An open, royalty-free format offering even better compression than WebP and HEIC, with deep color depth support.
+* **.jxl**: JPEG XL. A next-generation image format featuring ultra-high-fidelity, responsive web architecture, and lossless transcoding of legacy JPEGs.
+
+### Modern Camera RAW Formats & Pipelines
+* **.cr3**: Canon's modern RAW format. Replaced `.cr2` to introduce better compression (including C-RAW) and updated metadata structures.
+* **.gpr**: GoPro RAW format. A highly compressed RAW format based on the Adobe DNG standard for action cameras.
+* **Apple ProRAW / Samsung Expert RAW**: Modern computational RAW implementations. Though technically wrapped in a `.dng` extension, they include complex multi-frame, semantic, and tone-mapping metadata that a legacy Picasa engine cannot decode properly.
+
+### Modern Video & Animation Formats
+* **.mkv**: Matroska Multimedia Container. The modern standard for high-definition video files, supporting unlimited audio, video, picture, and subtitle tracks.
+* **.webm**: Google-backed royalty-free container designed for the web, utilizing VP8, VP9, or AV1 video codecs.
+* **.hevc / .h265**: High Efficiency Video Coding. Though often wrapped in an `.mp4` or `.mov` container, legacy Picasa cannot decode this codec, which is universally used for 4K and 8K mobile recording.
+* **Animated WebP / AVIF**: Replaced legacy animated GIFs on the modern web, providing full alpha-channel transparency and superior frame compression.
+
+### Modern Design, Vector & Vector Asset Formats
+* **.svg**: Scalable Vector Graphics. The universal standard for responsive web layout graphics, icon sets, and vector illustrations.
+* **.ai**: Adobe Illustrator Artwork. Modern vector asset format used broadly across digital design workflows.
+* **.heics / .heifs**: High Efficiency Image Sequence. Used for storing bursts of images, live photos, or animations within an HEIF infrastructure.
 
 
 
 
 ### The Pimio Replay & Ingestion Pipeline
 
-The core challenge of **Pimio** is translating a destructive, sidecar-dependent file layout (Picasa) into a clean, **linear Git-like history** via an embedded **Lore version control** client. 
+The core challenge of **Pimio** is multi-copy, sidecar-dependent file layout (Picasa) into a clean, **linear Git-like history** via an embedded **Lore version control** client.
 
 To accomplish this, Pimio maps Picasa’s fragmented folder states into three discrete database milestones: the **Baseline Commit** (the past), the **Saved-Edits Commit** (the present), and the **Working Index** (the uncommitted future).
 
