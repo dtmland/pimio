@@ -138,3 +138,126 @@ Once the pipeline finishes, Pimio permanently purges the legacy `.picasa.ini` fi
   lore checkout -- photo.jpg
   ```
   Lore instantly swaps the modified image back to its last committed state safely, cleanly, and without doubling your storage footprint.
+
+
+
+
+
+
+
+
+
+
+Add-Ons Manager
+
+Pimio should feature an add-ons manager. This can support both pimio delivered add-ons and user created add-ons. One of the initial use cases for the add-on manager is to download semi-required components - artifacts that we don't want to deliver with the pimio installer but that are non-the-less required for advanced pimio operations. If the add-ons are not downloaded then pimio would simply represent these advanced functions as disabled - perhaps greying out any relevant UI controls and providing useful 'disabled' behavior or messages on the MCP interface. There are several motivations for this - in most cases it will be because of file size concerns - model files for LLMs or other large models files. Another type of add-on might be an offline tile set for an offline capability for the standard pimio map view. Besides large files, other motivations are components that we want to have updated over time without having to rev new versions of pimio - the user selecting manual timezone database is a good example of this.
+
+
+
+
+Timezone database
+
+The documentation loosley refers to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loosely reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio.
+
+Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision! I would hope and expected that most modern media formats do support such a metadata tag but realistically I expect that most do not support this and we will need to shimmy it in somehow.
+
+
+
+
+### 🏛️ Timezone Management - High-Level Architectural Concepts
+
+The system operates on a dual-strategy paradigm, encapsulating data location, parsing mechanics, and lifetime management into a unified layer. It uses a single, robust runtime engine based on the open-source industry standard (Howard Hinnant's timezone design) to handle both execution tracks, ensuring absolute behavioural consistency.
+
+### 🏛️ Timezone Management - System Architecture Overview
+
+The enhanced design introduces an **OS Profiling Engine** that probes the underlying platform to fingerprint its active zone database version, and an **Attributed Storage Format** that couples every saved timezone boundary with its database version context.
+
+
+### ⚙️ Timezone Management - Component Breakdown
+
+#### 1. Configuration & Strategy Selection
+At startup, the application queries its configuration store (e.g., an environment variable, a command-line flag, or a configuration file).
+* **Default Mode (OS-Reliant):** The engine initializes using environment defaults, automatically binding its lookup operations to the local machine's system filesystem paths or registry entries.
+* **Overridden Mode (Custom Artifact):** The application suppresses standard OS paths and registers a dedicated target directory managed on the user’s file system.
+
+#### 2. The Artifact Ingestion Pipeline (Post-Build Update)
+When a user chooses to bypass the OS, they supply an external artifact post-compilation. The runtime manages this via the following steps:
+* **The Target Artifact:** The application expects raw, textual geographic zone source definitions released by IANA (such as `northamerica`, `europe`, `backward`, `etcetera`).
+* **Ingestion Method:** The user drops a compressed archive (`.tar.gz`) or points the application to an unzipped directory containing these raw files. If the application has network access, it can optionally contact IANA mirrors directly to fetch this payload.
+* **Extraction & Structure Validation:** An abstraction layer ensures the folder contains vital structural files like the `backward` file (essential for legacy aliases) and core regional rulesets before processing.
+
+#### 3. Dynamic Parser & Runtime Hot-Swapping
+The core engine features a text-file compiler that executes entirely in memory after the application is built.
+* **Decoupled Relocation:** When switched to Custom Mode, the subsystem explicitly redirects its search pointers to the custom extraction directory.
+* **In-Memory Thread-Safe Swapping:** The compilation engine sweeps the textual files, builds an internal network of rule structures, offsets, and transition boundaries, and triggers a data-swap operation.
+* **Instant Propagation:** Any subsequent timezone lookup anywhere else in the application immediately resolves against the newly constructed ruleset without restarting the application or dropping active network connections.
+
+### 🔄 Timezone Management - Concrete Runtime Lifecycles
+
+#### The Application Startup Sequence
+1. The program starts and loads configuration preferences.
+2. If **Strategy A (OS)** is set, the timezone runtime queries standard platform paths. If found, it populates the active lookup database.
+3. If **Strategy B (Custom)** is set, the runtime overrides default parameters, verifies the existence of the custom source files, and processes the raw text assets directly into memory.
+4. The global system locks the validated database state, signaling to all application modules that date-time conversions are safe to execute.
+
+#### The On-the-Fly Update Sequence
+1. While the system is actively running, a user triggers an "Update Time Zone Database" instruction and references a newly downloaded `tzdata` tarball.
+2. A separate worker thread handles extraction to safeguard performance.
+3. The validation subsystem checks the integrity of the raw text schemas.
+4. The engine invokes an explicit database reload command, re-parsing the new file parameters.
+5. The global application state pointer atomic-swaps to point to the freshly updated timezone data structures. Legacy queries finish executing under old rules, while all subsequent operations immediately bind to the new layout.
+
+
+### 🎯 Timezone Management - Key Engineering Benefits of this Architecture
+
+* **Identical Functional Types:** Because the underlying codebase leverages a single architecture to interpret both OS databases and raw IANA archives, application logic remains standard. Developers do not need to write split logic for Windows vs. Linux vs. Custom.
+* **Zero System Dependencies in Isolation:** When running in Custom Mode, the application can survive on minimalist, air-gapped embedded platforms that lack a built-in operating system timezone system entirely.
+* **Complete Upstream Transparency:** Users do not need to wait for a developer to recompile the application or issue a software patch when a global boundary shifts. They possess total autonomy to source raw data artifacts straight from the authoritative standard provider (IANA) and deploy them to the running program instantly.
+
+
+
+### 🏛️ Timezone Version Metdata - System Architecture Overview
+
+The enhanced design introduces an **OS Profiling Engine** that probes the underlying platform to fingerprint its active zone database version, and an **Attributed Storage Format** that couples every saved timezone boundary with its database version context.
+
+
+### ⚙️ Timezone Version Metdata - Component Breakdown
+
+#### 1. The OS Profiling & Version Extraction Engine
+Because operating systems do not provide a unified endpoint, this module contains cross-platform, non-blocking probes executed during the fallback initialization phase:
+* **POSIX / Linux Probe:** Executes lightweight file-checks or environment queries. It checks if package manager records are readable or scans `/usr/share/zoneinfo/` for known distro version files.
+* **macOS Probe:** Explicitly reads the localized text stream from `/usr/share/zoneinfo/+VERSION`.
+* **Windows Inference Engine (The Guessing Layer):** Because Windows maps things to its own format, if it cannot find an explicit version string, the application performs an in-memory test. It samples 3–4 historical political change points (e.g., “Did the Cairo offset change in May 2023 on this machine?”). Based on whether the OS applies the rule or not, the engine narrows down the match and tags it (e.g., `"Inferred-IANA-2023c"`).
+* **Fallback Labeling:** If profiling completely fails, it tags the data with `"Platform-OS-Unverified"`.
+
+#### 2. Self-Describing Data Schema (The "Label")
+Your data storage layer is extended so that timestamps are never saved in isolation. Every temporal record contains an immutable **Metadata Context block**:
+* **Timestamp:** The localized clock face value.
+* **Zone Identifier:** The string name (e.g., `America/New_York`).
+* **Database Provenance String:** The version discovered by the OS Profiling Engine at the exact moment the data was captured or last modified (e.g., `IANA-2022g`).
+
+#### 3. The Reconciliation & Data Repair Module
+When the user flags the application to switch from Strategy A (OS) to Strategy B (Custom Target: `2026b`), the application boots the custom database via Howard Hinnant's library. Instead of blindly applying the new database to old data, it triggers a **Time Zone Drift Analysis**:
+* **Scan Phase:** The application scans the database index for records matching older provenance strings (e.g., `IANA-2022g`).
+* **Simulation Phase:** For each unique time zone found in those old records, the engine calculates the underlying UTC epoch using both the old labeled version and the fresh `2026b` custom database.
+* **Diff Generation:** If the UTC epochs match, the data is safe. If they drift (e.g., a 60-minute discrepancy due to a canceled DST law), the record is marked as `"Context-Drifted"`.
+
+
+
+### 🔄 Timezone Version Metdata - Example User Repair Interaction Lifecycle
+
+#### Step 1: Ingestion & Comparison View
+When the user points the application to a downloaded IANA artifact, the UI displays a comparative report:
+> **Active Environment Shift Detected:**
+> * Current System Baseline: `IANA-2022g` (via Host OS Profiler)
+> * Proposed Target Version: `IANA-2026b` (via Provided Custom Tarball)
+> * Status: *Your OS database is 4 years out of date. 1,240 existing records are affected by historical rule variations.*
+
+#### Step 2: Granular Resolution Wizard
+The module presents the drifted rows to the user with two distinct programmatic options for rectification:
+* **Option A (Preserve Wall-Clock Intent):** *"Keep the local time showing exactly 14:00:00, but recalculate the underlying UTC epoch to match the modern global laws specified in 2026b."*
+* **Option B (Preserve Real-Moment UTC Intent):** *"The underlying physical moment was logged correctly despite the old OS label. Keep the absolute UTC timestamp intact, but change the local clock face string to reflect the corrected offset rules."*
+
+#### Step 3: Metadata Sealing
+Once the user selects a resolution path, the application processes the data blocks, updates the calculations, and swaps the Database Provenance metadata tag from `IANA-2022g` to `IANA-2026b`. The dataset is now completely healed, aligned, and marked with a clean audit trail.
+
