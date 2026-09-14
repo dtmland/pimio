@@ -1,6 +1,46 @@
-MODES: Pimio should support two different types of modes: Browser, Library
+# Pimio: addendum
 
-### Browser Mode
+
+## MCP Server
+
+Pimio should have an MCP server with functions such as those below. This idea and this list needs more planning and development before being implemented:
+- list_libraries()
+- list_media(library, folder)
+- get_media_metadata(id)
+- get_version_history(id)
+- restore_version(id, version)
+- search_media(query)
+
+
+## Support New File Types and Conversions
+
+
+### Modern Image Formats
+* **.heic / .heif**: High Efficiency Image Container. The default format for modern iOS and Android devices, offering twice the compression of JPEG at identical quality.
+* **.webp**: Google's modern web image format. Widely adopted across the internet for its superior lossy and lossless compression.
+* **.avif**: AV1 Image File Format. An open, royalty-free format offering even better compression than WebP and HEIC, with deep color depth support.
+* **.jxl**: JPEG XL. A next-generation image format featuring ultra-high-fidelity, responsive web architecture, and lossless transcoding of legacy JPEGs.
+
+### Modern Camera RAW Formats & Pipelines
+* **.cr3**: Canon's modern RAW format. Replaced `.cr2` to introduce better compression (including C-RAW) and updated metadata structures.
+* **.gpr**: GoPro RAW format. A highly compressed RAW format based on the Adobe DNG standard for action cameras.
+* **Apple ProRAW / Samsung Expert RAW**: Modern computational RAW implementations. Though technically wrapped in a `.dng` extension, they include complex multi-frame, semantic, and tone-mapping metadata that a legacy Picasa engine cannot decode properly.
+
+### Modern Video & Animation Formats
+* **.mkv**: Matroska Multimedia Container. The modern standard for high-definition video files, supporting unlimited audio, video, picture, and subtitle tracks.
+* **.webm**: Google-backed royalty-free container designed for the web, utilizing VP8, VP9, or AV1 video codecs.
+* **.hevc / .h265**: High Efficiency Video Coding. Though often wrapped in an `.mp4` or `.mov` container, legacy Picasa cannot decode this codec, which is universally used for 4K and 8K mobile recording.
+* **Animated WebP / AVIF**: Replaced legacy animated GIFs on the modern web, providing full alpha-channel transparency and superior frame compression.
+
+### Modern Design, Vector & Vector Asset Formats
+* **.svg**: Scalable Vector Graphics. The universal standard for responsive web layout graphics, icon sets, and vector illustrations.
+* **.ai**: Adobe Illustrator Artwork. Modern vector asset format used broadly across digital design workflows.
+* **.heics / .heifs**: High Efficiency Image Sequence. Used for storing bursts of images, live photos, or animations within an HEIF infrastructure.
+
+## MODES
+Pimio should support two different types of modes: Browser, Library
+
+## Browser Mode
 
 This is the standard operating mode of pimio. By default upon first-time launch (with no specicial invocation) pimio might open to the users home directory 'Pictures' folder. In browser mode pimio behaves much more like picasa did. It displays a folder hierarchy in a side bar and allows user to navigate files and directories to view images/videos from the directories in the tile view similar to how picasa did. 
 
@@ -15,7 +55,7 @@ In file browser mode the lore features of pimio are entirely absent and irreleva
 The legacy picasa application used a pseudo version control process with its picasa.ini files and .picasaoriginals subdirectories. In 'Browser' mode pimio should not only support reading of these files but fully adopts them as the 'primary method' of how pimio behaves when in 'Browser' mode. It will emulate the behavior of picasa in this sense both creating and writing to the ini files as needed as well as the .picasaoriginals directories. It will only write fields into the ini files that picasa knew about - such that any modifications made to a directory and all of its subdirectories could be in theory opened by picasa and it would be none the wiser! 
 
 
-### Library Mode
+## Library Mode
 
 Pimio is not in library mode by default - the user should either do one of the following to be in library mode: create a new library, or open an existing library using the 'File -> Open Library' menu. In library mode pimio no longer behaves like a file browser like the 'Browser' mode. It of course does not display a folder heiarchy in the side bar it instead displays some kind of timeline navigation widget view as the focus for pimio libraries is chronologically organized media - similar to how modern Apple Photos app behaves. After creating a new pimio library, it starts out empty and the user is instructed to add/import photos/videos whether by pointing to directories or dragging photos or direcoties onto the application. Library mode is where pimio starts to care about lore version control. It creates the lore repository as an integral part of the pimio library. It will eventually offer the ability to connect to remote lore servers for pulling down remote libraries (and eventually collaboration). Any media that is 'added/imported' into the library is of course copied into the relevant library directory to be part of the lore repository. By default libraries should be created in the some location that is not buried away from the user - pimio should created them in the standard user home directory pictures or photos folders. Pimio can of course offer the option to move the location of the library, as it is simple a directory. The user can close a library in pimio by choosing 'File -> Close Library' and then pimio simply returns to standard 'Browser' mode perhaps in the most recently open directory location by pimio. One creative idea I thought about is that if a user imports a file or directory into the library - and this is accompanied with the 'Browser' mode sidecar ini files or '.originals' folders whether at the root of the imported directory or recurisvely found throughout - pimio should detect the presense of these files and insteaed of just whole adding them into the lore repository pimio should instead translate the spirit of the ini file modifications and '.originals' into a version control of the media where the original file represents the first commit of the median and then a subsequent commit represents the modified file that sits above the '.originals' directory. In this fashion a lore repository within a pimio library should never store the ini files or the directory that housed the '.originals' - but only the original media file itself. 
 
@@ -42,6 +82,8 @@ Initially I had thought that by default all objects should immediately be commit
 
 
 ### The Pimio Replay & Ingestion Pipeline
+
+TODO: This section does yet include the fact that this "replay & ingestion" process only applies specifically to importing media into a Pimio library. It is not irrelevant for 'Browser' mode. The section wording and explanation needs to be updated to account for this.
 
 One core challenge of **Pimio** library import process is detecting the presence of and translating the 'multi-copy', 'sidecar-dependent' legacy Picasa 'Pseudo Version Control' layouts into a clean, **linear Git-like history** via embedded **Lore version control**.
 
@@ -108,79 +150,23 @@ Once the pipeline finishes, Pimio permanently purges the legacy `.picasa.ini` fi
   ```
   Lore instantly swaps the modified image back to its last committed state safely, cleanly, and without doubling your storage footprint.
 
-  
 
 
 
+## Add-Ons Manager
+
+Pimio should feature an add-ons manager. This can support both pimio delivered add-ons and user created add-ons. One of the initial use cases for the add-on manager is to download semi-required components - artifacts that we don't want to deliver with the pimio installer but that are non-the-less required for advanced pimio operations to work. If the add-ons are not downloaded then pimio would simply represent these advanced functions as disabled - perhaps greying out any relevant UI controls and providing useful 'disabled' behavior or messages on the MCP interface. There are several motivations for the need for an add-ons manager and artifacts that are not delivered with pimio install artifacts - in most cases it will be because of file size concerns - model files for LLMs or other large models files. Another type of add-on might be an offline tile set for an offline capability for the standard pimio gps map view. Besides large files, other motivations are components that we want to have updated over time without having to rev new versions of pimio itself - the user selecting manual timezone database is a good example of this. Other possible examples for having an add-on manager is for artifacts with license restrictions that cannot be included with pimio for licensing reasons. Finally, as mentioned in the beginning, user created add-ons would also be a good use case. While the add-ons manager might by default try to download any given add directly from the internet - it should also offer the user the option to manually provide the artifact themselves for offline installations.
+
+## Detection and Processing features
+
+Whether supporterd by opencv or other modern model weights: pimio should have the ability to detect the date on old film based photos that had the little red date superimposed onto the bottom corner of the photo.
 
 
-TZDATA: Timezones, Daylight savings, and using GPS location to properly tag and sort timestamps of media
+## Timezones
 
-Pimio should have its own copy of the TZDATA database in order to reference timezone(s) and DST deltas and specifically the ability to lookup appropriate times based on gps location of media. This binary TZDATA file is not delivered with Pimio install artifacts but instead is a required download. Ideally this download could eventually be performed during a future installation step. However the manner we should use in the short-term is also a mannger we would like to keep in the long term also in the case the the user chooses a future offline install option. Pimio should offer the ability in-app for the user to update the copy of their tzdata database. Ideally it should attempt to source some common stable an reliable location to obtain the tzdata using some kind of tzdata dialog or add-ons dialog. Pimio should also offer the option for the user to manually add the tzdata file using a copy they have manually downloaded themselves - also convenient for offline or airgap cases. Ideally pimio could perform some level of verification that is is getting a proper tzdata artifact provided by the user.
-
-Another time related function pimio should have, whether supporter by opencv or other modern model weights: the ability to detect the date on old film based photos that had thr little red date superimposed onto the photo. 
-
-MCP Server
-
-Pimio should have an MCP server with functions such as thsoe below. This idea and this list needs more planning and development before being implemented:
-list_libraries()
-list_media(library, folder)
-get_media_metadata(id)
-get_version_history(id)
-restore_version(id, version)
-search_media(query)
-
-
-### Support New File Types and Conversions (beyond picasa's original supported set)
-
-
-### Modern Image Formats
-* **.heic / .heif**: High Efficiency Image Container. The default format for modern iOS and Android devices, offering twice the compression of JPEG at identical quality.
-* **.webp**: Google's modern web image format. Widely adopted across the internet for its superior lossy and lossless compression.
-* **.avif**: AV1 Image File Format. An open, royalty-free format offering even better compression than WebP and HEIC, with deep color depth support.
-* **.jxl**: JPEG XL. A next-generation image format featuring ultra-high-fidelity, responsive web architecture, and lossless transcoding of legacy JPEGs.
-
-### Modern Camera RAW Formats & Pipelines
-* **.cr3**: Canon's modern RAW format. Replaced `.cr2` to introduce better compression (including C-RAW) and updated metadata structures.
-* **.gpr**: GoPro RAW format. A highly compressed RAW format based on the Adobe DNG standard for action cameras.
-* **Apple ProRAW / Samsung Expert RAW**: Modern computational RAW implementations. Though technically wrapped in a `.dng` extension, they include complex multi-frame, semantic, and tone-mapping metadata that a legacy Picasa engine cannot decode properly.
-
-### Modern Video & Animation Formats
-* **.mkv**: Matroska Multimedia Container. The modern standard for high-definition video files, supporting unlimited audio, video, picture, and subtitle tracks.
-* **.webm**: Google-backed royalty-free container designed for the web, utilizing VP8, VP9, or AV1 video codecs.
-* **.hevc / .h265**: High Efficiency Video Coding. Though often wrapped in an `.mp4` or `.mov` container, legacy Picasa cannot decode this codec, which is universally used for 4K and 8K mobile recording.
-* **Animated WebP / AVIF**: Replaced legacy animated GIFs on the modern web, providing full alpha-channel transparency and superior frame compression.
-
-### Modern Design, Vector & Vector Asset Formats
-* **.svg**: Scalable Vector Graphics. The universal standard for responsive web layout graphics, icon sets, and vector illustrations.
-* **.ai**: Adobe Illustrator Artwork. Modern vector asset format used broadly across digital design workflows.
-* **.heics / .heifs**: High Efficiency Image Sequence. Used for storing bursts of images, live photos, or animations within an HEIF infrastructure.
-
-
-
-
-
-
-
-
-
-
-
-
-Add-Ons Manager
-
-Pimio should feature an add-ons manager. This can support both pimio delivered add-ons and user created add-ons. One of the initial use cases for the add-on manager is to download semi-required components - artifacts that we don't want to deliver with the pimio installer but that are non-the-less required for advanced pimio operations. If the add-ons are not downloaded then pimio would simply represent these advanced functions as disabled - perhaps greying out any relevant UI controls and providing useful 'disabled' behavior or messages on the MCP interface. There are several motivations for this - in most cases it will be because of file size concerns - model files for LLMs or other large models files. Another type of add-on might be an offline tile set for an offline capability for the standard pimio map view. Besides large files, other motivations are components that we want to have updated over time without having to rev new versions of pimio - the user selecting manual timezone database is a good example of this.
-
-
-
-
-Timezone database
-
-The documentation loosley refers to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loosely reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio.
+The documentation may loosely refer to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loose reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio. The docs might eventually replace the tzdata language to clear up some of the confusion.
 
 Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision! I would hope and expected that most modern media formats do support such a metadata tag but realistically I expect that most do not support this and we will need to shimmy it in somehow.
-
-
 
 
 ### 🏛️ Timezone Management - High-Level Architectural Concepts
@@ -246,8 +232,8 @@ The enhanced design introduces an **OS Profiling Engine** that probes the underl
 Because operating systems do not provide a unified endpoint, this module contains cross-platform, non-blocking probes executed during the fallback initialization phase:
 * **POSIX / Linux Probe:** Executes lightweight file-checks or environment queries. It checks if package manager records are readable or scans `/usr/share/zoneinfo/` for known distro version files.
 * **macOS Probe:** Explicitly reads the localized text stream from `/usr/share/zoneinfo/+VERSION`.
-* **Windows Inference Engine (The Guessing Layer):** Because Windows maps things to its own format, if it cannot find an explicit version string, the application performs an in-memory test. It samples 3–4 historical political change points (e.g., “Did the Cairo offset change in May 2023 on this machine?”). Based on whether the OS applies the rule or not, the engine narrows down the match and tags it (e.g., `"Inferred-IANA-2023c"`).
-* **Fallback Labeling:** If profiling completely fails, it tags the data with `"Platform-OS-Unverified"`.
+* **Windows Inference Engine (The Guessing Layer):** Because Windows maps things to its own format, if it cannot find an explicit version string, the application performs an in-memory test. It samples some number of historical political change points (e.g., “Did the Cairo offset change in May 2023 on this machine?”). Based on whether the OS applies the rule or not, the engine narrows down the match and tags it (e.g., `"Inferred-IANA-2023c"`). Ideally in development and testing we are able to confirm that on any given instance of windows 10/11 the timezone version can be successfully guessed.
+* **Fallback Labeling:** If profiling completely fails, it tags the data with timezone version `"unknown"`.
 
 #### 2. Self-Describing Data Schema (The "Label")
 Your data storage layer is extended so that timestamps are never saved in isolation. Every temporal record contains an immutable **Metadata Context block**:
