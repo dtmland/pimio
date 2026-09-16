@@ -3,7 +3,8 @@
 Status of the increments defined in
 [pimio-v1-implementation.md](pimio-v1-implementation.md). An increment is
 **Complete** only when every deliverable exists and its listed automated
-acceptance evidence runs in CI. Anything else is **In progress** or **Not
+acceptance evidence runs in CI. **In progress** means material deliverables or
+evidence exist but the increment is not finished. Anything else is **Not
 started**.
 
 Update this file in the same change that moves an increment forward.
@@ -30,65 +31,63 @@ Update this file in the same change that moves an increment forward.
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
-| 12 | Resilience, performance, packaging, release candidate | Not started |
+| 12 | Resilience, performance, packaging, release candidate | In progress (packaging partial) |
 
-Increment 8 is complete. CI run
-[`34595938015`](https://github.com/dtmland/pimio/actions/runs/34595938015)
-passed the Linux, Windows, and macOS build-and-test jobs at commit `b699315`.
-The run was then cancelled rather than waiting for the Local Linux container
-job, which is temporarily excluded from CI because its from-scratch build takes
-too long. That manual local-environment validation gap is not Increment 8
-acceptance evidence.
+## Current reality (audit summary)
 
-Implemented:
+Last audited against the tree on this branch (source modules under `src/`,
+CTest names under `tests/`, decisions under `docs/decisions/`, and release
+packaging under `packaging/` + `.github/workflows/release.yml`).
 
-- Explicit in-memory edit staging, Cancel, and LORE-backed Save/checkpoints with
-  author, application-version, and parent provenance.
-- One ExifTool JSON-import process per Save batch writes rating, caption, and
-  tags as embedded XMP in managed JPEG, PNG, and TIFF originals. pimio never
-  writes a metadata sidecar and has no automatic sidecar fallback.
-- Save verifies the committed fingerprint before writing, rereads every result
-  with the production metadata reader, and commits originals and records in one
-  LORE revision. A failed Save resets the checkout from the prior committed
-  revision without another application-level media copy.
-- Versioned crop/rotation recipes, source-preserving preview/export, and
-  explicit source-media/recipe-revision relationships for derivatives.
-- Shared, checksum-pinned ExifTool packaging is wired through CMake for Linux,
-  Windows, and macOS.
+- **0–7.9 and 8 are Complete** for the automated deliverables and CTest
+  evidence named below. Library lifecycle, managed originals, LORE 0.9, Save /
+  embedded metadata, and image recipes are in production code paths, not
+  spikes.
+- **9–11 are Not started.** There is no timestamp-repair, organization,
+  album, video playback/trim, or location-assignment feature module or test
+  suite. Core `GeoLocation` and metadata GPS *read* support exist from earlier
+  increments; Increment 11 still owns assignment/correction UI and any map
+  adapter. `EditOperationKind::Trim` is reserved in the recipe model only.
+- **12 is In progress, not Not started.** Unsigned multi-platform release
+  archives, install layout verification, `pimio-doctor`, and offscreen packaged
+  launch smoke already ship through Release. Still missing for Complete:
+  library-health UI, measured large-library performance gates, finished
+  dependency/legal review sign-off, and the full manual platform checklist.
+- **Implication docs:** [library-model.md](../library-model.md),
+  [library-service-api.md](../library-service-api.md), and decisions
+  0001–0007 generally match the code. Stale spots called out inline or fixed
+  alongside this board: decision 0007's pre-outcome "Increment 8 incomplete"
+  consequence, and the top-level README status blurb that still listed Save /
+  recipes as future work.
+- **Cross-cutting tests not owned by a single older section:**
+  `scan.qt_file_system`, `lore.migration`, and display-bound
+  `studio.empty_library` (Tests B / studio label). Offline build contracts live
+  in `tests/build/` (`python -m unittest discover -s tests/build -v`) and are
+  required by CI/Release before provisioning.
 
-Current evidence:
-
-- `metadata.embedded_write` covers JPEG, PNG, and TIFF embedded write/readback
-  through the production reader and an independent ExifTool invocation,
-  preservation of unrelated camera fields, no-sidecar output, conflicts,
-  unavailable ExifTool, and unsupported formats.
-- `editing.metadata_save` covers staging, cancellation, batched invocation,
-  conflicts, no-space and permission failures, interruption after mutation,
-  concurrent-sidecar races, rollback, retry, and checkpoint provenance.
-- `editing.image_recipes` covers source-preserving preview, crop/rotation
-  export, rejected export, and derivative serialization.
-- `lore.binary_content` covers committing a directly modified managed checkout
-  and reloading it after restart.
-- Build-contract tests cover the shared ExifTool pin, Perl provisioning, and
-  use of the common CMake acquisition path.
-
-[Decision 0007](../decisions/0007-embedded-metadata-writes.md) records the
-dependency evaluation, embedded-write policy, batch strategy, and rejection of
-sidecar writes. Timestamp repair remains Increment 9, and manual GPS assignment
-or correction remains Increment 11; neither is part of Increment 8 completion.
+Increment 8 CI evidence previously recorded: run
+[`34595938015`](https://github.com/dtmland/pimio/actions/runs/34595938015) at
+commit `b699315` passed the Linux, Windows, and macOS build-and-test jobs. The
+run was cancelled rather than waiting for the Local Linux container job, which
+is temporarily excluded from CI because its from-scratch build takes too long.
+That manual local-environment gap is not Increment 8 acceptance evidence.
 
 Increments 7.7–7.9, including the 7.8a–7.8c correction gates, were added when
-the plans were reoriented around the
-library-centric LORE design; the gap analysis motivating them is recorded in
+the plans were reoriented around the library-centric LORE design; the gap
+analysis motivating them is recorded in
 [pimio-v1-implementation.md](pimio-v1-implementation.md#reorientation-the-library-centric-direction).
+The reorientation "current state" table in that plan is historical (written
+before 7.7–7.9 landed) and should not be read as today's board.
 
 ## Increment 0 — Project skeleton and observable CI — Complete
 
 - CMake and CMake Presets project on a pinned Qt 6 release, `pimio::core`
   library, `pimio_app` shell, and Qt Test executables.
-- Repository conventions in [../conventions.md](../conventions.md); stubs for
-  [../supported-platforms.md](../supported-platforms.md) and
-  [../dependency-bom.md](../dependency-bom.md).
+- Repository conventions in [../conventions.md](../conventions.md); living
+  baselines in [../supported-platforms.md](../supported-platforms.md) and
+  [../dependency-bom.md](../dependency-bom.md) (still marked provisional /
+  release-gate stubs where legal and platform confirmation remain open for
+  Increment 12).
 - Evidence: `core.version` and `app.smoke` run through CTest on Linux, Windows,
   and macOS.
 
@@ -124,29 +123,31 @@ library-centric LORE design; the gap analysis motivating them is recorded in
 ## Increment 4 — Incremental scan and media identity — Complete
 
 - `pimio::scan::Scanner` backed by `core::FileSystem` and `core::DurableStore`
-  abstractions; no real disk or metadata library required.
+  abstractions; no real disk or metadata library required for unit coverage.
 - `MediaHasher` computes SHA-256 content fingerprints.
 - Incremental reconciliation: new files get fresh `MediaId`s, unchanged files
   are skipped cheaply via size/mtime, moved/renamed files retain their existing
-  `MediaId`, deleted files are removed from the store, duplicates receive
-  independent ids.
+  `MediaId`, deleted import sources do not remove committed managed items,
+  duplicates receive independent ids.
 - Symbolic-link policy (skip by default, optional follow), per-file permission
   and disappearing-file handling as non-fatal warnings, cancellation with
   staged-change discard.
-- `DurableStore::remove()` added to the core interface; implemented in
+- `DurableStore::remove()` on the core interface; implemented in
   `MemoryDurableStore` (via staged removals) and `LoreDurableStore` (via
   staging-area tombstones).
+- Production filesystem adapter: `pimio::scan::QtFileSystem`.
 - Evidence: `scan.incremental` — covers add, unchanged, update, delete, rename,
   move, duplicate, symlink policy, permission failure, disappearing file,
   restart idempotency, unavailable root, cancellation, metadata reader
-  integration, and large-tree benchmark (1000 files).
+  integration, batched commits, and large-tree benchmark (1000 files).
+  `scan.qt_file_system` covers the Qt-backed filesystem adapter.
 
 ## Increment 5 — Metadata read, query, and search — Complete
 
 - `pimio::metadata::BuiltinMetadataReader` implements `core::MetadataReader`
   with parsers written for this project: JPEG/TIFF EXIF, PNG headers, XMP
-  packets, and ISO base media boxes. No metadata library is linked; the choice
-  and what would reverse it are recorded in
+  packets, and ISO base media boxes. No metadata library is linked on the read
+  path; the choice and what would reverse it are recorded in
   [../decisions/0002-metadata-adapter.md](../decisions/0002-metadata-adapter.md).
 - Precedence is explicit — UserEdit > Sidecar > Embedded > FileSystem — and
   every disagreement between a sidecar and the embedded block is kept as a
@@ -168,9 +169,7 @@ library-centric LORE design; the gap analysis motivating them is recorded in
   `projection.metadata` (ordering, pagination, filters, Unicode and
   operator-character search, conflicts, and missing timestamps).
 
-## Increment 6 — Thumbnails, Models, and Basic Browser
-
-**Status: Complete**
+## Increment 6 — Thumbnails, Models, and Basic Browser — Complete
 
 ### Deliverables
 
@@ -189,8 +188,9 @@ library-centric LORE design; the gap analysis motivating them is recorded in
   configurable prefetch margin; `ThumbnailStatus` role per row.
 - Basic GridView QML UI in `src/app/qml/Main.qml`: toolbar, tile delegates
   with placeholder/thumbnail/video-badge states, empty-library splash.
-- `pimio::app::LibrarySession` — `--library` startup wiring for the durable
-  store, projection, scanner, thumbnail service, browser model, and watchers.
+- `pimio::app::LibrarySession` — composition root for the durable store,
+  projection, scanner, thumbnail service, browser model, watchers, library
+  lifecycle, and edit/save surface exposed to QML.
 - `pimio::browser::ThumbnailImageProvider` — serves completed model thumbnails
   to QML through `image://thumbnail/<mediaId>`.
 - Selectable progressive detail view: the grid first has a thumbnail source
@@ -198,33 +198,37 @@ library-centric LORE design; the gap analysis motivating them is recorded in
   display; Escape and the Close button return to the grid.
 - `docs/plan/manual-testing.md` — manual test plan for cases that require a
   real display server or hardware.
+- Display-bound studio coverage: `studio.empty_library` (labeled `studio`)
+  drives the real window for empty-library first-run checks outside headless
+  CI.
 
 ### Automated evidence
 
-- `thumbnail.cache` (11 subtests) — round-trip, corrupt-entry detection,
-  fingerprint invalidation, LRU trim by mtime, `totalSize`.
-- `thumbnail.service` (7 subtests) — cache hit/miss, delivery, completed-request
+- `thumbnail.cache` (12 slots) — round-trip, missing keys, corrupt-entry
+  detection, fingerprint invalidation, LRU trim by mtime, `totalSize`.
+- `thumbnail.service` (7 slots) — cache hit/miss, delivery, completed-request
   cleanup, cancellation, `cancelAllExcept`, error delivery, priority ordering.
-- `thumbnail.video` (7 subtests) — real-frame decoding, requested position,
-  unsupported/error behavior, and image/video composite dispatch.
-- `browser.model` (18 subtests including `QAbstractItemModelTester`) — row
-  count, roles (MediaId, absolutePath, captureTimeString, MediaKind,
-  ThumbnailStatus), detail-view lookup, visible-range request/cancel lifecycle,
-  result/error callbacks, reload.
-- `browser.thumbnail_image_provider` (5 subtests) — lookup, scaling, clearing,
-  unknown IDs, and normalized IDs.
-- `app.smoke` — creates the grid and detail view, scrolls a 100-row synthetic
-  model, verifies the visible range changes, and opens a selected item.
+- `thumbnail.video` (10 slots) — real-frame decoding, requested position,
+  modern image formats including tiled HEIC, unsupported/error behavior, and
+  image/video composite dispatch.
+- `browser.model` (29 slots including `QAbstractItemModelTester`) — row count,
+  roles (MediaId, absolutePath, managed original resolution, captureTimeString,
+  MediaKind, ThumbnailStatus), detail-view lookup, visible-range
+  request/cancel lifecycle, result/error callbacks, reload, sorting, thumbnail
+  tiers, and retention behavior added in later increments.
+- `browser.thumbnail_image_provider` (7 slots) — lookup, scaling, clearing,
+  unknown IDs, normalized IDs, removal, and capacity.
+- `app.smoke` — creates the grid and detail view, scrolls a synthetic model,
+  verifies the visible range changes, and opens a selected item.
 
 ### Manual testing
 
 See `docs/plan/manual-testing.md` for Increment 6 manual coverage. The shipped
-app accepts repeatable `--library <path>` options, so the thumbnail and browser
-checks are now runnable against real library roots.
+app accepts repeatable `--library <path>` import roots and Library Manager
+lifecycle operations, so thumbnail and browser checks are runnable against real
+libraries.
 
-## Increment 7 — Watching and Reconciliation
-
-**Status: Complete**
+## Increment 7 — Watching and Reconciliation — Complete
 
 ### Deliverables
 
@@ -239,17 +243,15 @@ checks are now runnable against real library roots.
 
 ### Automated evidence
 
-- `watch.contract` (13 subtests) — create, burst, duplicate, reordered rename,
+- `watch.contract` (13 slots) — create, burst, duplicate, reordered rename,
   unpaired rename, overflow, dropped-event fallback, and debounce behavior.
-- `watch.native` (7 subtests) — native create, modify, remove, rename, recursive
+- `watch.native` (7 slots) — native create, modify, remove, rename, recursive
   subdirectory, start failure, and stop behavior on each platform.
-- `watch.reconciliation` (5 subtests) — incremental and dropped-event paths
+- `watch.reconciliation` (5 slots) — incremental and dropped-event paths
   converge to the same durable store and projection as a clean scan, and
   startup overflow is preserved.
 
 ## Increment 7.5 — Browsing Controls and Settings — Complete
-
-**Status: Complete**
 
 ### Deliverables
 
@@ -270,11 +272,11 @@ checks are now runnable against real library roots.
 
 ### Automated evidence
 
-- `settings.store` (16 subtests) — defaults, clamping, persistence across
-  instances, corrupt-file tolerance, reset, and that session settings are never
-  written.
-- `projection.sort` (9 subtests) — every sort key in both directions, ties,
-  missing file dates, and files without an extension.
+- `settings.store` (12 slots, including data-driven corrupt-value cases) —
+  defaults, clamping, persistence across instances, corrupt-file tolerance,
+  reset, session settings never written, and `scanBatchSize`.
+- `projection.sort` — every sort key in both directions via data-driven rows,
+  ties, missing file dates, and files without an extension.
 - `browser.model` — re-sorting, unknown sort keys, tier selection from tile
   size, and re-requesting the visible window after a size change.
 - `app.smoke` — arrow and page keys, key-hold acceleration and its off switch,
@@ -314,7 +316,7 @@ tiles the longer the application is scrolled. Rationale in
   claiming rows the provider cannot serve, a row scrolled back into view is
   requested again, `refreshThumbnail()` re-requests, and insertion-only
   `reload()` calls keep loaded thumbnails without a model reset.
-- `browser.thumbnailImageProvider` — capacity, removal, and containment.
+- `browser.thumbnail_image_provider` — capacity, removal, and containment.
 - `scan.incremental` — a batched scan is readable from the store before it
   finishes and reports cumulative counts, an unbatched scan still commits once,
   and a cancelled batched scan keeps what it committed.
@@ -340,8 +342,9 @@ tiles the longer the application is scrolled. Rationale in
   grant-all policy for the implicit user are documented in
   [../library-model.md](../library-model.md).
 - Projection, job, and thumbnail cache paths are keyed by the descriptor's
-  library id. The current path-derived value is retained only to locate the
-  repository until the Increment 7.9 Library Manager replaces that entry point.
+  library id. Known repository locators live in the Library Manager registry;
+  repeated `--library` paths remain import/discovery roots only, never
+  identity.
 
 ### Automated evidence
 
@@ -382,24 +385,26 @@ tiles the longer the application is scrolled. Rationale in
 
 - **7.8a — Complete:** every build context pins checksum-verified LORE 0.9.0.
   The private API uses 0.9 metadata discriminants, a copied 0.8.5 repository
-  proves read and write migration, and the `.pimio-lore-backup` transaction
-  workaround is gone without weakening visible failure handling or the
-  acknowledged-checkpoint contract.
-- **7.8b — Complete, promotion enabled with an accepted alpha risk:** an automated gate
-  proves that a known-remote offline Library can be registered with its existing
-  repository id, pushed, and cloned with its pimio library id, records, current
-  bytes, and revision history intact. A clone obtains prior revision state and
-  metadata lazily through an online history query, after which pimio can read
-  that history offline; this does not cache every historical file payload. The
-  gate detects a mismatched registered id before invoking LORE's unsafe push and
-  proves that atomically editing LORE's documented `remote_url` setting permits
-  a no-remote origin to attach, push, and clone. Interrupted initial push remains
-  a LORE 0.9.0 defect: retry fails after the server creates its branch, and no
-  tested non-destructive recovery produces a complete clone. During alpha this
-  upstream defect is accepted and disclosed in the promotion dialog rather
-  than blocking the user-facing operation.
-  `lore.server_promotion` retains the reproducible topology and expected-failure
-  evidence in standard CI without adding or packaging a preliminary pimio Server.
+  proves read and write migration (`lore.migration`), and the
+  `.pimio-lore-backup` transaction workaround is gone without weakening visible
+  failure handling or the acknowledged-checkpoint contract. Fault coverage
+  remains in `lore.faults`.
+- **7.8b — Complete, promotion enabled with an accepted alpha risk:** an
+  automated gate proves that a known-remote offline Library can be registered
+  with its existing repository id, pushed, and cloned with its pimio library
+  id, records, current bytes, and revision history intact. A clone obtains prior
+  revision state and metadata lazily through an online history query, after
+  which pimio can read that history offline; this does not cache every
+  historical file payload. The gate detects a mismatched registered id before
+  invoking LORE's unsafe push and proves that atomically editing LORE's
+  documented `remote_url` setting permits a no-remote origin to attach, push,
+  and clone. Interrupted initial push remains a LORE 0.9.0 defect: retry fails
+  after the server creates its branch, and no tested non-destructive recovery
+  produces a complete clone. During alpha this upstream defect is accepted and
+  disclosed in the promotion dialog rather than blocking the user-facing
+  operation. `lore.server_promotion` retains the reproducible topology and
+  expected-failure evidence in standard CI without adding or packaging a
+  preliminary pimio Server.
 - **7.8c — Complete:** the production 0.9.0 gate verifies binary integrity,
   restart, deduplication, metadata commits against the binary corpus, and a
   whole-store backup/restore. Removing the rollback copy makes metadata commits
@@ -444,3 +449,106 @@ tiles the longer the application is scrolled. Rationale in
   backs it up, removes the source Library, restores it at a different path,
   and verifies descriptor id, records, history, original bytes, and the rebuilt
   projection.
+
+## Increment 8 — Save, portable metadata, and image recipes — Complete
+
+### Deliverables
+
+- Explicit in-memory edit staging via `editing::MetadataEditService`, with
+  Cancel and LORE-backed Save/checkpoints carrying author, application-version,
+  and parent provenance from Increment 7.7.
+- One ExifTool JSON-import process per Save batch writes rating, caption, and
+  tags as embedded XMP in managed JPEG, PNG, and TIFF originals
+  (`metadata::ExifToolMetadataWriter`). pimio never writes a metadata sidecar
+  and has no automatic sidecar fallback.
+- Save verifies the committed fingerprint before writing, rereads every result
+  with the production metadata reader on the ExifTool path, and commits
+  originals and records in one LORE revision. A failed Save resets the checkout
+  from the prior committed revision without another application-level media
+  copy.
+- Versioned crop/rotation recipes (`core::EditRecipe` /
+  `editing::ImageRecipeRenderer`), source-preserving preview/export, and
+  explicit `DerivativeRelationship` records via `editing::ImageExportService`.
+- `LibrarySession` exposes `stageMetadataEdit`, `stageRotation`, `stageCrop`,
+  `saveEdits`, and `cancelEdits` to QML. Detail view ships Stage / Rotate /
+  Save / Cancel for caption, rating, and tags. Crop is available on the session
+  API and covered by recipe tests; there is not yet a dedicated crop rubber-band
+  control. Export-to-derivative is library-tested, not a separate export dialog.
+- Shared, checksum-pinned ExifTool packaging is wired through
+  `cmake/PimioExifTool.cmake` for Linux, Windows, and macOS.
+- [Decision 0007](../decisions/0007-embedded-metadata-writes.md) records the
+  dependency evaluation (ExifTool chosen; libexiv2 rejected), embedded-write
+  policy, batch strategy, and rejection of sidecar writes.
+
+### Automated evidence
+
+- `metadata.embedded_write` — JPEG, PNG, and TIFF embedded write/readback
+  through the production reader and an independent ExifTool invocation,
+  preservation of unrelated camera fields, no-sidecar output, conflicts,
+  unavailable ExifTool, and unsupported formats.
+- `editing.metadata_save` — staging, cancellation, batched invocation,
+  conflicts, permission and interruption failures (including out-of-space error
+  codes on the writer fake), concurrent-sidecar races, rollback, retry, and
+  checkpoint provenance.
+- `editing.image_recipes` — source-preserving preview, crop/rotation export,
+  rejected export, and derivative serialization.
+- `lore.binary_content` — committing a directly modified managed checkout and
+  reloading it after restart remains covered here as store-level evidence for
+  mutated originals.
+- Build-contract tests cover the shared ExifTool pin, Perl provisioning, and
+  use of the common CMake acquisition path.
+
+Timestamp repair remains Increment 9, and manual GPS assignment or correction
+remains Increment 11; neither is part of Increment 8 completion. Manual
+field-notes entries for Save on a real display are not yet listed in
+`manual-testing.md` (automated acceptance is what gates Complete).
+
+## Increment 9 — Timestamp repair and organization workflows — Not started
+
+No batch timestamp shift, ordered redistribution, drag/drop reordering,
+timezone-suggestion, or related-group workflow code, QML, or tests exist yet.
+Organization still means scan/watch + metadata search/filter from earlier
+increments.
+
+## Increment 10 — Video playback, trim, and scene suggestions — Not started
+
+Video support today is thumbnail/frame extraction and detail-view fallback text
+for non-image kinds. There is no playback adapter, trim recipe application,
+export/stream-copy eligibility reporting, or scene-suggestion path beyond the
+reserved `EditOperationKind::Trim` enum value.
+
+## Increment 11 — Basic location — Not started
+
+`core::GeoLocation` and metadata golden coverage can *read* existing GPS.
+There is no manual assignment/correction UI, undo path for location edits, or
+optional map-provider adapter.
+
+## Increment 12 — Resilience, performance, packaging, RC — In progress
+
+### Already landed (partial)
+
+- Multi-platform **unsigned** release archives via
+  `.github/workflows/release.yml`: `cmake --install` layout, Qt deployment,
+  LORE/ExifTool redistribution, launcher scripts, platform `README.txt`, and
+  `pimio-doctor`.
+- Release job verifies archive layout and runs packaged `pimio-doctor` plus
+  offscreen app launch smoke on Linux, Windows, and macOS.
+- Shared packaging assets live under `packaging/` and are installed by CMake so
+  a local install matches the released tree.
+- Substantial fault, restart, and recovery coverage already exists from earlier
+  increments (`lore.faults`, watch reconciliation, job recovery, Save rollback).
+  That evidence is necessary but not sufficient for Increment 12 Complete.
+
+### Still required for Complete
+
+- Library-health UI for roots, watchers, jobs, conflicts, disk space, and cache.
+- Resource limits and measured large-library responsiveness with published
+  results (manual MT-6.5 style baselines promoted to release gates only after
+  they stabilize).
+- Completed dependency/legal review against
+  [../dependency-bom.md](../dependency-bom.md) (including HEVC patent and
+  redistributed notice obligations). Platform policy confirmation in
+  [../supported-platforms.md](../supported-platforms.md).
+- Full manual platform checklist sign-off; signing and notarization remain
+  separate controlled release operations outside this increment's unsigned
+  artifact deliverable.
