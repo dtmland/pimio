@@ -21,11 +21,13 @@ one portable repository with stable identity, history, and managed originals.
 ## Status
 
 pimio is under active development toward a 1.0.0 standalone desktop release.
-Architecture and library lifecycle foundations through increment **7.9** are in
-place (durable store, scan/watch, metadata, browser, library manager, backup
-and restore, offline-to-server promotion feasibility). Product workflows still
-ahead include non-destructive save/recipes, timestamp repair, richer video
-tools, location, and release-candidate hardening. See
+Architecture, library lifecycle, and non-destructive Save/image-recipe work
+through increment **8** are in place (durable store, scan/watch, metadata,
+browser, library manager, backup/restore, offline-to-server promotion
+feasibility, embedded metadata writes, and crop/rotation recipes). Product
+workflows still ahead include timestamp repair, richer video tools, location,
+and release-candidate hardening. Unsigned multi-platform release packaging is
+already partial progress on increment 12. See
 [docs/plan/progress.md](docs/plan/progress.md).
 
 Pre-release binary archives are published from version tags. Expect alpha rough

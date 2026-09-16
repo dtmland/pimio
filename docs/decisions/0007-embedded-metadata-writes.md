@@ -49,15 +49,15 @@ independent of sidecars and remain useful.
 
 ## Consequences
 
-- Increment 8 remains incomplete until embedded writes and their acceptance
-  evidence are implemented.
+- Increment 8 is complete with embedded writes and their acceptance evidence
+  (see the outcome section below and [../plan/progress.md](../plan/progress.md)).
 - Managed-original mutation requires stronger safeguards than a sidecar-only
   design: unrelated metadata must survive, failures must preserve the prior
   bytes, concurrent changes must be reported, and successful writes must be
   verified.
-- libexiv2 is a serious candidate rather than an assumed choice. Its
-  GPL-2.0-or-later licensing and linking strategy require explicit review before
-  distribution, and any dependency must be provisioned consistently in CI,
+- libexiv2 was evaluated and rejected for the write path (GPL-2.0-or-later
+  linking risk and missing PNG EXIF write support). Any future write-adapter
+  change still requires explicit license review and provisioning in CI,
   Release, Local Linux, and Local Windows.
 
 ## Increment 8 outcome
