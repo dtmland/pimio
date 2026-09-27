@@ -57,7 +57,7 @@ Initially I had thought that by default all objects should immediately be commit
 
 ### The Pimio Replay & Ingestion Pipeline
 
-TODO: This section does yet include the fact that this "replay & ingestion" process only applies specifically to importing media into a Pimio library. It is not irrelevant for 'Browser' mode. The section wording and explanation needs to be updated to account for this.
+TODO: This section does yet include the fact that this "replay & ingestion" process only applies specifically to importing media into a Pimio library. It is not as relevant for 'Browser' mode. The section wording and explanation needs to be updated to account for this.
 
 One core challenge of **Pimio** library import process is detecting the presence of and translating the 'multi-copy', 'sidecar-dependent' legacy Picasa 'Pseudo Version Control' layouts into a clean, **linear Git-like history** via embedded **Lore version control**.
 
