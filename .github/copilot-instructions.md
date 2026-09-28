@@ -5,6 +5,12 @@
 - Do not make claims without actually reading file contents - do not only look at file names and sizes, and do not speculate.
 - Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justification.
 
+## Implementation progress and planning
+
+- Check the current implementation status in `docs/plan/progress.md` before starting work so the session knows which numbered increment or phase is active, what is complete, and what remains in progress.
+- Follow the numbered stages in `docs/plan/pimio-v1-implementation.md` for the active increment; do not skip prerequisites or assume the plan is informal.
+- When a change advances an increment or changes the implementation status, update `docs/plan/progress.md` in the same patch so the progress board remains an accurate source of truth.
+
 ## Crash-resistant progress
 
 - For implementation tasks, commit and push the current branch with
