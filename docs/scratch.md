@@ -170,67 +170,14 @@ While we will explore more of this later, one of the primary motivations behind 
 
 ## Timezones
 
-The documentation may loosely refer to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loose reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio. The docs might eventually replace the tzdata language to clear up some of the confusion.
+The documentation may loosely refer to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loose reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio. We should eventually replace the tzdata language to clear up some of the confusion.
 
-Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision! I would hope and expected that most modern media formats do support such a metadata tag but realistically I expect that most do not support this and we will need to shimmy it in somehow.
-
-
-### 🏛️ Timezone Management - High-Level Architectural Concepts
-
-The system operates on a dual-strategy paradigm, encapsulating data location, parsing mechanics, and lifetime management into a unified layer. It uses a single, robust runtime engine based on the open-source industry standard (Howard Hinnant's timezone design) to handle both execution tracks, ensuring absolute behavioural consistency.
-
-### 🏛️ Timezone Management - System Architecture Overview
-
-The enhanced design introduces an **OS Profiling Engine** that probes the underlying platform to fingerprint its active zone database version, and an **Attributed Storage Format** that couples every saved timezone boundary with its database version context.
-
-
-### ⚙️ Timezone Management - Component Breakdown
-
-#### 1. Configuration & Strategy Selection
-At startup, the application queries its configuration store (e.g., an environment variable, a command-line flag, or a configuration file).
-* **Default Mode (OS-Reliant):** The engine initializes using environment defaults, automatically binding its lookup operations to the local machine's system filesystem paths or registry entries.
-* **Overridden Mode (Custom Artifact):** The application suppresses standard OS paths and registers a dedicated target directory managed on the user’s file system.
-
-#### 2. The Artifact Ingestion Pipeline (Post-Build Update)
-When a user chooses to bypass the OS, they supply an external artifact post-compilation. The runtime manages this via the following steps:
-* **The Target Artifact:** The application expects raw, textual geographic zone source definitions released by IANA (such as `northamerica`, `europe`, `backward`, `etcetera`).
-* **Ingestion Method:** The user drops a compressed archive (`.tar.gz`) or points the application to an unzipped directory containing these raw files. If the application has network access, it can optionally contact IANA mirrors directly to fetch this payload.
-* **Extraction & Structure Validation:** An abstraction layer ensures the folder contains vital structural files like the `backward` file (essential for legacy aliases) and core regional rulesets before processing.
-
-#### 3. Dynamic Parser & Runtime Hot-Swapping
-The core engine features a text-file compiler that executes entirely in memory after the application is built.
-* **Decoupled Relocation:** When switched to Custom Mode, the subsystem explicitly redirects its search pointers to the custom extraction directory.
-* **In-Memory Thread-Safe Swapping:** The compilation engine sweeps the textual files, builds an internal network of rule structures, offsets, and transition boundaries, and triggers a data-swap operation.
-* **Instant Propagation:** Any subsequent timezone lookup anywhere else in the application immediately resolves against the newly constructed ruleset without restarting the application or dropping active network connections.
-
-### 🔄 Timezone Management - Concrete Runtime Lifecycles
-
-#### The Application Startup Sequence
-1. The program starts and loads configuration preferences.
-2. If **Strategy A (OS)** is set, the timezone runtime queries standard platform paths. If found, it populates the active lookup database.
-3. If **Strategy B (Custom)** is set, the runtime overrides default parameters, verifies the existence of the custom source files, and processes the raw text assets directly into memory.
-4. The global system locks the validated database state, signaling to all application modules that date-time conversions are safe to execute.
-
-#### The On-the-Fly Update Sequence
-1. While the system is actively running, a user triggers an "Update Time Zone Database" instruction and references a newly downloaded `tzdata` tarball.
-2. A separate worker thread handles extraction to safeguard performance.
-3. The validation subsystem checks the integrity of the raw text schemas.
-4. The engine invokes an explicit database reload command, re-parsing the new file parameters.
-5. The global application state pointer atomic-swaps to point to the freshly updated timezone data structures. Legacy queries finish executing under old rules, while all subsequent operations immediately bind to the new layout.
-
-
-### 🎯 Timezone Management - Key Engineering Benefits of this Architecture
-
-* **Identical Functional Types:** Because the underlying codebase leverages a single architecture to interpret both OS databases and raw IANA archives, application logic remains standard. Developers do not need to write split logic for Windows vs. Linux vs. Custom.
-* **Zero System Dependencies in Isolation:** When running in Custom Mode, the application can survive on minimalist, air-gapped embedded platforms that lack a built-in operating system timezone system entirely.
-* **Complete Upstream Transparency:** Users do not need to wait for a developer to recompile the application or issue a software patch when a global boundary shifts. They possess total autonomy to source raw data artifacts straight from the authoritative standard provider (IANA) and deploy them to the running program instantly.
-
+Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision?
 
 
 ### 🏛️ Timezone Version Metdata - System Architecture Overview
 
 The enhanced design introduces an **OS Profiling Engine** that probes the underlying platform to fingerprint its active zone database version, and an **Attributed Storage Format** that couples every saved timezone boundary with its database version context.
-
 
 ### ⚙️ Timezone Version Metdata - Component Breakdown
 
@@ -252,8 +199,6 @@ When the user flags the application to switch from Strategy A (OS) to Strategy B
 * **Scan Phase:** The application scans the database index for records matching older provenance strings (e.g., `IANA-2022g`).
 * **Simulation Phase:** For each unique time zone found in those old records, the engine calculates the underlying UTC epoch using both the old labeled version and the fresh `2026b` custom database.
 * **Diff Generation:** If the UTC epochs match, the data is safe. If they drift (e.g., a 60-minute discrepancy due to a canceled DST law), the record is marked as `"Context-Drifted"`.
-
-
 
 ### 🔄 Timezone Version Metdata - Example User Repair Interaction Lifecycle
 
