@@ -135,6 +135,24 @@ Pimio should feature an add-ons manager. This can support both pimio delivered a
 
 Whether supporterd by opencv or other modern model weights: pimio should have the ability to detect the date on old film based photos that had the little red date superimposed onto the bottom corner of the photo.
 
+## Designing for future Pimio Server
+
+While the desktop installations of pimio should have full functionality on their own - it seems that perhaps a pimio server can supplement and add capability that is not possible with a single desktop instance. While the pimio server is out of scope for v1, the v1 desktop pimio should design for the future to accommodate features that will come in the future pimio server.
+
+### Lore Server
+
+One of the first ideas that came to mind was for pimio to run a lore server - and while the client already will have the ability to talk to a lore server to allow multi-user collaboration - it seems that in addition to that function a pimio server could go above and beyond. The pimio server could not only run a lore server, but also provide additional collaboration interfaces that each pimio client takes advantage of on top of the standard simple collaboration provided by a lone lore server.
+
+### Timezone Finder Database
+
+The pimio server can provide lookups for timezones using lat/long for each client - in this fashion each client does not need to download its own offline copy of the timezone lookup database.
+
+### Large Tile Server Databases for high reslution offline browsing
+
+While the desktop installation allows several online options to the user for map view including an offline option that can download a moderately sized open source or public domain tile set - the pimio server offers the ability to download a large sized open source or public domain tile set. In fact, in such an offline scenario where a pimio server is run each of the clients would then have the option to stream their tiles/data from the pimio server as they browse. In this fashion each clients also avoids the need to download/manage their own copy of the offline moderate size tile set.
+
+
+
 
 ## GUI Layout and Function
 
