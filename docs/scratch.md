@@ -11,12 +11,9 @@ Pimio should have an MCP server with functions such as those below. This idea an
 - restore_version(id, version)
 - search_media
 
+
 ## MODES
 Pimio should support two different types of modes: Browser, Library
-
-## Embracing Picasa Patterns
-
-The implementation of the picasa ini file support should be implemented in two parts. First, a simple set of operations like rotate and resize should be supported. Later when other features are added to Pimio in a later implementation phase such as color corrections etc - then pimio would add corresponding support for any of those operations as the picasa.ini file defines - and in the short term it doesn’t mind that they show up in an existing ini for example it just wouldn’t be able to do anything with them.
 
 ## Browser Mode
 
@@ -57,7 +54,12 @@ Initially I had thought that by default all objects should immediately be commit
 
 
 
+## Embracing Picasa Patterns
 
+The implementation of the picasa ini file support should be implemented in two parts. First, a simple set of operations like rotate and resize should be supported. Later when other features are added to Pimio in a later implementation phase such as color corrections etc - then pimio would add corresponding support for any of those operations as the picasa.ini file defines - and in the short term it doesn’t mind that they show up in an existing ini for example it just wouldn’t be able to do anything with them.
+
+https://github.com/dtmland/pimio/blob/main/docs/plan/picasa.md#64-picasa-non-destructive-editing
+https://github.com/dtmland/pimio/blob/main/docs/plan/picasa.md#65-picasa-ini-file-format
 
 ### The Pimio Replay & Ingestion Pipeline
 
