@@ -1,3 +1,53 @@
+
+## Timezones
+
+The pimio documentation may loosely refer to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loose reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio. We should eventually replace the tzdata language to clear up some of the confusion.
+
+Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision?
+
+
+### 🏛️ Timezone Version Metdata - System Architecture Overview
+
+The enhanced design introduces an **OS Profiling Engine** that probes the underlying platform to fingerprint its active zone database version, and an **Attributed Storage Format** that couples every saved timezone boundary with its database version context.
+
+### ⚙️ Timezone Version Metdata - Component Breakdown
+
+#### 1. The OS Profiling & Version Extraction Engine
+Because operating systems do not provide a unified endpoint, this module contains cross-platform, non-blocking probes executed during the fallback initialization phase:
+* **POSIX / Linux Probe:** Executes lightweight file-checks or environment queries. It checks if package manager records are readable or scans `/usr/share/zoneinfo/` for known distro version files.
+* **macOS Probe:** Explicitly reads the localized text stream from `/usr/share/zoneinfo/+VERSION`.
+* **Windows Inference Engine (The Guessing Layer):** Because Windows maps things to its own format, if it cannot find an explicit version string, the application performs an in-memory test. It samples some number of historical political change points (e.g., “Did the Cairo offset change in May 2023 on this machine?”). Based on whether the OS applies the rule or not, the engine narrows down the match and tags it (e.g., `"Inferred-IANA-2023c"`). Ideally in development and testing we are able to confirm that on any given instance of windows 10/11 the timezone version can be successfully guessed.
+* **Fallback Labeling:** If profiling completely fails, it tags the data with timezone version `"unknown"`.
+
+#### 2. Self-Describing Data Schema (The "Label")
+Your data storage layer is extended so that timestamps are never saved in isolation. Every temporal record contains an immutable **Metadata Context block**:
+* **Timestamp:** The localized clock face value.
+* **Zone Identifier:** The string name (e.g., `America/New_York`).
+* **Database Provenance String:** The version discovered by the OS Profiling Engine at the exact moment the data was captured or last modified (e.g., `IANA-2022g`).
+
+#### 3. The Reconciliation & Data Repair Module
+When the user flags the application to switch from Strategy A (OS) to Strategy B (Custom Target: `2026b`), the application boots the custom database via Howard Hinnant's library. Instead of blindly applying the new database to old data, it triggers a **Time Zone Drift Analysis**:
+* **Scan Phase:** The application scans the database index for records matching older provenance strings (e.g., `IANA-2022g`).
+* **Simulation Phase:** For each unique time zone found in those old records, the engine calculates the underlying UTC epoch using both the old labeled version and the fresh `2026b` custom database.
+* **Diff Generation:** If the UTC epochs match, the data is safe. If they drift (e.g., a 60-minute discrepancy due to a canceled DST law), the record is marked as `"Context-Drifted"`.
+
+### 🔄 Timezone Version Metdata - Example User Repair Interaction Lifecycle
+
+#### Step 1: Ingestion & Comparison View
+When the user points the application to a downloaded IANA artifact, the UI displays a comparative report:
+> **Active Environment Shift Detected:**
+> * Current System Baseline: `IANA-2022g` (via Host OS Profiler)
+> * Proposed Target Version: `IANA-2026b` (via Provided Custom Tarball)
+> * Status: *Your OS database is 4 years out of date. 1,240 existing records are affected by historical rule variations.*
+
+#### Step 2: Granular Resolution Wizard
+The module presents the drifted rows to the user with two distinct programmatic options for rectification:
+* **Option A (Preserve Wall-Clock Intent):** *"Keep the local time showing exactly 14:00:00, but recalculate the underlying UTC epoch to match the modern global laws specified in 2026b."*
+* **Option B (Preserve Real-Moment UTC Intent):** *"The underlying physical moment was logged correctly despite the old OS label. Keep the absolute UTC timestamp intact, but change the local clock face string to reflect the corrected offset rules."*
+
+#### Step 3: Metadata Sealing
+Once the user selects a resolution path, the application processes the data blocks, updates the calculations, and swaps the Database Provenance metadata tag from `IANA-2022g` to `IANA-2026b`. The dataset is now completely healed, aligned, and marked with a clean audit trail.
+
 ---
 
 # The Provenance Paradox: Why Accurate Metadata Requires Pairing the IANA Version with Explicit Offsets
