@@ -1,10 +1,24 @@
 
 ## Timezones
 
-The pimio documentation may loosely refer to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loose reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio. We should eventually replace the tzdata language to clear up some of the confusion.
+> [!WARNING]
+> The pimio documentation may loosely refer to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loose reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio. We should eventually replace the tzdata language to clear up some of the confusion.
 
-Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision?
+Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision? Should 'timezone offsets + IANA version' be stored in each image metadata? Or should the IANA version
+only be stored at the library level?
 
+Should lookups timezone using location be achieved using some kind of rest server that pimio runs under the hood? I ask this because it appears many of the options in the tzf project want to run in some kind of web server. I also ask this because I was thinking a cool future feature could be that pimio can be pointed to a future hypotheical pimio server in order to perform its lookups. The idea there is that each desktop instance that is pointing to the pimio server would not have to download/manage its own tz databases copy and only the pimio server would have to do that. The pimio server could have other functions this would just be one of them.
+
+Heirarchy for timezone lookups
+1) If online, google time zone API? Requires some kind of API key? Other online services, they just as painful api key wise?
+2) Offline options?
+	Can use this rust library in c++? https://github.com/ringsaturn/tzf-rs
+	Use this instead? Not as good as tzf? https://github.com/BertoldVdb/ZoneDetect
+	Is Howard Hinnant's library relevant if already using options from above?
+	Download components with Add-Ons Manager? 
+		Sounds like if we use tzf then we are never getting IANA ourselves directly? Only indirectly via tzf-dist?
+			IANA database?
+			tzf-dist? https://github.com/ringsaturn/tzf-dist
 
 ### 🏛️ Timezone Version Metdata - System Architecture Overview
 
