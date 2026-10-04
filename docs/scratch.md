@@ -14,6 +14,10 @@ Pimio should have an MCP server with functions such as those below. This idea an
 ## MODES
 Pimio should support two different types of modes: Browser, Library
 
+## Embracing Picasa Patterns
+
+The implementation of the picasa ini file support should be implemented in two parts. First, a simple set of operations like rotate and resize should be supported. Later when other features are added to Pimio in a later implementation phase such as color corrections etc - then pimio would add corresponding support for any of those operations as the picasa.ini file defines - and in the short term it doesn’t mind that they show up in an existing ini for example it just wouldn’t be able to do anything with them.
+
 ## Browser Mode
 
 This is the standard operating mode of pimio. By default upon first-time launch (with no specicial invocation) pimio might open to the users home directory 'Pictures' folder. In browser mode pimio behaves much more like picasa did. It displays a folder hierarchy in a side bar and allows user to navigate files and directories to view images/videos from the directories in the tile view similar to how picasa did. 
@@ -134,6 +138,16 @@ Pimio should feature an add-ons manager. This can support both pimio delivered a
 ## Detection and Processing features
 
 Whether supporterd by opencv or other modern model weights: pimio should have the ability to detect the date on old film based photos that had the little red date superimposed onto the bottom corner of the photo.
+
+### Groups of Interest (GOI)
+
+Need to develop a concept of and I quote “group of interest” - in other words, a set of media the is identified using some unique pattern that they have in common or that they share in some form or another that could cue Pimio into knowing how they might be related in some way, if that way is not yet determined.
+
+For example, if you have a set of images that were created from a flatbed scanner, using Old traditional print photos, the group of files that you end up with would have time stamps, likely from the day they and time that they were scanned and not the day and time which the photos themselves were, the prints were originally captured nevertheless, if we inspect the timestamps of the photos that are created, for example let’s say we have a folder of 100 images or photos that fall under this category 15 of the photos have timestamps that are much closer, and maybe an indication that that set was scanned in a single session by the person scanning them, which could be a clue to indicate the photos are related chronologically in some fashion granted this in no way guarantees that, but it could be an indication of that so if we look at the other 75 or I guess 85 photos in the set and we look for similar patterns or maybe 50 of them were scanned an hour later on the scanner then those might be their own group of interest because of this pattern that was used to recognize that set of 50 and the original set of 15 each would be its own unique group of interest
+
+Another example again, referring to photos that may have been originally film, print photos, but scanned with a flathead scanner, and all the photos in this set, have the watermark date in the lower right hand corner of the photo that ideally does indicate when the photo was actually taken as long as the person using the camera had set the clock correctly on the camera, of course nevertheless, let’s just assume that in this set of scanned photos that they all have a date the dates are close to each other. Let’s say some of them appear to be in a single day and another set appears to be in another day so you would have two separate groups of interest. It isn’t clear what time during the day the photos were taken just the date is present from the watermark, so each set would be identified as a group of interest to allow the users of the Pio application to more easily identify and chronologically sort any given set of photos.
+
+Photographic artifacts or specific metadata signatures that can determine whether: The image is “analog” (scanned from negative or print photograph - so no meaningful timestamps) or “digital” (older digital point-and-shoot camera with erroneous timestamps)The image is a “digital” capture of an “analog” photo (using a cell phone to snap a shot of a print photograph)
 
 ## Designing for future Pimio Server
 
