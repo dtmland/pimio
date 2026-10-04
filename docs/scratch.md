@@ -149,6 +149,18 @@ Another example again, referring to photos that may have been originally film, p
 
 Photographic artifacts or specific metadata signatures that can determine whether: The image is “analog” (scanned from negative or print photograph - so no meaningful timestamps) or “digital” (older digital point-and-shoot camera with erroneous timestamps)The image is a “digital” capture of an “analog” photo (using a cell phone to snap a shot of a print photograph)
 
+## GUI Layout and Function
+
+### Custom Sorting
+
+While the view already supports support viewing by name, date, type etc - there will also be a custom sorting mode where the sorting is user defined - user defined in the sense that the user would be able to grab a photo and drag it around in the tile array to change where it's place in the order of tiles (or photos) is. This feaure was available in picasa and while it did not refer to it like we are here as 'custom sorting mode' the idea was the same nevertheless. The user should even be able to select a group of photos and drag the entire group as a unit to change the place of ordering where the engire group fits. Picasa had this nice animation that would not only show the thumbnail tile (a translucent version of the tile actually!) that the user was dragging around but also the tiles near the area where the cursor was moving around the tile view would cause adjacent tiles to slightly shift away as if they were 'making room' for the new tile to fit in that location sort of anticpating if the user might drop the photo in the location. Not sure where picasa saved this custom ordering but again it never referred to it that it way maintined this user customized state if after picasa restarts. In picasa's case even after customizing the order to the tiles in this fashion the 'View->Folder View->Sory By' select did not change it would just stay at whatever the user had last selected. For pimio I am thinking that the user should explicitly enter a 'custom sort mode' using that the dropdown or whatever gui is used to control the sort type mode. At that point the user could then just click and drag a tile or a select a group of tiles and then grab and drag those around.
+
+It might be that in pimio with QT we are not able to achieve quite the exact same behavior as picasa did in this sense, but I would like to create a solution that follows the spirit of the original implementation. In other words, the user does need to be able to drag images around to customize the ordering and while they are doing this they need feedback in the graphical view itself about where exactly the image(s) will end up if dropped in the tile view at any given location. 
+
+While we will explore more of this later, one of the primary motivations behind this 'custom sorting view' is that the user will need to sort images that have no existing meaningful sorting applied to them - they were images scanned from negatives or a flatbed scanner and they have no timestamps or filenames that are representative of the images in any way. For this reason the user will need to manually arrange the order of the tiles to properly represent the chronological order and then the user will use some timestamp technique that we will also later discuss to then 'psuedo save' the custom ordering in the sense that the images are now timestamped and can then be sorted normally using the by date ordering mechanism.
+
+
+
 ## Designing for future Pimio Server
 
 While the desktop installations of pimio should have full functionality on their own - it seems that perhaps a pimio server can supplement and add capability that is not possible with a single desktop instance. While the pimio server is out of scope for v1, the v1 desktop pimio should design for the future to accommodate features that will come in the future pimio server.
@@ -166,68 +178,4 @@ The pimio server can provide lookups for timezones using lat/long for each clien
 While the desktop installation allows several online options to the user for map view including an offline option that can download a moderately sized open source or public domain tile set - the pimio server offers the ability to download a large sized open source or public domain tile set. In fact, in such an offline scenario where a pimio server is run each of the clients would then have the option to stream their tiles/data from the pimio server as they browse. In this fashion each clients also avoids the need to download/manage their own copy of the offline moderate size tile set.
 
 
-
-
-## GUI Layout and Function
-
-
-### Custom Sorting
-
-While the view already supports support viewing by name, date, type etc - there will also be a custom sorting mode where the sorting is user defined - user defined in the sense that the user would be able to grab a photo and drag it around in the tile array to change where it's place in the order of tiles (or photos) is. This feaure was available in picasa and while it did not refer to it like we are here as 'custom sorting mode' the idea was the same nevertheless. The user should even be able to select a group of photos and drag the entire group as a unit to change the place of ordering where the engire group fits. Picasa had this nice animation that would not only show the thumbnail tile (a translucent version of the tile actually!) that the user was dragging around but also the tiles near the area where the cursor was moving around the tile view would cause adjacent tiles to slightly shift away as if they were 'making room' for the new tile to fit in that location sort of anticpating if the user might drop the photo in the location. Not sure where picasa saved this custom ordering but again it never referred to it that it way maintined this user customized state if after picasa restarts. In picasa's case even after customizing the order to the tiles in this fashion the 'View->Folder View->Sory By' select did not change it would just stay at whatever the user had last selected. For pimio I am thinking that the user should explicitly enter a 'custom sort mode' using that the dropdown or whatever gui is used to control the sort type mode. At that point the user could then just click and drag a tile or a select a group of tiles and then grab and drag those around.
-
-It might be that in pimio with QT we are not able to achieve quite the exact same behavior as picasa did in this sense, but I would like to create a solution that follows the spirit of the original implementation. In other words, the user does need to be able to drag images around to customize the ordering and while they are doing this they need feedback in the graphical view itself about where exactly the image(s) will end up if dropped in the tile view at any given location. 
-
-While we will explore more of this later, one of the primary motivations behind this 'custom sorting view' is that the user will need to sort images that have no existing meaningful sorting applied to them - they were images scanned from negatives or a flatbed scanner and they have no timestamps or filenames that are representative of the images in any way. For this reason the user will need to manually arrange the order of the tiles to properly represent the chronological order and then the user will use some timestamp technique that we will also later discuss to then 'psuedo save' the custom ordering in the sense that the images are now timestamped and can then be sorted normally using the by date ordering mechanism.
-
-
-
-
-## Timezones
-
-The documentation may loosely refer to TZDATA which I believe is python specific thing for timezone database. Since we not using python in this project it likely doesn't make sense to use a python library or object for the timezone purposes. Therefore, this loose reference to TZDATA is really just referring to the general idea of whatever component should actually be used in pimio. We should eventually replace the tzdata language to clear up some of the confusion.
-
-Pimion should make special effort to ensure media in a pimio library is tagged comprehensively enough to guarantee proper media organization in the library. Obviously one of the crucial pieces of information in this regard is timezones - and not only the timezone itself but the revision of the timezone! The specific IANA revision?
-
-
-### 🏛️ Timezone Version Metdata - System Architecture Overview
-
-The enhanced design introduces an **OS Profiling Engine** that probes the underlying platform to fingerprint its active zone database version, and an **Attributed Storage Format** that couples every saved timezone boundary with its database version context.
-
-### ⚙️ Timezone Version Metdata - Component Breakdown
-
-#### 1. The OS Profiling & Version Extraction Engine
-Because operating systems do not provide a unified endpoint, this module contains cross-platform, non-blocking probes executed during the fallback initialization phase:
-* **POSIX / Linux Probe:** Executes lightweight file-checks or environment queries. It checks if package manager records are readable or scans `/usr/share/zoneinfo/` for known distro version files.
-* **macOS Probe:** Explicitly reads the localized text stream from `/usr/share/zoneinfo/+VERSION`.
-* **Windows Inference Engine (The Guessing Layer):** Because Windows maps things to its own format, if it cannot find an explicit version string, the application performs an in-memory test. It samples some number of historical political change points (e.g., “Did the Cairo offset change in May 2023 on this machine?”). Based on whether the OS applies the rule or not, the engine narrows down the match and tags it (e.g., `"Inferred-IANA-2023c"`). Ideally in development and testing we are able to confirm that on any given instance of windows 10/11 the timezone version can be successfully guessed.
-* **Fallback Labeling:** If profiling completely fails, it tags the data with timezone version `"unknown"`.
-
-#### 2. Self-Describing Data Schema (The "Label")
-Your data storage layer is extended so that timestamps are never saved in isolation. Every temporal record contains an immutable **Metadata Context block**:
-* **Timestamp:** The localized clock face value.
-* **Zone Identifier:** The string name (e.g., `America/New_York`).
-* **Database Provenance String:** The version discovered by the OS Profiling Engine at the exact moment the data was captured or last modified (e.g., `IANA-2022g`).
-
-#### 3. The Reconciliation & Data Repair Module
-When the user flags the application to switch from Strategy A (OS) to Strategy B (Custom Target: `2026b`), the application boots the custom database via Howard Hinnant's library. Instead of blindly applying the new database to old data, it triggers a **Time Zone Drift Analysis**:
-* **Scan Phase:** The application scans the database index for records matching older provenance strings (e.g., `IANA-2022g`).
-* **Simulation Phase:** For each unique time zone found in those old records, the engine calculates the underlying UTC epoch using both the old labeled version and the fresh `2026b` custom database.
-* **Diff Generation:** If the UTC epochs match, the data is safe. If they drift (e.g., a 60-minute discrepancy due to a canceled DST law), the record is marked as `"Context-Drifted"`.
-
-### 🔄 Timezone Version Metdata - Example User Repair Interaction Lifecycle
-
-#### Step 1: Ingestion & Comparison View
-When the user points the application to a downloaded IANA artifact, the UI displays a comparative report:
-> **Active Environment Shift Detected:**
-> * Current System Baseline: `IANA-2022g` (via Host OS Profiler)
-> * Proposed Target Version: `IANA-2026b` (via Provided Custom Tarball)
-> * Status: *Your OS database is 4 years out of date. 1,240 existing records are affected by historical rule variations.*
-
-#### Step 2: Granular Resolution Wizard
-The module presents the drifted rows to the user with two distinct programmatic options for rectification:
-* **Option A (Preserve Wall-Clock Intent):** *"Keep the local time showing exactly 14:00:00, but recalculate the underlying UTC epoch to match the modern global laws specified in 2026b."*
-* **Option B (Preserve Real-Moment UTC Intent):** *"The underlying physical moment was logged correctly despite the old OS label. Keep the absolute UTC timestamp intact, but change the local clock face string to reflect the corrected offset rules."*
-
-#### Step 3: Metadata Sealing
-Once the user selects a resolution path, the application processes the data blocks, updates the calculations, and swaps the Database Provenance metadata tag from `IANA-2022g` to `IANA-2026b`. The dataset is now completely healed, aligned, and marked with a clean audit trail.
 
