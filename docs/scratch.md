@@ -178,7 +178,7 @@ The pimio server can provide lookups for timezones using lat/long for each clien
 
 ### Large Tile Server Databases for high reslution offline browsing
 
-While the desktop installation allows several online options to the user for map view including an offline option that can download a moderately sized open source or public domain tile set - the pimio server offers the ability to download a large sized open source or public domain tile set. In fact, in such an offline scenario where a pimio server is run each of the clients would then have the option to stream their tiles/data from the pimio server as they browse. In this fashion each clients also avoids the need to download/manage their own copy of the offline moderate size tile set.
+While the desktop installation allows several online options to the user for map view including an offline option that can download a moderately sized open source or public domain tile set - the pimio server offers the ability not only to dowoad the same moderate size tile set but also option to download a large sized open source or public domain tile set. In fact, in such an offline scenario where a pimio server is run each of the clients would then have the option to stream their tiles/data from the pimio server as they browse. In this fashion each clients also avoids the need to download/manage their own copy of the offline tile set(s).
 
 
 
