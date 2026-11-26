@@ -1,15 +1,15 @@
 # pimio repository health metrics
 
-- Generated: 2026-11-26 04:23:21 UTC
+- Generated: 2026-11-26 16:26:14 UTC
 - Repository: pimio
-- Commit: 97d923c
+- Commit: 41742f9
 
 ## Summary
-- Included files: 295
-- Total lines: 44164
-- Code lines: 34215
-- Blank lines: 6560
-- Comment lines: 3389
+- Included files: 298
+- Total lines: 44827
+- Code lines: 34756
+- Blank lines: 6650
+- Comment lines: 3421
 
 ## By language
 
@@ -18,7 +18,7 @@
 | C++ | 114 |
 | C/C++ Header | 77 |
 | CMake | 33 |
-| Markdown | 30 |
+| Markdown | 33 |
 | Shell | 10 |
 | QML | 9 |
 | PowerShell | 8 |
@@ -35,8 +35,8 @@
 | --- | ---: |
 | src | 141 |
 | tests | 83 |
+| docs | 28 |
 | tools | 28 |
-| docs | 25 |
 | packaging | 7 |
 | .github | 4 |
 | cmake | 4 |
@@ -49,17 +49,17 @@
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
 | src/app/src/library_session.cpp | 931 | 787 | 89 | 55 |
-| docs/plan/pimio-v1-implementation.md | 678 | 501 | 147 | 30 |
+| docs/plan/pimio-v1-implementation.md | 726 | 543 | 152 | 31 |
 | tests/scan/tst_scan_incremental_crud.cpp | 558 | 443 | 99 | 16 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
 | .github/workflows/release.yml | 536 | 465 | 38 | 33 |
-| docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
+| docs/plan/pimio-v1-tools-environment.md | 516 | 380 | 102 | 34 |
 | src/app/qml/Main.qml | 499 | 396 | 55 | 48 |
 | src/lore/src/lore_durable_store_commit.cpp | 497 | 459 | 36 | 2 |
 | tests/lore/tst_lore_binary_content.cpp | 494 | 433 | 57 | 4 |
 | src/metadata/src/tiff_reader.cpp | 473 | 413 | 41 | 19 |
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |
+| README.md | 469 | 320 | 114 | 35 |
 | src/app/src/library_manager.cpp | 465 | 433 | 32 | 0 |
 | tests/lore/tst_lore_adapter.cpp | 462 | 361 | 77 | 24 |
-| README.md | 460 | 312 | 113 | 35 |
