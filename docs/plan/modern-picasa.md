@@ -91,17 +91,6 @@ The cache must be rebuildable. Store a stable file identity plus a content
 fingerprint so moved or renamed items can be recognized without treating them
 as new photos.
 
-#### Replace `.picasa.ini` with Interoperable Sidecars
-
-Write portable metadata to embedded EXIF/IPTC/XMP where the format safely
-supports it. Use adjacent `.xmp` sidecars for RAW files and for edits that
-should not mutate originals. Store application-only state, such as UI layout,
-thumbnail cache references, and incomplete jobs, in SQLite.
-
-This produces the useful Picasa property of recoverability without inventing a
-new text format: a new installation can re-index the folders and recover
-captions, ratings, tags, regions, and edit recipes from standard metadata.
-Detect and surface sidecar conflicts instead of silently choosing a winner.
 
 #### Thumbnail Cache and Image Pyramids
 
