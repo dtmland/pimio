@@ -76,8 +76,12 @@ remaining v1 increments 9–12, which depend on them. See
   2. what `dumpUnmapped` returns for camera make/model/lens, orientation,
      dimensions, video duration, and audio, with and without ExifTool;
   3. build time, binary size, and MSVC/Clang/GCC warnings;
-  4. behavior with concurrent `umm::read` calls.
-- Record the findings in the upstream-requests file and file the requests.
+  4. behavior with concurrent `umm::read` calls;
+  5. full-read cost per file on a large fixture set, to size U10.
+- Record the findings in the upstream-requests file. File the requests using
+  the ready-to-file text in
+  [libumm-feature-requests.md](libumm-feature-requests.md), blocking ones
+  (U1, U4) first.
 - **Done when:** 0008's confirmation items are resolved, spike results are
   recorded, and blocking gaps are filed upstream.
 
