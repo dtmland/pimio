@@ -1,7 +1,9 @@
 # 0005 — Managed originals for v1
 
 Status: **accepted.** Initially recorded at the end of Increment 7.8 and
-re-evaluated through the production LORE 0.9.0 path in Increment 7.8c.
+re-evaluated through the production LORE 0.9.0 path in Increment 7.8c. The
+`lore.binary_content` gate continues to pass on LORE 0.14.0, which also adds a
+test proving that source file names never become repository paths.
 
 ## Decision
 

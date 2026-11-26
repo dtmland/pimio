@@ -87,6 +87,15 @@ shipping gate. The UI warns that an interrupted first push may require
 server-side repair. The contract test retains the expected failure so an
 upstream fix becomes an unexpected pass that must be reviewed.
 
+**Outcome on LORE 0.14.0:** the interrupted-push retry still fails with
+`Branch main already exists`
+([EpicGames/lore#191](https://github.com/EpicGames/lore/issues/191)), and the
+mismatched-ID push is still accepted
+([#190](https://github.com/EpicGames/lore/issues/190)). Both expected failures
+are now gated to 0.14.0, and the alpha risk and UI warning remain. The
+`Address not found` fan-out failure seen during 0.9.0 promotion did not recur,
+and its tolerance was removed.
+
 ## History hydration and retention
 
 LORE history has three independently relevant layers:
@@ -114,7 +123,9 @@ retention feature, not a clone flag or a consequence of history listing.
 LORE 0.9.0's release notes describe a new I/O engine and several storage fixes,
 but do not explicitly identify the three 0.8.5 failures recorded in
 [decision 0001](0001-lore-durable-store.md). The upgrade gate must reproduce the
-tests rather than infer a fix from adjacent release-note language. The filed
+tests rather than infer a fix from adjacent release-note language. The same
+rule applied to the 0.14.0 upgrade, whose measured results are in
+[lore-0.14-upgrade.md](../plan/lore-0.14-upgrade.md). The filed
 upstream issues are tracked in
 [the LORE upstream issue tracker](../plan/lore-upstream-issues.md).
 

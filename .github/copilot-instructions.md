@@ -15,7 +15,7 @@
 - Changing a storage format, schema, descriptor, backup format, or dependency
   version may break previously written data. Note the break in the change
   description and move on; recreating test data is acceptable.
-- Existing compatibility code (for example the `lore.migration` 0.8.5 fixture
+- Existing compatibility code (for example the retired `lore.migration` 0.8.5 fixture
   or readers for pre-extension records) is not a requirement to maintain. It
   may be removed when it gets in the way, together with its tests and docs.
 - This policy ends at the first stable release (1.0.0). From then on, data

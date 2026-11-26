@@ -25,9 +25,9 @@ supported product matrix.
 ### macOS x86-64 is not supported in v1
 
 The durable store depends on LORE, and the upstream project publishes no
-macOS x86-64 build: release 0.9.0 ships `aarch64-apple-darwin` only, alongside
-`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu-neoverse-512tvb`, and
-`x86_64-pc-windows-msvc`. Supporting Intel Macs would mean building LORE from
+macOS x86-64 build: release 0.14.0 ships `aarch64-apple-darwin` only, alongside
+`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`,
+`aarch64-unknown-linux-gnu-neoverse-512tvb`, and `x86_64-pc-windows-msvc`. Supporting Intel Macs would mean building LORE from
 source as part of pimio's release pipeline, which is disproportionate for the
 platform's remaining share. Revisit only if upstream starts publishing the
 artifact.
@@ -36,13 +36,15 @@ artifact.
 artifact exists rather than guessing a triple, so a build there configures
 cleanly with LORE disabled instead of failing obscurely.
 
-LORE 0.9.0 publishes the same four `liblore` target triples, so its adoption
-does not change this platform decision.
+LORE 0.14.0 still publishes no macOS x86-64 build, so its adoption does not
+change this platform decision.
 
 ### Linux arm64
 
-LORE publishes `aarch64-unknown-linux-gnu-neoverse-512tvb`, so the dependency
-does not block the target and `cmake/PimioLore.cmake` maps to it. Nothing in
+LORE publishes a portable `aarch64-unknown-linux-gnu` build (since 0.14.0), so
+the dependency does not block the target and `cmake/PimioLore.cmake` maps to
+it. pimio does not use the `neoverse-512tvb` build, which LORE notes can crash
+with SIGILL on older arm64 CPUs. Nothing in
 hosted CI exercises it, so it stays provisional: buildable, unverified, and not
 a release target for v1 until a runner exists.
 

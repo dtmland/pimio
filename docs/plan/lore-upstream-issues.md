@@ -4,28 +4,47 @@ This is the living list of LORE defects and gaps that pimio works around. It
 replaces the former `lore-0.9-upstream-issue-drafts.md`, whose drafts have all
 been filed upstream. For each issue, this page records the upstream link, the
 pimio workaround, and the test that will notice when the issue changes. Update
-it whenever the LORE pin changes. The upgrade in progress is described in
+it whenever the LORE pin changes. The most recent upgrade is described in
 [lore-0.14-upgrade.md](lore-0.14-upgrade.md).
 
-Pinned version: **LORE 0.9.0** (`cmake/PimioLore.cmake`). Upstream status was
+Pinned version: **LORE 0.14.0** (`cmake/PimioLore.cmake`). Upstream status was
 last checked on 2026-11-26 against release notes through **v0.14.0**.
 
 ## Summary
 
-| Issue | Upstream | Observed on 0.9.0 | What release notes 0.10.0–0.14.0 say | pimio workaround / test hook |
-| --- | --- | --- | --- | --- |
-| Short `level.pending` blocks repository open after an interrupted write | [EpicGames/lore#187](https://github.com/EpicGames/lore/issues/187) (open) | Yes. One of five killed commits on macOS needed marker repair | Not named. 0.11.0 claims broad local-store durability fixes for interrupted flushes. **Unconfirmed** | `LoreDurableStore::open` repairs empty pending markers; `lore.faults` kill sweep |
-| A reported commit is not durable without an explicit flush | [EpicGames/lore#188](https://github.com/EpicGames/lore/issues/188) (open) | Yes, by API design | No change to the API contract. **Assume still present** | Flush before acknowledging a checkpoint; `killedProcessAfterCommitKeepsTheRevisionItReported` |
-| A killed commit leaves revision log and index disagreeing (`1 revision / 26 records` or `2 revisions / 1 record`) | Covered by #187/#188 reports | Yes, Linux and macOS | Same as #187. **Unconfirmed** | 0.9.0-only observational allowance in `tst_lore_faults_process.cpp` |
-| Delayed flush writes fan-out buckets without their level marker (`Address not found`) | Fixed upstream in [`e9d056fb`](https://github.com/EpicGames/lore/commit/e9d056fb459ed644eff1382f21b034621f8ded42), no pimio ticket | Yes. Windows corrupt-checkout restore and Linux promotion | **Fixed in 0.10.0.** The fix prevents new damage but does not repair stores that were already affected | 0.9.0-only QSKIP in `tst_lore_faults.cpp` and tolerance in `tst_lore_server_promotion.cpp` |
-| Push accepts a remote whose repository ID differs | [EpicGames/lore#190](https://github.com/EpicGames/lore/issues/190) (open) | Yes | Not mentioned. **Assume still present** | `repository info` preflight in `promoteToServer`; 0.9.0-gated `QEXPECT_FAIL` |
-| Interrupted initial push cannot be retried (`Branch main already exists`) | [EpicGames/lore#191](https://github.com/EpicGames/lore/issues/191) (open) | Yes. Promotion ships as an accepted alpha risk | Not named. Related fixes: 0.10.0 stops the client treating a missing fragment as a missing branch, and 0.11.0 says a retried push no longer fails with a missing fragment. **Plausibly fixed; must verify** | Unconditional `QEXPECT_FAIL` in `knownRemotePromotesAndSurvivesFailures`; alpha disclosure in `PromotionDialog.qml` |
-| No public way to attach a remote to an existing local repository | [EpicGames/lore#192](https://github.com/EpicGames/lore/issues/192) (open feature request) | Yes. `repository config set remote_url` is refused | Nothing added. **Still a gap** | Atomic `.lore/config.toml` edit; `noRemoteAttachesThroughDocumentedConfig` |
-| Branch can advance ahead of its state | Not filed | No. 0.9.0 fixed the ordering | 0.14.0 also fixes concurrent branch-metadata edits undoing each other | None needed |
+| Issue | Upstream | Measured on 0.14.0 | pimio workaround / test hook |
+| --- | --- | --- | --- |
+| Short `level.pending` blocks repository open after an interrupted write | [EpicGames/lore#187](https://github.com/EpicGames/lore/issues/187) (open) | Not observed. Local Linux kill sweeps interrupted 4 of 6 attempts per run over 25+ runs; none needed marker repair. CI sweeps on Windows and macOS pending | `LoreDurableStore::open` still repairs empty pending markers (cheap and visible); `lore.faults` kill sweep |
+| A reported commit is not durable without an explicit flush | [EpicGames/lore#188](https://github.com/EpicGames/lore/issues/188) (open) | Contract unchanged by design | Flush before acknowledging a checkpoint; `killedProcessAfterCommitKeepsTheRevisionItReported` |
+| A killed commit leaves revision log and index disagreeing (`1 revision / 26 records` or `2 revisions / 1 record`) | Covered by #187/#188 reports | Not observed in the same sweeps | 0.9.0 allowance **removed**; any recurrence now fails `lore.faults` |
+| Delayed flush writes fan-out buckets without their level marker (`Address not found`) | Fixed upstream in [`e9d056fb`](https://github.com/EpicGames/lore/commit/e9d056fb459ed644eff1382f21b034621f8ded42) (0.10.0), no pimio ticket | **Fixed.** Not seen in promotion or corrupt-checkout restore | QSKIP, promotion tolerance, and `hasUnmarkedFanOutGroup` **removed** |
+| Push accepts a remote whose repository ID differs | [EpicGames/lore#190](https://github.com/EpicGames/lore/issues/190) (open) | **Still present.** The mismatched push is accepted | `repository info` preflight in `promoteToServer`; `QEXPECT_FAIL` gated to 0.14.0 |
+| Interrupted initial push cannot be retried (`Branch main already exists`) | [EpicGames/lore#191](https://github.com/EpicGames/lore/issues/191) (open) | **Still present.** The retry fails with the same message, despite the 0.10.0/0.11.0 push-retry fixes | `QEXPECT_FAIL` gated to 0.14.0 and to that message; alpha disclosure in `PromotionDialog.qml` and the README |
+| No public way to attach a remote to an existing local repository | [EpicGames/lore#192](https://github.com/EpicGames/lore/issues/192) (open feature request) | **Still a gap.** `repository config set` does not exist | Atomic `.lore/config.toml` edit; `noRemoteAttachesThroughDocumentedConfig` |
+| Branch can advance ahead of its state | Not filed | No. Fixed in 0.9.0 | None needed |
 
-"What release notes say" reflects only the notes. Treat an issue as resolved
-only after the matching test passes against the new pin, as described in the
-upgrade plan.
+## LORE 0.14 behaviors pimio relies on or guards against
+
+These are not defects, but pimio's tests depend on them:
+
+- **User configuration is global.** An invalid
+  `$XDG_CONFIG_HOME/lore/config.toml` (or the platform equivalent) stops every
+  command and every `liblore` call; pimio shows the resulting open error. CTest
+  sets `LORE_GLOBAL_PATH` to a per-test directory under the build tree
+  (`tests/CMakeLists.txt`) so a developer's configuration cannot affect tests.
+- **Names Windows cannot store are silently left unstaged** on every platform
+  (for example names containing `:` or ending in a dot or space). pimio stores
+  managed originals under content-derived names with a whitelisted media
+  extension, so source names never reach LORE;
+  `lore.binary_content` `reservedSourceNamesImportUnderSafeRepositoryPaths`
+  proves it.
+- **Local reads no longer verify content hashes** (0.11.0). pimio's own record
+  parsing reports corrupt checkout files as `CorruptData`, and the corrupt
+  immutable-index test still fails visibly; both pass on 0.14.0.
+
+The release-note predictions made before the upgrade are kept in
+[lore-0.14-upgrade.md](lore-0.14-upgrade.md). Treat an issue as resolved only
+after the matching test passes against the pin.
 
 ## Evidence history
 
@@ -44,6 +63,15 @@ upgrade plan.
   - Attaching a no-remote repository works through `config.toml`.
   - Interrupted initial-push retry fails, and neither `--force`,
     re-registration, nor a recovery branch produced a complete clone.
+
+- 0.14.0 (local Linux x86-64, 2026-11-26):
+  - Promotion: #190 and #191 reproduce unchanged; the fan-out failure did not
+    occur in 6 runs. Offline `repository create <url>` still works and stores
+    the host as `remote_url`.
+  - Faults: kill sweep clean over 25+ runs, including under CPU load. One
+    unreproduced `lore.faults` failure was seen once under `ctest -j4`; its
+    slot was not captured, and 4 further full runs plus 15 repeat-until-fail
+    runs were clean. Watch CI for recurrence.
 
 Full reproduction steps are in the upstream issues linked above.
 

@@ -27,7 +27,7 @@ deliverable narrative. Older detail is available in git history.
 | 7.6 | Progressive scanning and thumbnail retention | Complete |
 | 7.7 | Library, revision, and author identity | Complete |
 | 7.8 | Library storage-model gate (managed originals) | Complete (superseded by 7.8c) |
-| 7.8a | LORE 0.9 adoption and recovery simplification | Complete |
+| 7.8a | LORE 0.9 adoption and recovery simplification | Complete (now on 0.14.0) |
 | 7.8b | Offline-to-server promotion gate | Complete (promotion enabled; alpha risk accepted) |
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Complete |
@@ -52,13 +52,14 @@ deliverable narrative. Older detail is available in git history.
 - **Alpha data policy:** no compatibility promise for saved pimio data
   before 1.0.0; format and dependency changes need no migration
   ([conventions](../conventions.md#alpha-data-compatibility-policy)).
-- **Active dependency work:** upgrade LORE 0.9.0 → 0.14.0, planned in
-  [lore-0.14-upgrade.md](lore-0.14-upgrade.md). Known LORE defects and their
-  workarounds are tracked in [lore-upstream-issues.md](lore-upstream-issues.md).
+- **LORE pin:** 0.14.0, adopted per
+  [lore-0.14-upgrade.md](lore-0.14-upgrade.md); multi-OS CI confirmation is
+  the remaining step. Known LORE defects and their workarounds are tracked in
+  [lore-upstream-issues.md](lore-upstream-issues.md).
 - **Known accepted alpha risk:** an interrupted first push during server
   promotion may need server-side repair
-  ([EpicGames/lore#191](https://github.com/EpicGames/lore/issues/191)); the
-  upgrade plan checks whether 0.14.0 removes it.
+  ([EpicGames/lore#191](https://github.com/EpicGames/lore/issues/191)); still
+  present on 0.14.0.
 - **Supporting docs that match the code:** [library-model.md](../library-model.md),
   [library-service-api.md](../library-service-api.md), decisions 0001–0007,
   [testing.md](../testing.md), and [build-architecture.md](../build-architecture.md).
@@ -85,10 +86,11 @@ Release.
 | 7.6 | Batched progressive scan, bounded thumbnail retention, scan activity feedback | `scan.incremental`, `projection.rebuild`, `browser.model`, `app.smoke` | [0004](../decisions/0004-progressive-scan-and-thumbnail-retention.md) |
 | 7.7 | Library descriptor id, checkpoint author/app-version/parent provenance, v1 grant-all authorization boundary | `core.serialization`, `core.contracts`, `lore.adapter` | [library-model.md](../library-model.md) |
 | 7.8 | Binary-content spike; initial no-go for managed originals, later reversed by 7.8c | `lore.binary_content` | [0005](../decisions/0005-managed-versus-referenced-originals.md) |
-| 7.8a | LORE 0.9.0 in every context; 0.8.5 store migration; whole-store backup workaround removed while keeping lock, flush-before-ack, staged input, checkout restore, visible repair | `lore.migration`, `lore.faults` | [0001](../decisions/0001-lore-durable-store.md), [0006](../decisions/0006-local-first-lore-topology.md) |
+| 7.8a | LORE 0.9.0 in every context; 0.8.5 store migration; whole-store backup workaround removed while keeping lock, flush-before-ack, staged input, checkout restore, visible repair | `lore.faults` (the 0.8.5 `lore.migration` check was retired with the 0.14.0 upgrade) | [0001](../decisions/0001-lore-durable-store.md), [0006](../decisions/0006-local-first-lore-topology.md) |
 | 7.8b | Known-remote promote/push/clone preserves identity, records, bytes, and history (lazy history hydration); ID preflight; `config.toml` attach; interrupted-push retry accepted as alpha risk | `lore.server_promotion` | [0006](../decisions/0006-local-first-lore-topology.md) |
 | 7.8c | Managed originals for v1; metadata commits corpus-independent; scanner stages originals with records | `lore.binary_content`, `scan.incremental` | [0005](../decisions/0005-managed-versus-referenced-originals.md) |
 | 7.9 | `LibraryService`/`LibraryManager` lifecycle, checksummed `.pimio-backup`, restore rebuilds caches, Library Manager dialog | `app.library_manager` | [library-service-api.md](../library-service-api.md) |
+| LORE 0.14 | Pin moved 0.9.0 → 0.14.0 (portable arm64 Linux build); 0.9.0 fan-out and killed-commit allowances removed; #190/#191 allowances re-gated; LORE user config isolated in CTest; migration fixture retired under the alpha policy | `lore.faults`, `lore.server_promotion`, `lore.binary_content` | [lore-0.14-upgrade.md](lore-0.14-upgrade.md) |
 | 8 | Staged edits with Save/Cancel; ExifTool embedded XMP writes (no sidecars) verified on readback; one-revision commit with rollback; crop/rotation recipes and derivative export | `metadata.embedded_write`, `editing.metadata_save`, `editing.image_recipes`, `lore.binary_content` | [0007](../decisions/0007-embedded-metadata-writes.md) |
 
 Increment 8 CI evidence: run
@@ -139,4 +141,6 @@ Still required for Complete:
 - Full manual platform checklist sign-off. Signing and notarization remain
   separate release operations.
 - Resolution of the promotion alpha risk, or an explicit decision to ship 1.0
-  with it (see [lore-0.14-upgrade.md](lore-0.14-upgrade.md)).
+  with it ([EpicGames/lore#191](https://github.com/EpicGames/lore/issues/191)
+  is still present on 0.14.0; see
+  [lore-upstream-issues.md](lore-upstream-issues.md)).

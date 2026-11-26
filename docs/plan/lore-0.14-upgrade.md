@@ -1,7 +1,10 @@
 # LORE 0.14.0 upgrade plan
 
-**Status:** Planned, not started. pimio pins LORE **0.9.0**. The target is
-**0.14.0** (released 2026-11-17), the latest release as of 2026-11-26.
+**Status:** Implemented. pimio pins LORE **0.14.0** (released 2026-11-17),
+the latest release as of 2026-11-26. Phases 1–7 are done and validated on
+local Linux x86-64. CI on Linux, Windows, and macOS, the Release workflow, and
+the local container and Windows Sandbox harnesses still need to confirm it
+(phase 8). The measured outcomes are in [Measured outcome](#measured-outcome).
 
 This plan covers moving every build context from 0.9.0 to 0.14.0, getting the
 complete test suite green, and deciding which pimio workarounds for LORE
@@ -48,8 +51,34 @@ response.
 | #191: interrupted initial push retry | **Plausibly fixed:** 0.10.0 stops the client from recreating a branch it misread as missing, and 0.11.0 fixes retried pushes failing on a missing fragment | Verify. If the retry succeeds and the clone is byte-complete, remove the alpha risk |
 | #192: attach remote API | **Not added** | Keep the `config.toml` workaround. The "no public setter" assertion should still hold |
 
-The notes are claims. As with 0.9.0, the tests are the evidence, and this
-table is updated with measured results when the work lands.
+The notes are claims; the tests are the evidence. The table above is the
+pre-upgrade prediction and is kept for the record. The measured results are
+below.
+
+## Measured outcome
+
+| pimio issue | Result on 0.14.0 | What changed in pimio |
+| --- | --- | --- |
+| Fan-out `Address not found` | **Fixed** | QSKIP, promotion tolerance, and helper removed |
+| #187: short `level.pending` | Not observed (local Linux sweeps) | Open-time repair kept |
+| Killed-commit revision/index mismatch | Not observed (local Linux sweeps) | 0.9.0 allowance removed; recurrence now fails |
+| #188: commit not durable without flush | Unchanged contract | Flush-before-acknowledge kept |
+| #190: push accepts mismatched ID | **Still present** | Preflight kept; `QEXPECT_FAIL` gated to 0.14.0 |
+| #191: interrupted initial push retry | **Still present** (`Branch main already exists`) | `QEXPECT_FAIL` gated to 0.14.0; alpha warning kept with updated version |
+| #192: attach remote API | **Still missing** | `config.toml` workaround kept |
+
+Other findings from implementation:
+
+- The adapter needed no source changes. Every `lore.h` field and event pimio
+  uses is unchanged; removed fields (`no_atime`, `revision_commit_args.stats`)
+  were never used.
+- The test-harness `repository create` calls did not need rewriting: offline
+  creation with a URL still works in 0.14.0.
+- An invalid user-level LORE configuration does break every call, so CTest
+  isolates it with `LORE_GLOBAL_PATH`.
+- Names Windows cannot store are silently left unstaged rather than refused.
+  Managed originals never use source names, which a new test proves.
+- Corruption tests still detect damage without LORE's read-time hash check.
 
 ## Impact of upstream changes on pimio
 
