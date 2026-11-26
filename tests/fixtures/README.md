@@ -73,3 +73,10 @@ The EXIF blocks are written directly by `tools/fixture_generator/exif_builder.cp
 rather than by a metadata library, so the corpus does not depend on the
 metadata adapter it is meant to test. The generated tags have been verified to
 read back correctly with an independent tool (`exiftool`).
+
+After the libumm migration
+([decision 0008](../../docs/decisions/0008-libumm-metadata-engine.md)), libumm
+becomes the adapter under test, and these generator-written fixtures stay
+independent of it. Fixtures for canonical photo, canonical video, and
+non-canonical-only types (for example BMP) are needed for the M3 adapter
+tests.

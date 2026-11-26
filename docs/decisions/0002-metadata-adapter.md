@@ -1,7 +1,12 @@
 # 0002 — A built-in metadata reader for v1's read path
 
-Status: **accepted.** Recorded during Increment 5, which delivers metadata
-read, query, and search.
+Status: **superseded** by [0008](0008-libumm-metadata-engine.md), which
+makes libumm the only metadata engine. The built-in reader stays in the tree
+only until migration M3 ([libumm-migration.md](../plan/libumm-migration.md))
+removes it. This record is kept for history. Its GPL-avoidance reasoning no
+longer applies, because pimio binaries are conveyed under GPL-3.0 with
+libumm. Originally recorded during Increment 5 (metadata read, query, and
+search).
 
 Decision owner: repository maintainer.
 

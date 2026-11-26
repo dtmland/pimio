@@ -51,7 +51,19 @@ they contain.
 - **[`cmake/PimioExifTool.cmake`](../cmake/PimioExifTool.cmake)** — the ExifTool
   version and source checksum used by the embedded metadata writer. Every
   context runs the same script and modules through Perl; Windows deployment
-  also installs its discovered Perl runtime.
+  also installs its discovered Perl runtime. *Planned removal:* libumm
+  migration M7 ([decision 0008](decisions/0008-libumm-metadata-engine.md))
+  replaces it. ExifTool is then located at runtime and is no longer acquired
+  or bundled by any context.
+- **`cmake/PimioUmm.cmake`** (planned, libumm migration M1) — the single
+  source of the libumm version, URL, and SHA-256. It is fetched with
+  `FetchContent` + `URL_HASH`, statically linked, and used only by
+  `src/metadata/`. Every context (CI, Release, Local Linux, Local Windows)
+  consumes it through CMake, so no workflow or harness repeats the pin. A build
+  contract will enforce this. libumm owns its backend pins (Exiv2, ExifTool
+  test version) in its own `tools/build/backends.env`; pimio does not copy
+  them. Any extra system packages libumm needs (for example zlib/expat
+  development headers) go into the shared `tools/build/linux-packages.txt`.
 - **[`packaging/`](../packaging/)** — the launcher, `README.txt`, and
   `pimio-doctor` that ship at the root of every archive. Installed by
   `cmake --install`, so a local install reproduces the released tree.
@@ -156,6 +168,9 @@ separate process, not linked. Linux and macOS use the platform Perl interpreter;
 the Windows deployment includes the same Strawberry Perl runtime discovered at
 configure time. This placement keeps metadata behavior and the Artistic-license
 files identical without duplicating a product pin in workflows or local scripts.
+This paragraph describes the current state; libumm migration M7 removes
+ExifTool and Perl bundling. CI will then install ExifTool only as a test
+prerequisite, using libumm's `get-exiftool` helper.
 
 **Bundled image decoders.** AVIF and HEIC are acquired and configured centrally
 by `cmake/PimioImageFormats.cmake`; no context installs a system codec package.

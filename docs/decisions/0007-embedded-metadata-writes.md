@@ -1,6 +1,11 @@
 # 0007 — Prefer embedded metadata writes
 
-Status: **accepted.**
+Status: **accepted; write adapter superseded.**
+[0008](0008-libumm-metadata-engine.md) replaces the ExifTool write adapter
+and the license reasoning in "Increment 8 outcome" with libumm (`umm::write`
+using `StoragePolicy::embedded_only`). The embedded-first policy, the
+no-default-sidecar rule, preservation of unknown fields, atomic replacement,
+and readback verification below remain in force.
 
 Decision owner: repository maintainer.
 
@@ -61,6 +66,11 @@ independent of sidecars and remain useful.
   Release, Local Linux, and Local Windows.
 
 ## Increment 8 outcome
+
+> Superseded by [0008](0008-libumm-metadata-engine.md). Exiv2 is now accepted
+> inside libumm, and binaries are conveyed under GPL-3.0. ExifTool becomes a
+> runtime-located libumm backend rather than pimio's writer, and libumm covers
+> PNG EXIF writes. The text below records the Increment 8 state.
 
 ExifTool 13.59 is the write adapter. It runs as a separate process from a
 checksum-pinned upstream distribution and is redistributed under the Perl

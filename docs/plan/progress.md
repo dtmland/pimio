@@ -32,6 +32,15 @@ deliverable narrative. Older detail is available in git history.
 | 7.8c | Storage-model decision revisit | Complete (managed originals for v1) |
 | 7.9 | Library manager and lifecycle | Complete |
 | 8 | Save, portable metadata, and image recipes | Complete |
+| M0 | libumm: decisions, licensing, spike ([plan](libumm-migration.md)) | Not started |
+| M1 | libumm: build integration of the pin in every context | Not started |
+| M2 | libumm: canonical metadata model in core | Not started |
+| M3 | libumm: read adapter replaces built-in reader | Not started |
+| M4 | libumm: projection and search on canonical properties | Not started |
+| M5 | libumm: write path via `umm::write` | Not started |
+| M6 | libumm: canonical editor, read-only "All metadata", capability gating | Not started |
+| M7 | libumm: packaging, ExifTool discovery, GPL-3.0 notices and source | Not started |
+| M8 | libumm: cleanup and documentation pass | Not started |
 | 9 | Timestamp repair and organization workflows | Not started |
 | 10 | Video playback, trim, and scene suggestions | Not started |
 | 11 | Basic location | Not started |
@@ -105,6 +114,22 @@ dedicated dialog; manual field-notes entries for Save are not yet in
 
 ## Remaining work
 
+### libumm metadata migration (M0–M8) — Not started
+
+[Decision 0008](../decisions/0008-libumm-metadata-engine.md) replaces the
+built-in reader (Increment 5) and the ExifTool writer (Increment 8) with
+libumm. The migration also moves the metadata model to libumm canonical
+properties, which are cross-media first. Every non-canonical field is shown
+read-only. The increments are in [libumm-migration.md](libumm-migration.md),
+and gaps go to [libumm-upstream-requests.md](libumm-upstream-requests.md).
+Increments 9–12 build on the migrated model. Maintainer confirmations needed
+in M0:
+
+- pimio's GPL-3.0-compatible source license;
+- ExifTool runtime discovery versus bundling;
+- the sidecar read policy;
+- the RAW write policy.
+
 ### Increment 9 — Timestamp repair and organization — Not started
 
 Batch timestamp shift, ordered redistribution, drag/drop reordering,
@@ -124,7 +149,8 @@ optional map-provider adapter.
 ### Increment 12 — Resilience, performance, packaging, RC — In progress
 
 Landed: unsigned release archives from `.github/workflows/release.yml` with
-Qt, LORE, and ExifTool redistribution, launchers, `pimio-doctor`, layout
+Qt, LORE, and ExifTool redistribution (ExifTool bundling is planned for
+removal in libumm migration M7), launchers, `pimio-doctor`, layout
 verification, and packaged offscreen launch smoke on all three platforms;
 shared packaging assets under `packaging/`; extensive fault and recovery
 coverage from earlier increments.
@@ -136,7 +162,8 @@ Still required for Complete:
   results.
 - Completed dependency/legal review against
   [../dependency-bom.md](../dependency-bom.md) (including HEVC patent and
-  notice obligations) and platform policy confirmation in
+  notice obligations, and GPL-3.0 conveyance with corresponding source for
+  libumm/Exiv2) and platform policy confirmation in
   [../supported-platforms.md](../supported-platforms.md).
 - Full manual platform checklist sign-off. Signing and notarization remain
   separate release operations.

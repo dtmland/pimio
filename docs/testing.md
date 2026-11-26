@@ -38,6 +38,16 @@ QT_QPA_PLATFORM=offscreen ./pimio --self-check   # pimio.bat --self-check on Win
 ./pimio-doctor                                    # pimio-doctor.ps1 on Windows
 ```
 
+### Metadata tests and libumm (planned)
+
+After libumm migration M3/M5
+([decision 0008](decisions/0008-libumm-metadata-engine.md)), `metadata.*`
+tests exercise the libumm adapter against the fixture corpus. Cases that
+need ExifTool (video and HEIC/AVIF writes) skip with a visible reason when
+libumm reports `backend_unavailable`. CI installs ExifTool so these cases run
+there. Tests above `src/metadata/` keep using `FakeMetadataReader` and never
+link libumm.
+
 ### LORE server promotion contract
 
 `lore.server_promotion` is part of the standard cross-platform CI run. CI

@@ -310,7 +310,7 @@ configure time.
 | --- | --- |
 | `src/core/` | UI-independent types and boundaries (`pimio::core`; Qt Core only) |
 | `src/lore/` | LORE durable store adapter (`lore.h` private to this tree) |
-| `src/metadata/` | Built-in metadata readers (no third-party metadata library) |
+| `src/metadata/` | Metadata adapters. Today: built-in readers plus the ExifTool writer. Being replaced by libumm ([0008](docs/decisions/0008-libumm-metadata-engine.md)) |
 | `src/scan/` | Incremental scan and media identity |
 | `src/projection/` | Rebuildable SQLite query cache and job queue |
 | `src/settings/` | Stored (`pimio.conf`) and session settings |
@@ -340,11 +340,13 @@ Identity lives in `records/.pimio-library.json` and survives move/copy/restore.
 Key decisions:
 
 - [0001 — LORE durable store](docs/decisions/0001-lore-durable-store.md)
-- [0002 — Built-in metadata reader](docs/decisions/0002-metadata-adapter.md)
+- [0002 — Built-in metadata reader](docs/decisions/0002-metadata-adapter.md) (superseded by 0008)
 - [0003 — Settings and view controls](docs/decisions/0003-settings-and-view-controls.md)
 - [0004 — Progressive scan and thumbnail retention](docs/decisions/0004-progressive-scan-and-thumbnail-retention.md)
 - [0005 — Managed vs referenced originals](docs/decisions/0005-managed-versus-referenced-originals.md)
 - [0006 — Local-first LORE topology](docs/decisions/0006-local-first-lore-topology.md)
+- [0007 — Prefer embedded metadata writes](docs/decisions/0007-embedded-metadata-writes.md)
+- [0008 — libumm is the only metadata engine](docs/decisions/0008-libumm-metadata-engine.md) ([migration plan](docs/plan/libumm-migration.md))
 
 Library contracts:
 [docs/library-model.md](docs/library-model.md),
@@ -458,3 +460,10 @@ and image-decode stacks (AVIF/HEIC) as recorded in
 [docs/dependency-bom.md](docs/dependency-bom.md). Legal review remains a release
 gate. Ship license texts with binaries; do not replace upstream notice files
 with summaries.
+
+Planned ([decision 0008](docs/decisions/0008-libumm-metadata-engine.md)):
+metadata moves to libumm, which statically includes Exiv2
+(GPL-2.0-or-later). pimio binaries will therefore be conveyed under GPL-3.0,
+ship libumm's notices, and offer the corresponding source. ExifTool is
+expected to be located at runtime rather than bundled. pimio's own source
+license is pending maintainer confirmation.

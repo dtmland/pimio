@@ -20,6 +20,24 @@ service boundary; promotion) became Increments 7.7–7.9 and amendments to
 Increment 8, all of which are now complete. Current status lives only in
 [progress.md](progress.md); the original gap table is in git history.
 
+### Metadata reorientation: libumm
+
+A second reorientation moves all metadata work onto
+[libumm](https://github.com/dtmland/libumm)
+([decision 0008](../decisions/0008-libumm-metadata-engine.md)). libumm
+supplies canonical IPTC photo/video properties, cross-media accessors, a
+read-only view of every non-canonical field, Exiv2 and ExifTool backends,
+reconciliation, and atomic writes. pimio must not reimplement any of these.
+Missing capabilities are requested upstream through
+[libumm-upstream-requests.md](libumm-upstream-requests.md).
+
+The work runs as migration increments M0–M8 in
+[libumm-migration.md](libumm-migration.md). These come **before** Increments
+9–12, which are written below in terms of libumm canonical properties.
+Increments 5 and 8 are complete, but their adapters (the built-in reader and
+the ExifTool writer) are replaced by M3 and M5. Binaries that contain libumm
+are conveyed under GPL-3.0 because of Exiv2.
+
 ### Design guidance that still applies
 
 1. **Synchronization semantics are unproven.** The v2 mirror/synchronize
@@ -187,6 +205,12 @@ plan is explicitly revised.
   agreed memory/concurrency bounds.
 
 ## Increment 5 — Metadata Read, Query, and Search
+
+> Retrofit: migration M2–M4 replace the built-in reader with libumm, change the
+> model to canonical properties plus a read-only non-canonical view, and
+> rebuild projection and search on it. These acceptance criteria are carried
+> forward against the libumm adapter. Precedence and conflicts come from
+> libumm, not from pimio.
 
 **Deliverables**
 
@@ -527,6 +551,12 @@ contract, and original-media model.
 
 ## Increment 8 — Save, Portable Metadata, and Image Recipes
 
+> Retrofit: migration M5–M6 replace the ExifTool writer with `umm::write`
+> (`embedded_only`), stage canonical property edits instead of
+> caption/rating/tags, and add the read-only "All metadata" inspector.
+> Round trips are verified by rereading with the libumm adapter. The
+> fingerprint, one-revision Save, and fault-injection criteria are unchanged.
+
 **Deliverables**
 
 - Staged metadata edits and explicit LORE-backed Save/checkpoint behavior.
@@ -554,6 +584,11 @@ contract, and original-media model.
 
 - Batch timestamp shifts, ordered redistribution, drag/drop reordering, and
   confidence-bearing timezone suggestions.
+- Capture time is libumm's canonical `dateCreated`, read and written through
+  the same cross-media accessor for photos and videos. pimio respects libumm's
+  partial precision and its rule never to invent a UTC offset. It does no
+  date arithmetic on raw tags; shift helpers that libumm lacks are requested
+  upstream (U8).
 - Related-time/location group suggestions that never modify metadata silently.
 
 **Automated acceptance**
@@ -570,6 +605,12 @@ contract, and original-media model.
 - Playback adapter with software fallback, video detail view, trim recipe, and
   export path.
 - Stream-copy eligibility reporting and optional scene suggestions.
+- Video metadata (MP4/MOV) is read and written through libumm canonical
+  `iptc.video.*` properties and the shared cross-media editor. Writes need
+  ExifTool at runtime and degrade visibly without it. Duration, frame size,
+  and audio come from libumm (canonical technical properties or the read-only
+  view; see upstream request U3). Qt Multimedia is used only for playback and
+  decoding.
 
 **Automated acceptance**
 
@@ -586,6 +627,10 @@ contract, and original-media model.
 **Deliverables**
 
 - Existing-GPS display and manual assignment/correction for images and videos.
+  This uses libumm's cross-media `locationCreated` accessor (photo
+  `locationCreated` ↔ video `locationShot`, GPS on entry 0) and
+  `locationShown`. Any GPS-track work uses libumm track import, not a pimio
+  parser.
 - Optional map-provider adapter with non-blocking offline/error behavior.
 
 **Automated acceptance**
@@ -602,7 +647,10 @@ contract, and original-media model.
 - Resource limits and measured large-library responsiveness.
 - Unsigned installable artifacts for each supported platform; signing and
   notarization are separate controlled release operations.
-- Completed dependency/legal review and manual platform checklist.
+- Completed dependency/legal review and manual platform checklist. This
+  includes GPL-3.0 conveyance for libumm/Exiv2 (notices plus corresponding
+  source), pimio's own `LICENSE`, and ExifTool runtime discovery instead of
+  bundling (migration M7).
 
 **Automated acceptance**
 
