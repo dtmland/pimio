@@ -1,21 +1,21 @@
 # pimio repository health metrics
 
-- Generated: 2026-11-26 03:49:41 UTC
+- Generated: 2026-11-26 04:23:21 UTC
 - Repository: pimio
-- Commit: 13f6c35
+- Commit: 97d923c
 
 ## Summary
-- Included files: 296
-- Total lines: 44167
-- Code lines: 34219
-- Blank lines: 6569
-- Comment lines: 3379
+- Included files: 295
+- Total lines: 44164
+- Code lines: 34215
+- Blank lines: 6560
+- Comment lines: 3389
 
 ## By language
 
 | Language | Files |
 | --- | ---: |
-| C++ | 115 |
+| C++ | 114 |
 | C/C++ Header | 77 |
 | CMake | 33 |
 | Markdown | 30 |
@@ -34,7 +34,7 @@
 | Directory | Files |
 | --- | ---: |
 | src | 141 |
-| tests | 84 |
+| tests | 83 |
 | tools | 28 |
 | docs | 25 |
 | packaging | 7 |
@@ -57,9 +57,9 @@
 | docs/plan/pimio-v1-tools-environment.md | 515 | 379 | 102 | 34 |
 | src/app/qml/Main.qml | 499 | 396 | 55 | 48 |
 | src/lore/src/lore_durable_store_commit.cpp | 497 | 459 | 36 | 2 |
+| tests/lore/tst_lore_binary_content.cpp | 494 | 433 | 57 | 4 |
 | src/metadata/src/tiff_reader.cpp | 473 | 413 | 41 | 19 |
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |
 | src/app/src/library_manager.cpp | 465 | 433 | 32 | 0 |
 | tests/lore/tst_lore_adapter.cpp | 462 | 361 | 77 | 24 |
 | README.md | 460 | 312 | 113 | 35 |
-| tests/lore/tst_lore_server_promotion.cpp | 452 | 405 | 47 | 0 |
