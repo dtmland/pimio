@@ -153,8 +153,8 @@ branch. A genuine full-volume run stays a documented manual test.
 
 These observations explain the original workaround; they are not claims about
 0.9.0. The 0.9.0 release notes do not explicitly identify their resolution, so
-Increment 7.8a reruns the fault suite before pimio files the prepared
-[upstream reports](../plan/lore-0.9-upstream-issue-drafts.md).
+Increment 7.8a reran the fault suite on 0.9.0; the reproduced defects are
+filed upstream and tracked in [lore-upstream-issues.md](../plan/lore-upstream-issues.md).
 
 ### Interrupted writes can leave an empty pending marker
 

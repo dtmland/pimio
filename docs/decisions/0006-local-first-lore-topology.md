@@ -114,9 +114,9 @@ retention feature, not a clone flag or a consequence of history listing.
 LORE 0.9.0's release notes describe a new I/O engine and several storage fixes,
 but do not explicitly identify the three 0.8.5 failures recorded in
 [decision 0001](0001-lore-durable-store.md). The upgrade gate must reproduce the
-tests rather than infer a fix from adjacent release-note language. Draft
-upstream reports are in
-[the LORE 0.9 issue drafts](../plan/lore-0.9-upstream-issue-drafts.md).
+tests rather than infer a fix from adjacent release-note language. The filed
+upstream issues are tracked in
+[the LORE upstream issue tracker](../plan/lore-upstream-issues.md).
 
 ## Consequences
 

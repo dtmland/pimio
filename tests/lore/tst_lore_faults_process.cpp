@@ -206,7 +206,7 @@ void TestLoreFaults::killedProcessDuringCommitLeavesAConsistentRepository()
     if (knownDependencyFailures > 0) {
         QSKIP(qPrintable(QStringLiteral(
             "%1 sweep outcome(s) hit known LORE 0.9.0 interrupted-commit defects; see "
-            "docs/plan/lore-0.9-upstream-issue-drafts.md")
+            "docs/plan/lore-upstream-issues.md")
                              .arg(knownDependencyFailures)));
     }
 }
