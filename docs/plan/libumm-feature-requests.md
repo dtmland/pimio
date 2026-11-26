@@ -12,6 +12,11 @@ something, pimio asks libumm for it and adopts the release that delivers it.
 pimio does not build a workaround unless the maintainer approves one, with a
 recorded removal condition.
 
+The copy to give the libumm maintainer is
+[libumm-feature-requests-upstream.md](libumm-feature-requests-upstream.md).
+That file must stay free of pimio names, links, milestones, and interim
+notes. Update it whenever a request here changes.
+
 Evidence comes from the libumm **v0.1.2** source tag (the planned pin). Header
 citations are `include/umm/<file>:<line>` in that tag. Recheck each request
 against the current pin before filing, and record the upstream issue number

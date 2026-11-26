@@ -10,8 +10,10 @@ maintainer approval and a removal condition recorded here.
 Pinned libumm version: **0.1.2** (planned; see
 [libumm-migration.md](libumm-migration.md) M1).
 
-The full, ready-to-file text for each row — use case, evidence from the
-libumm source, proposed API, and acceptance criteria — is in
+The text to send upstream — use case, evidence from the libumm source,
+proposed API, and acceptance criteria, with no pimio references — is in
+[libumm-feature-requests-upstream.md](libumm-feature-requests-upstream.md).
+The internal copy, including interim notes, is in
 [libumm-feature-requests.md](libumm-feature-requests.md). This table is the
 status tracker.
 

@@ -34,7 +34,9 @@ If pimio needs a metadata capability that libumm lacks, the developer must:
 1. stop and record the gap in
    [libumm-upstream-requests.md](../plan/libumm-upstream-requests.md) with the
    exact API or behavior needed and the pimio feature that is blocked;
-2. file it with the libumm project, writing the full request in
+2. file it with the libumm project using the Pimio-free text in
+   [libumm-feature-requests-upstream.md](../plan/libumm-feature-requests-upstream.md).
+   Keep pimio-specific status and interim notes in
    [libumm-feature-requests.md](../plan/libumm-feature-requests.md); and
 3. take the libumm release that delivers it by updating the pin.
 
