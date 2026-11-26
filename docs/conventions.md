@@ -3,6 +3,15 @@
 These conventions apply to all implementation increments described in
 [pimio-v1-implementation.md](plan/pimio-v1-implementation.md).
 
+## Alpha data-compatibility policy
+
+Until 1.0.0, pimio makes **no compatibility promise for saved data**. Libraries,
+`.pimio-backup` files, settings, and caches written by one alpha build may be
+unreadable by the next, including after a dependency upgrade such as LORE.
+Changes do not need migration code, upgrade fixtures, or downgrade handling;
+existing compatibility code may be removed. Within a single build, durability
+and crash-safety guarantees still apply. The policy is revised at 1.0.0.
+
 ## Layout
 
 | Path | Contents |

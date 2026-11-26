@@ -106,16 +106,18 @@ table is updated with measured results when the work lands.
 
 ### Data compatibility
 
-- Users' existing libraries were written by 0.9.0. Add a **0.9.0-written store
-  fixture** next to the existing 0.8.5 fixture, and extend `lore.migration` so
-  it opens, reads, and writes both under 0.14.0.
-- 0.10.0 notes say stores already damaged by the fan-out bug are **not
-  repaired**. The migration test should cover a healthy 0.9.0 store. A damaged
-  one should fail visibly and recover through pimio's existing repair or
-  backup/restore path, not silently.
-- Assume **no downgrade**: once opened by 0.14.0, a store may not be readable
-  by 0.9.0. Record this in the release notes for the pimio build that ships
-  the upgrade.
+pimio is alpha and makes no compatibility promise for saved data
+([policy](../conventions.md#alpha-data-compatibility-policy)). This upgrade
+therefore adds **no migration path** from libraries written with 0.9.0 (or
+0.8.5) and no downgrade handling. Stores created by earlier builds, including
+any damaged by the fan-out bug that 0.10.0 does not repair, are simply
+recreated.
+
+- Retire `lore.migration` and its 0.8.5 fixture
+  (`tests/lore/fixtures/lore-0.8.5-store.tar.gz`) instead of extending them.
+  If 0.14.0 happens to open the old fixture, that is not a reason to keep it.
+- Note in the change description that older alpha libraries and
+  `.pimio-backup` files may not open after the upgrade.
 
 ### Artifacts and platforms
 
@@ -144,8 +146,8 @@ Each phase ends with a pushed checkpoint commit, following
 3. **Test-harness CLI fixes.** Update repository creation and any revision
    arguments in the LORE test support and promotion tests. Isolate the user
    configuration.
-4. **Migration.** Add the 0.9.0 store fixture and its migration test case.
-   Generate the fixture with the 0.9.0 CLI, as was done for 0.8.5.
+4. **Retire migration coverage.** Remove `lore.migration`, its 0.8.5 fixture,
+   and the CMake wiring for them. Do not add a 0.9.0 fixture.
 5. **Version-gated allowances.** Every allowance is an exact `"0.9.0"` match,
    so the new pin turns each one into a real assertion. For each, record the
    result in the issue tracker:
@@ -188,13 +190,13 @@ Each phase ends with a pushed checkpoint commit, following
 
 - Every build context resolves LORE 0.14.0 through the single pin, and the
   build-contract tests pass.
-- The full CTest suite, including `lore.faults`, `lore.server_promotion`, and
-  `lore.migration`, passes on Linux, Windows, and macOS with LORE required,
+- The full CTest suite, including `lore.faults` and `lore.server_promotion`,
+  passes on Linux, Windows, and macOS with LORE required,
   not skipped.
 - No test allowance names 0.9.0. Every remaining allowance is gated to 0.14.0
   and cited in [lore-upstream-issues.md](lore-upstream-issues.md).
-- Libraries written by 0.8.5 and 0.9.0 open, read, and accept a new
-  checkpoint.
+- Libraries created fresh under 0.14.0 pass the full suite. Compatibility
+  with libraries from earlier alpha builds is out of scope.
 - The tracker and this plan record the measured outcome for every issue in
   the review table.
 
@@ -206,9 +208,6 @@ Each phase ends with a pushed checkpoint commit, following
 - **A new failure shows up in an older code path** (deadlock fixes, last-access
   tracking, nested-repository walks). Minimize it and file it upstream. If it
   blocks, try the previous release (0.13.0). Do not add new tolerances.
-- **No downgrade.** A pimio build that ships 0.14.0 should be treated as
-  one-way for user libraries. Rolling back the pin is safe only before a
-  release ships.
 - **Rollback** is a single revert of the pin commit plus its test and
   documentation changes. The pin lives in one file.
 

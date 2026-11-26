@@ -49,6 +49,9 @@ deliverable narrative. Older detail is available in git history.
   edited; `EditOperationKind::Trim` is only reserved.
 - **In progress:** release hardening (12). Unsigned multi-platform archives
   ship; the remaining release gates are listed below.
+- **Alpha data policy:** no compatibility promise for saved pimio data
+  before 1.0.0; format and dependency changes need no migration
+  ([conventions](../conventions.md#alpha-data-compatibility-policy)).
 - **Active dependency work:** upgrade LORE 0.9.0 → 0.14.0, planned in
   [lore-0.14-upgrade.md](lore-0.14-upgrade.md). Known LORE defects and their
   workarounds are tracked in [lore-upstream-issues.md](lore-upstream-issues.md).

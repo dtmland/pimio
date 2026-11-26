@@ -31,9 +31,10 @@ already partial progress on increment 12. See
 [docs/plan/progress.md](docs/plan/progress.md).
 
 Pre-release binary archives are published from version tags. Expect alpha rough
-edges: no code signing/notarization yet, and server promotion remains an
-accepted alpha risk while an upstream interrupted-push recovery issue is open
-(tracked in [docs/plan/lore-upstream-issues.md](docs/plan/lore-upstream-issues.md);
+edges: **libraries and backups made with one alpha build may not open in the
+next** (no data-compatibility promise before 1.0.0), no code
+signing/notarization yet, and server promotion remains an accepted alpha risk
+while an upstream interrupted-push recovery issue is open (tracked in [docs/plan/lore-upstream-issues.md](docs/plan/lore-upstream-issues.md);
 the planned LORE 0.14.0 upgrade in
 [docs/plan/lore-0.14-upgrade.md](docs/plan/lore-0.14-upgrade.md) re-tests it).
 

@@ -1,15 +1,15 @@
 # pimio repository health metrics
 
-- Generated: 2026-11-26 03:38:31 UTC
+- Generated: 2026-11-26 03:49:41 UTC
 - Repository: pimio
-- Commit: 3f03e63
+- Commit: 13f6c35
 
 ## Summary
 - Included files: 296
-- Total lines: 44134
-- Code lines: 34193
-- Blank lines: 6564
-- Comment lines: 3377
+- Total lines: 44167
+- Code lines: 34219
+- Blank lines: 6569
+- Comment lines: 3379
 
 ## By language
 
@@ -49,7 +49,7 @@
 | Path | Total lines | Code lines | Blank lines | Comment lines |
 | --- | ---: | ---: | ---: | ---: |
 | src/app/src/library_session.cpp | 931 | 787 | 89 | 55 |
-| docs/plan/pimio-v1-implementation.md | 675 | 498 | 147 | 30 |
+| docs/plan/pimio-v1-implementation.md | 678 | 501 | 147 | 30 |
 | tests/scan/tst_scan_incremental_crud.cpp | 558 | 443 | 99 | 16 |
 | tests/projection/tst_projection_jobs.cpp | 554 | 421 | 102 | 31 |
 | tests/metadata/tst_metadata_golden.cpp | 543 | 428 | 80 | 35 |
@@ -61,5 +61,5 @@
 | src/settings/src/settings.cpp | 470 | 386 | 66 | 18 |
 | src/app/src/library_manager.cpp | 465 | 433 | 32 | 0 |
 | tests/lore/tst_lore_adapter.cpp | 462 | 361 | 77 | 24 |
-| README.md | 459 | 311 | 113 | 35 |
+| README.md | 460 | 312 | 113 | 35 |
 | tests/lore/tst_lore_server_promotion.cpp | 452 | 405 | 47 | 0 |

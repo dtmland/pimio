@@ -37,7 +37,10 @@ Increment 8, all of which are now complete. Current status lives only in
 4. **Users are records, not configuration.** The single implicit v1 user is a
    stable authored identity stored with the library so v3 can add named users
    without rewriting history.
-5. **LORE defects are tracked, not assumed fixed.** Known upstream issues and
+5. **No data compatibility before 1.0.0.** pimio is alpha; storage, schema,
+   backup, and dependency changes need no migration from earlier pimio data
+   (see [conventions](../conventions.md#alpha-data-compatibility-policy)).
+6. **LORE defects are tracked, not assumed fixed.** Known upstream issues and
    their workarounds are in [lore-upstream-issues.md](lore-upstream-issues.md);
    dependency upgrades follow a written plan such as
    [lore-0.14-upgrade.md](lore-0.14-upgrade.md).
