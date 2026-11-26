@@ -10,71 +10,40 @@ The plans were reoriented around the principle that **one pimio Library is
 identified by one LORE repository** with a stable identity, and is the
 foundation for the v2 server / v3 studio progression described in
 [pimio.md](pimio.md) and [pimio-v2.md](pimio-v2.md). Managed originals make the
-repository the complete portable v1 Library. Increments 0–7.6 were implemented
-before this reorientation. This section records where the
-implementation stands against the new direction and what the delta is; the
-delta work is captured as Increments 7.7–7.9 and amendments to Increment 8.
-Standalone v1 now explicitly means local/offline `liblore`, not an embedded
-server process; [decision 0006](../decisions/0006-local-first-lore-topology.md)
-records that correction.
+repository the complete portable v1 Library. Standalone v1 means local/offline
+`liblore`, not an embedded server process
+([decision 0006](../decisions/0006-local-first-lore-topology.md)).
 
-### Current state versus the target design
+Increments 0–7.6 were implemented before this reorientation. The resulting gap
+analysis (library, revision, and author identity; storage model; lifecycle;
+service boundary; promotion) became Increments 7.7–7.9 and amendments to
+Increment 8, all of which are now complete. Current status lives only in
+[progress.md](progress.md); the original gap table is in git history.
 
-| Target requirement | Current state | Delta |
-| --- | --- | --- |
-| Storage abstraction (LORE behind one adapter) | **Done.** `pimio::core::DurableStore`; only `src/lore/` knows LORE exists | None |
-| Asset identity independent of path/filename | **Done.** `core::MediaId` survives move/rename; duplicates get distinct ids | None |
-| Canonical vs. derived separation, rebuildable indexes | **Done.** SQLite projection and thumbnail cache are disposable and rebuilt from the store; enforced by tests | Keep enforcing for every new index |
-| Immutable, append-only history | **Done.** LORE revisions are append-only; pimio flushes before acknowledging a checkpoint and preserves staged input until success | Keep enforcing with the Increment 7.8a fault suite |
-| Library identity independent of location | **Missing.** A "library" is a hash of the `--library` paths; the repository carries no identity | Increment 7.7 |
-| Revision identity with author, app version, parent | **Partial.** `Checkpoint` has id, message, timestamp only | Increment 7.7 |
-| Author identity on every revision | **Missing.** No author concept anywhere | Increment 7.7 |
-| Authorization boundary in the service layer | **Missing.** No permission concept | Increment 7.7 (conceptual only) |
-| Explicit original→derivative relationships | **Partial.** Thumbnails are correctly derived/disposable, but edited versions and exports have no modeled relationship | Increment 8 (amended) |
-| Originals stored/versioned in the repository | **Implemented for v1: managed.** Increment 7.8c accepts checkout/store and backup amplification so the Library remains self-contained | Increment 7.8c |
-| Library lifecycle (create/open/rename/move/backup/restore) | **Missing.** Only repeatable `--library <path>` CLI options | Increment 7.9 |
-| Service API boundary remotable in v2 | **Partial.** Services are UI-independent C++ interfaces, but no consolidated session API designed for a future network boundary | Increment 7.8b proves repository promotion; 7.9 records the service boundary; v2 implements pimio Server |
-| Non-destructive edit recipes | **Planned as designed.** Increment 8 already specifies versioned recipes | None |
-| Single-writer coordination above LORE | **Done.** Writer lock per store; matches the rule that future multi-process/multi-user features coordinate above LORE | None |
+### Design guidance that still applies
 
-### Design holes and recommendations (for review)
-
-1. **Managed versus referenced originals.** The target design describes a
-   library that *contains* originals and derivatives, making it a
-   self-contained portable unit. The implementation references media in
-   place and versions only metadata/recipes. LORE's measured performance
-   covers ~2 KB JSON records, not multi-gigabyte video. Increment 7.8 tested a
-   *managed* mode (originals committed to the repository) and initially rejected
-   it because pimio copied all of `.lore` before every commit. Increment 7.8c
-   repeated the gate after Decision 0006 removed that workaround. It accepts
-   managed originals for v1: metadata commits are now corpus-independent, and
-   the remaining checkout/store and backup duplication is an explicit product
-   tradeoff for a self-contained Library.
-2. **The LORE branch-advance defect remains a release blocker** (condition 4
-   of [decision 0001](../decisions/0001-lore-durable-store.md)). The
-   library-centric direction makes the repository the *only* durable copy of
-   organizational state, which raises, not lowers, the bar.
-3. **Synchronization semantics are unproven.** The v2 mirror/synchronize
+1. **Synchronization semantics are unproven.** The v2 mirror/synchronize
    mode must be scoped to what LORE actually supports; pimio must not imply
-   Git-style peer-to-peer sync. **Recommendation:** a sync-semantics spike is
-   the entry gate for that v2 feature, mirroring how Increment 2 gated
-   persistence.
-4. **Offline-origin promotion is unproven.** v1 creates repositories locally,
-   but later server use must not require new identities or rewritten history.
-   **Recommendation:** Increment 7.8b proves registration, initial push, clone,
-   identity preservation, and failure recovery before the local format is
-   treated as release-ready.
-5. **History shape for future multi-user.** Per decision 0001, concurrent
-   writers corrupt LORE; coordination happens above it. **Recommendation:**
-   plan v3 collaboration as server-serialized linear history per library
-   (parallel *revisions of an asset* are an application concept), rather
-   than assuming storage-level branching/merging.
-6. **Albums, tags, and ratings must be canonical.** When they are
-   implemented, they belong in repository records, not only in the
-   projection, or a rebuilt library silently loses organization.
-7. **Users are records, not configuration.** The single implicit v1 user
-   should be represented as a stable authored identity stored with the
-   library so v3 can add named users without rewriting history.
+   Git-style peer-to-peer sync. A sync-semantics spike is the entry gate for
+   that v2 feature, mirroring how Increment 2 gated persistence.
+2. **History shape for future multi-user.** Per decision 0001, concurrent
+   writers corrupt LORE; coordination happens above it. Plan v3 collaboration
+   as server-serialized linear history per library (parallel *revisions of an
+   asset* are an application concept), rather than assuming storage-level
+   branching/merging.
+3. **Albums, tags, and ratings must be canonical.** They belong in repository
+   records, not only in the projection, or a rebuilt library silently loses
+   organization.
+4. **Users are records, not configuration.** The single implicit v1 user is a
+   stable authored identity stored with the library so v3 can add named users
+   without rewriting history.
+5. **No data compatibility before 1.0.0.** pimio is alpha; storage, schema,
+   backup, and dependency changes need no migration from earlier pimio data
+   (see [conventions](../conventions.md#alpha-data-compatibility-policy)).
+6. **LORE defects are tracked, not assumed fixed.** Known upstream issues and
+   their workarounds are in [lore-upstream-issues.md](lore-upstream-issues.md);
+   dependency upgrades follow a written plan such as
+   [lore-0.14-upgrade.md](lore-0.14-upgrade.md).
 
 ## Planning Review and Recommendations
 
@@ -395,8 +364,8 @@ checkout restoration, and visible narrow repair remain.
 - Remove `.pimio-lore-backup`, the commit-in-progress marker, and their recursive
   copy/restore paths. Keep the writer lock, explicit flush, staged inputs until
   success, checkout restoration, and narrowly justified visible repair.
-- If a historical defect reproduces, minimize it and file the corresponding
-  [prepared upstream report](lore-0.9-upstream-issue-drafts.md). A repository
+- If a historical defect reproduces, minimize it and file it upstream (now
+  tracked in [lore-upstream-issues.md](lore-upstream-issues.md)). A repository
   that cannot safely accept another write must preserve user input and stop with
   a visible repair-required state.
 

@@ -16,7 +16,7 @@ disposable projection, as Increment 3 assumes.
 
 The original implementation pinned 0.8.5 and added a whole-`.lore` rollback
 snapshot after the fault observations below. That snapshot is now historical:
-the target architecture removes it, upgrades to 0.9.0, and assigns
+the target architecture removes it, upgrades LORE (0.9.0, now 0.14.0), and assigns
 storage-engine atomicity to LORE. The single-writer lock, explicit flush,
 staging preservation, checkout restoration, and visible repair behavior remain.
 
@@ -124,7 +124,7 @@ Tested by `lore.faults`, on every CI platform.
 | Failure | Behaviour |
 | --- | --- |
 | Process killed after records reach the checkout, before commit | Checkout is restored on next open; staged work is intact and re-committable |
-| Process killed during commit | Commit normally lands whole or not at all; LORE 0.9.0 can expose the exact interrupted batch while history remains at the prior revision, which the fault gate records as an upstream failure |
+| Process killed during commit | Commit lands whole or not at all; any revision/index mismatch fails the fault gate (LORE 0.9.0 needed an allowance; 0.14.0 does not) |
 | Process killed immediately after a successful commit | The reported revision is still there: `commit()` flushes before it returns |
 | Checkout deleted entirely | Rebuilt from the committed revision, no loss |
 | Record file corrupted in the checkout | Detected, and repaired from the committed revision |
@@ -153,8 +153,8 @@ branch. A genuine full-volume run stays a documented manual test.
 
 These observations explain the original workaround; they are not claims about
 0.9.0. The 0.9.0 release notes do not explicitly identify their resolution, so
-Increment 7.8a reruns the fault suite before pimio files the prepared
-[upstream reports](../plan/lore-0.9-upstream-issue-drafts.md).
+Increment 7.8a reran the fault suite on 0.9.0; the reproduced defects are
+filed upstream and tracked in [lore-upstream-issues.md](../plan/lore-upstream-issues.md).
 
 ### Interrupted writes can leave an empty pending marker
 
@@ -207,6 +207,11 @@ records` on macOS arm64 and `2 revisions / 1 record` on Linux. While 0.9.0
 remains pinned, the fault gate records only those exact killed-process outcomes
 as observational and continues checking that every record is readable and the
 repository accepts another commit. Other mismatches remain blocking.
+
+**Outcome on LORE 0.14.0:** the mismatch was not observed in repeated local
+Linux kill sweeps, so the 0.9.0 allowance was removed and any mismatch now
+fails `lore.faults`. See
+[lore-upstream-issues.md](../plan/lore-upstream-issues.md) for sweep counts.
 
 The ordering of the last two steps was wrong for the same reason. The staging
 area used to be cleared before the rollback marker was removed, so a kill in
@@ -267,13 +272,17 @@ batch, and the job queue in Increment 3b has to be designed with that in mind.
   and `THIRD-PARTY-NOTICES.txt` must ship with the application. This is
   Increment 12 work.
 - No on-disk format owned by pimio changes when LORE changes, because records
-  are pimio JSON. A LORE upgrade that changes its own repository format would
-  need its own migration test before the pin moves.
+  are pimio JSON. Until 1.0.0, a LORE upgrade that changes its own repository
+  format needs no migration test
+  ([alpha policy](../conventions.md#alpha-data-compatibility-policy)).
 - Increment 7.8a moved the pin to 0.9.0 across every build context. Its release
   notes include C API changes, a new asynchronous I/O engine, and storage fixes,
   but do not name the three observations above. The move therefore requires
   compile/API adaptation, a copied 0.8.5-repository migration check, the full
   adapter suite, and repeated interruption testing on Linux, Windows, and macOS.
+- The pin moved to 0.14.0 under the alpha policy, without a migration check.
+  The adapter needed no changes. The fan-out and killed-commit allowances were
+  removed; see [lore-0.14-upgrade.md](../plan/lore-0.14-upgrade.md).
 
 ## Conditions
 

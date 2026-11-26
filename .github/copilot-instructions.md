@@ -5,6 +5,24 @@
 - Do not make claims without actually reading file contents - do not only look at file names and sizes, and do not speculate.
 - Before deciding that a new dependency is needed that is not already in the project, please perform due diligence that any existing deps or tools cannot satisfy the need and document the justification.
 
+## Alpha status: no data compatibility obligations
+
+- pimio is in alpha development. There are no user libraries, backups,
+  settings, caches, or other saved pimio data in the field that must keep
+  working. Do not add migration paths, upgrade fixtures, compatibility shims,
+  downgrade safeguards, or "existing libraries" caveats for data written by
+  earlier pimio builds or earlier dependency versions (for example LORE).
+- Changing a storage format, schema, descriptor, backup format, or dependency
+  version may break previously written data. Note the break in the change
+  description and move on; recreating test data is acceptable.
+- Existing compatibility code (for example the retired `lore.migration` 0.8.5 fixture
+  or readers for pre-extension records) is not a requirement to maintain. It
+  may be removed when it gets in the way, together with its tests and docs.
+- This policy ends at the first stable release (1.0.0). From then on, data
+  compatibility becomes an explicit release requirement and this section must
+  be revised. Alpha does not relax correctness within a build: crash safety,
+  flush-before-acknowledge, and visible repair still apply.
+
 ## Crash-resistant progress
 
 - For implementation tasks, commit and push the current branch with

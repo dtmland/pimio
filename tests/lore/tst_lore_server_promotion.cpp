@@ -206,9 +206,10 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
     result = runLore(mismatchRepository, {QStringLiteral("push")});
     const bool mismatchWasAccepted =
             result.exitCode == 0 && result.output.contains(QStringLiteral("Pushed revision"));
-    if (mismatchWasAccepted && loadedLibraryVersion() == QLatin1String("0.9.0")) {
+    if (mismatchWasAccepted && loadedLibraryVersion() == QLatin1String("0.14.0")) {
+        // EpicGames/lore#190; see docs/plan/lore-upstream-issues.md.
         QEXPECT_FAIL("",
-                     "LORE 0.9 accepts a push whose repository ID differs from the registered ID.",
+                     "LORE 0.14 accepts a push whose repository ID differs from the registered ID.",
                      Continue);
     }
     QVERIFY2(!mismatchWasAccepted, "A remote with a different repository ID accepted the push.");
@@ -221,16 +222,8 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
         QVERIFY(mismatchOrigin.stage(
                 makeLoreRecord(QStringLiteral("mismatch-2"), QStringLiteral("after mismatched push")),
                 &error));
-        const auto checkpoint = mismatchOrigin.commit(QStringLiteral("Post-mismatch write"), &error);
-        if (!checkpoint) {
-            const bool knownFanOutFailure =
-                    loadedLibraryVersion() == QLatin1String("0.9.0")
-                    && error.message().contains(QLatin1String("Address not found:"))
-                    && hasUnmarkedFanOutGroup(mismatchOrigin.repositoryPath());
-            QVERIFY2(knownFanOutFailure, qPrintable(error.message()));
-            qWarning("Observed LORE 0.9.0 delayed-flush fan-out failure after the raw push: %s",
-                     qPrintable(error.message()));
-        }
+        QVERIFY2(mismatchOrigin.commit(QStringLiteral("Post-mismatch write"), &error).has_value(),
+                 qPrintable(error.message()));
     }
 
     QVERIFY2(server.reset(&serverError), qPrintable(serverError));
@@ -346,10 +339,14 @@ void TestLoreServerPromotion::knownRemotePromotesAndSurvivesFailures()
     }
 
     result = runLore(originRepository, {QStringLiteral("push")}, 300'000);
-    QVERIFY2(result.output.contains(QStringLiteral("Branch main already exists")),
-             qPrintable(result.output));
-    QEXPECT_FAIL("", "LORE 0.9 cannot retry after an interrupted initial push created the branch.",
-                 Continue);
+    if (!result.succeeded && loadedLibraryVersion() == QLatin1String("0.14.0")) {
+        // EpicGames/lore#191; see docs/plan/lore-upstream-issues.md.
+        QVERIFY2(result.output.contains(QStringLiteral("Branch main already exists")),
+                 qPrintable(result.output));
+        QEXPECT_FAIL("",
+                     "LORE 0.14 cannot retry after an interrupted initial push created the branch.",
+                     Continue);
+    }
     QVERIFY2(result.succeeded, qPrintable(result.output));
     QCOMPARE(repositoryId(originRepository), originRepositoryId);
 
@@ -399,7 +396,7 @@ void TestLoreServerPromotion::noRemoteAttachesThroughDocumentedConfig()
                       QStringLiteral("set"), QStringLiteral("remote_url"),
                       QStringLiteral("lore://127.0.0.1:1/pimio-no-remote")});
     QVERIFY2(!result.succeeded,
-             "LORE 0.9 unexpectedly exposed a public post-creation config setter.");
+             "LORE unexpectedly exposed a public post-creation config setter.");
 
     {
         LoreDurableStore store(storePath);

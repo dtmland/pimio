@@ -15,7 +15,7 @@
 # See docs/dependency-bom.md for the licence and redistribution record, and
 # docs/decisions/0001-lore-durable-store.md for the decisions this supports.
 
-set(PIMIO_LORE_VERSION "0.9.0" CACHE STRING
+set(PIMIO_LORE_VERSION "0.14.0" CACHE STRING
     "Pinned LORE release consumed by pimio. Changing this requires new checksums.")
 
 set(PIMIO_LORE_CACHE_DIR "${CMAKE_SOURCE_DIR}/.cache/lore" CACHE PATH
@@ -30,19 +30,19 @@ option(PIMIO_LORE_DOWNLOAD
 # Recorded SHA-256 checksums for every artifact pimio consumes. An artifact
 # that is not listed here is never used, so a silently replaced release cannot
 # enter a build.
-set(_pimio_lore_checksums_0.9.0
-    "liblore|x86_64-unknown-linux-gnu|tar.gz|eb99e7a3deaf624d12fdea5018c98e3f505ee799dbcb9d21a45a1efffc052647"
-    "liblore|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|7bd16b0ee594ee2711af2aa93edd3412268c173ab0fca9362b7e254e66a69671"
-    "liblore|aarch64-apple-darwin|tar.gz|9f7fd72f20391b235c349b35f392c2391a0f5eeb675b7ff9d33656b975311bf7"
-    "liblore|x86_64-pc-windows-msvc|zip|fb70645bacb8c64b4b305ff76fe7ba8ca296a42c866ca3aa61148a8e219e70b4"
-    "lore|x86_64-unknown-linux-gnu|tar.gz|05a1890406ff400d265e43c58afef4da2fdcb23642483766eb35bb0d4b904a5a"
-    "lore|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|a2568a8f6962d9c9d05db87c462aaaebb1e888536912eaec1cc4cc0289f640e1"
-    "lore|aarch64-apple-darwin|tar.gz|f3ede7e9c73a1750543bc5e63d36e173aa5e784e412115abb4464fc430b60336"
-    "lore|x86_64-pc-windows-msvc|zip|a75728486e8c93e1dd0eba4fb428f701cb17150a9ec00fac4be634146e793f22"
-    "loreserver|x86_64-unknown-linux-gnu|tar.gz|d30324ce10f5498a749e6dea65100d01103474a5373cb5db0f270831c967a1d7"
-    "loreserver|aarch64-unknown-linux-gnu-neoverse-512tvb|tar.gz|8128f7b581b6a82abbd4a39c4c0a563e7323c31b3f6c3dd26593397cab326260"
-    "loreserver|aarch64-apple-darwin|tar.gz|af85642edb4cc929b82f247de05f372372105b5a37283560e8e874f8e156a2ea"
-    "loreserver|x86_64-pc-windows-msvc|zip|c316285f191e38be8942ecaf10f6f352bf5689c978b6b3fc74bb52e4431b3f09"
+set(_pimio_lore_checksums_0.14.0
+    "liblore|x86_64-unknown-linux-gnu|tar.gz|9cdbd569f1ae55ef08824f563daea374394fd4ef18f7aa0cb330c4dcf488006d"
+    "liblore|aarch64-unknown-linux-gnu|tar.gz|3e0a531aa60ec608e5066c3954991d88c432809b4d24cdf89d3ee6586ba2cd27"
+    "liblore|aarch64-apple-darwin|tar.gz|0233553f87af407523f8c0ce4a1191aade21a9733302d93611b4fad4a200d752"
+    "liblore|x86_64-pc-windows-msvc|zip|e5a1bccd59dd8b4a5cc898f3a0e1e381a4b48f0c087df1d26f29361a76f95768"
+    "lore|x86_64-unknown-linux-gnu|tar.gz|c2fe93b416a99fd7375ff9e94426c380bf3239fd4f9af9c9673000002fad52c3"
+    "lore|aarch64-unknown-linux-gnu|tar.gz|fd50f322fa5aec3678606736d4953529a9047ac8a6ea658c35cc14f99d25c78d"
+    "lore|aarch64-apple-darwin|tar.gz|842ae60dd4dc6374c8a08da2c1d8c1b78cac9665802c73e0a4d7a341ef130d2d"
+    "lore|x86_64-pc-windows-msvc|zip|f5ec02caaee8ac38dd0042a3f8121e1390da1f78d9592b6ae426c52c085c6717"
+    "loreserver|x86_64-unknown-linux-gnu|tar.gz|900c0b508d2bb8856d9de1824c457b10bd3b33c1e0927fdecd9ed8511446cf81"
+    "loreserver|aarch64-unknown-linux-gnu|tar.gz|1e05734bc99af913bf3643cce64dec97258adb6f892aae97b0f85df1ec15719a"
+    "loreserver|aarch64-apple-darwin|tar.gz|38192a71c9341b4d2ab5891713d2b96e59a07b3a02be70ec918e6032b3bb97f6"
+    "loreserver|x86_64-pc-windows-msvc|zip|118b9db157d85a34c5988c4d475cacc7dab50f7cef8b547ecf4c6cdb808db22f"
 )
 
 # Maps the host to the LORE target triple. An unmapped host is not an error:
@@ -65,7 +65,9 @@ function(_pimio_lore_host_triple out_triple out_reason)
             set(${out_triple} "x86_64-unknown-linux-gnu" PARENT_SCOPE)
             return()
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
-            set(${out_triple} "aarch64-unknown-linux-gnu-neoverse-512tvb" PARENT_SCOPE)
+            # The portable build; the neoverse-512tvb build can SIGILL on older
+            # arm64 CPUs (LORE 0.10.0 release notes).
+            set(${out_triple} "aarch64-unknown-linux-gnu" PARENT_SCOPE)
             return()
         endif()
     endif()

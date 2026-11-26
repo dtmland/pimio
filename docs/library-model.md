@@ -46,7 +46,8 @@ item. Records written before managed ingest remain explicitly `referenced` and
 readable; rescanning an available source migrates it, while a missing source
 remains visibly incomplete rather than being relabeled or deleted.
 
-Increment 7.8c repeated the large-binary gate on LORE 0.9.0 after removal of
+Increment 7.8c repeated the large-binary gate on LORE 0.9.0 (now 0.14.0, where
+`lore.binary_content` still passes) after removal of
 pimio's whole-store rollback copy. Metadata commits no longer scale with the
 corpus. Managed originals require a checkout copy plus an immutable store copy,
 and a complete backup temporarily doubles that storage again; those costs are

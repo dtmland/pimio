@@ -151,17 +151,7 @@ void TestLoreFaults::corruptCheckoutFileIsRecoverable()
     QVERIFY(!store.load(MediaId(QStringLiteral("rec-1")), &loadError).has_value());
     PIMIO_COMPARE_ENUM(loadError.code(), ErrorCode::CorruptData);
 
-    if (!store.restoreFromDurableState(&error)) {
-#ifdef Q_OS_WIN
-        if (loadedLibraryVersion() == QLatin1String("0.9.0")
-            && error.message().contains(QLatin1String("Address not found:"))
-            && hasUnmarkedFanOutGroup(store.repositoryPath())) {
-            QSKIP("LORE 0.9.0 can lose a local-store fan-out marker during its delayed flush "
-                  "on Windows; fixed upstream after 0.9.0 by lore commit e9d056fb.");
-        }
-#endif
-        QFAIL(qPrintable(error.message()));
-    }
+    QVERIFY2(store.restoreFromDurableState(&error), qPrintable(error.message()));
     const auto record = store.load(MediaId(QStringLiteral("rec-1")), &error);
     QVERIFY2(record.has_value(), qPrintable(error.message()));
     QCOMPARE(record->metadata.caption, QStringLiteral("intact"));

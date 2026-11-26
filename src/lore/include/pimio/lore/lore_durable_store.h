@@ -97,7 +97,7 @@ public:
     /// remote has the same immutable repository identity, attaches it
     /// atomically, and pushes the current branch.
     ///
-    /// A failed initial push may require server-side repair with LORE 0.9.0.
+    /// A failed initial push may require server-side repair with LORE 0.14.0.
     /// The remote remains attached so a future LORE release can retry it.
     bool promoteToServer(const QString &remoteUrl, core::Error *error);
 

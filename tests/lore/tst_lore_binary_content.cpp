@@ -9,6 +9,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -119,6 +120,7 @@ class TestLoreBinaryContent : public QObject
 private slots:
     void commitRestartReloadAndDeduplicate();
     void scannerIngestsManagedOriginal();
+    void reservedSourceNamesImportUnderSafeRepositoryPaths();
     void failedManagedCommitRetainsRecordAndBytesForRetry();
     void commitsModifiedCheckoutWithoutExtraStagingCopy();
 };
@@ -392,6 +394,60 @@ void TestLoreBinaryContent::scannerIngestsManagedOriginal()
     QVERIFY(reopened.remove(id, &error));
     QVERIFY(reopened.commit(QStringLiteral("Remove managed original"), &error).has_value());
     QVERIFY(!QFileInfo::exists(managedPath));
+}
+
+void TestLoreBinaryContent::reservedSourceNamesImportUnderSafeRepositoryPaths()
+{
+    PIMIO_SKIP_WITHOUT_LORE();
+#ifdef Q_OS_WIN
+    QSKIP("Windows cannot create the reserved source names this test imports.");
+#endif
+
+    // LORE 0.14 silently leaves names Windows cannot store (for example with
+    // ':' or a trailing dot or space) unstaged on every platform. A source
+    // name never reaches the repository: managed originals are stored under
+    // content-derived names with a whitelisted media extension.
+    QTemporaryDir temporary;
+    QVERIFY(temporary.isValid());
+    const QString sourceRoot = temporary.filePath(QStringLiteral("import"));
+    QVERIFY(QDir().mkpath(sourceRoot));
+    const QStringList names{QStringLiteral("CON.jpg"), QStringLiteral("aux.JPG"),
+                            QStringLiteral("nul.png"), QStringLiteral("colon:name.jpg"),
+                            QStringLiteral("trailing .jpg")};
+    qint64 size = 1024;
+    for (const QString &name : names) {
+        QVERIFY2(writeBinaryFile(sourceRoot + QLatin1Char('/') + name, size), qPrintable(name));
+        size += 1024;
+    }
+
+    const QString storePath = temporary.filePath(QStringLiteral("store"));
+    {
+        LoreDurableStore store(storePath);
+        Error error;
+        QVERIFY2(store.open(&error), qPrintable(error.message()));
+        QVERIFY(store.createLibrary(QStringLiteral("Reserved names"), &error));
+        pimio::scan::QtFileSystem fileSystem;
+        pimio::scan::Scanner scanner(&fileSystem, nullptr, &store);
+        std::atomic<bool> cancelled{false};
+        pimio::scan::Scanner::Result result;
+        QVERIFY(!scanner.scan({sourceRoot}, cancelled, &result).isError());
+        QCOMPARE(result.added, int(names.size()));
+    }
+
+    LoreDurableStore reopened(storePath);
+    Error error;
+    QVERIFY2(reopened.open(&error), qPrintable(error.message()));
+    const QList<MediaId> ids = reopened.listIds(&error);
+    QCOMPARE(ids.size(), names.size());
+    const QRegularExpression safeName(QStringLiteral(R"(^[0-9a-f]{64}\.(jpg|png)$)"));
+    for (const MediaId &id : ids) {
+        const auto record = reopened.load(id, &error);
+        QVERIFY2(record.has_value(), qPrintable(error.message()));
+        const QString fileName = QFileInfo(record->managedOriginalPath).fileName();
+        QVERIFY2(safeName.match(fileName).hasMatch(), qPrintable(fileName));
+        const QString managedPath = reopened.originalPath(*record, &error);
+        QCOMPARE(fileHash(managedPath), fileHash(record->identity.absolutePath));
+    }
 }
 
 void TestLoreBinaryContent::failedManagedCommitRetainsRecordAndBytesForRetry()

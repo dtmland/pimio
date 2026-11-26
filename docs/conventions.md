@@ -3,6 +3,15 @@
 These conventions apply to all implementation increments described in
 [pimio-v1-implementation.md](plan/pimio-v1-implementation.md).
 
+## Alpha data-compatibility policy
+
+Until 1.0.0, pimio makes **no compatibility promise for saved data**. Libraries,
+`.pimio-backup` files, settings, and caches written by one alpha build may be
+unreadable by the next, including after a dependency upgrade such as LORE.
+Changes do not need migration code, upgrade fixtures, or downgrade handling;
+existing compatibility code may be removed. Within a single build, durability
+and crash-safety guarantees still apply. The policy is revised at 1.0.0.
+
 ## Layout
 
 | Path | Contents |
@@ -34,7 +43,7 @@ These conventions apply to all implementation increments described in
 | `docs/` | All project documentation. The repository root holds only files a project normally keeps there, such as `README.md` and build configuration. |
 | `docs/library-model.md` | Stable library/author identity, checkpoint provenance, and the service authorization boundary. |
 | `docs/decisions/` | Numbered decision records. Written when a choice is made, not reconstructed afterwards. |
-| `docs/plan/` | Product vision, release plans, and the implementation plan, plus `progress.md`, the record of which increments are complete. |
+| `docs/plan/` | Product vision, release plans, and the implementation plan; `progress.md`, the single status board; dependency upgrade plans (for example `lore-0.14-upgrade.md`); and `lore-upstream-issues.md`, the tracker of LORE defects pimio works around. |
 | `.cache/` | Verified third-party downloads, keyed by version. Never committed; safe to delete. |
 | `build/` | Generated output. Never committed. |
 

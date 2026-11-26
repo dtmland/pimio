@@ -35,7 +35,7 @@ Dialog {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             color: "#b36b00"
-            text: qsTr("Alpha limitation: if the first push is interrupted, LORE 0.9 may "
+            text: qsTr("Alpha limitation: if the first push is interrupted, LORE 0.14 may "
                        + "require server-side repair before promotion can be retried.")
         }
 
