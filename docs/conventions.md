@@ -20,7 +20,7 @@ and crash-safety guarantees still apply. The policy is revised at 1.0.0.
 | `src/core/include/pimio/core/` | Public core headers. Include as `#include "pimio/core/<name>.h"`. |
 | `src/core/src/` | Core implementation files. |
 | `src/lore/` | LORE-backed durable store (`pimio::lore`). Built only when LORE is available. `lore.h` stays private to this directory so the dependency has one boundary. |
-| `src/metadata/` | Metadata read adapters (`pimio::metadata`). Container parsers are private to `src/metadata/src/`; the only public surface is the `core::MetadataReader` implementation. |
+| `src/metadata/` | Metadata adapters (`pimio::metadata`). The only public surface is the `core::MetadataReader`/`MetadataWriter` implementations. Per [0008](decisions/0008-libumm-metadata-engine.md), libumm is the only metadata engine and its types stay private to this module; pimio adds no parsers or tag mapping of its own. The built-in parsers in `src/metadata/src/` are removed in libumm migration M3. |
 | `src/editing/` | UI-independent image recipe rendering and export (`pimio::editing`). It consumes core recipes and records explicit derivative provenance; metadata persistence remains outside this module. |
 | `src/scan/` | Incremental scan and media identity (`pimio::scan`). Reaches the filesystem only through `core::FileSystem`. |
 | `src/projection/` | SQLite query cache (`pimio::projection`). The only place Qt Sql is linked. Holds nothing that cannot be rebuilt from the durable store. |

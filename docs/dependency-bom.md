@@ -24,7 +24,7 @@ Legal review is a release gate. CI cannot certify it.
 | libde265 | 1.1.1 | HEVC decoder only | Dynamically linked into libheif | LGPL-3.0-or-later | https://github.com/strukturag/libde265/releases/tag/v1.1.1 | Yes (build-only CMake target rename) | Yes |
 | qt-heic-image-plugin | 0.7.1 | Qt 6 HEIC/HEIF image I/O adapter, read capability enabled | Dynamically loaded Qt image plugin | LGPL-2.0-or-later | https://github.com/novomesk/qt-heic-image-plugin/releases/tag/v0.7.1 | No | Yes |
 | LORE (`liblore`) | 0.14.0 | C API, offline and local-only | Dynamically loaded shared library, resolved at runtime through `QLibrary` | MIT | https://github.com/EpicGames/lore/releases/tag/v0.14.0 | No | Yes |
-| ExifTool | 13.59 | Embedded XMP writes for rating, caption, and tags | Separate Perl process; never linked into pimio | Perl Artistic License or GPL (pimio redistributes under Artistic terms) | https://github.com/exiftool/exiftool/releases/tag/13.59 | No | Yes |
+| ExifTool | 13.59 | Embedded XMP writes for rating, caption, and tags (to be replaced by libumm; bundling removed in migration M7 if 0008 §7 is confirmed) | Separate Perl process; never linked into pimio | Perl Artistic License or GPL (pimio redistributes under Artistic terms) | https://github.com/exiftool/exiftool/releases/tag/13.59 | No | Yes |
 
 Qt is used under the LGPL dynamic-linking path. The application must keep Qt
 replaceable by the user, ship the required license text and notices, and avoid
@@ -43,14 +43,42 @@ LGPL components are shipped as separate shared libraries/plugins with their
 license texts so users can replace them. HEVC patent review remains a release
 gate that CI cannot certify.
 
-Metadata is read by `pimio::metadata`, parsers written for this project, so the
-read path adds no row here. The reasoning and what would reverse it are in
-[decisions/0002-metadata-adapter.md](decisions/0002-metadata-adapter.md).
-Metadata writes use the separately executed ExifTool distribution. The source
-archive is checksum-pinned by `cmake/PimioExifTool.cmake`; release archives
-include the unmodified script, modules, and license. Windows archives also carry
-the Perl runtime already used by the build environment, while Linux and macOS
-use the platform Perl interpreter.
+Metadata today is read by `pimio::metadata`, parsers written for this
+project, and written by the separately executed ExifTool distribution. The
+ExifTool source archive is checksum-pinned by `cmake/PimioExifTool.cmake`.
+Release archives include the unmodified script, modules, and license. Windows
+archives also carry the Perl runtime already used by the build environment,
+while Linux and macOS use the platform Perl interpreter. **This is being
+replaced.** [Decision 0008](decisions/0008-libumm-metadata-engine.md) makes
+libumm the only metadata engine and supersedes
+[0002](decisions/0002-metadata-adapter.md). See the planned rows below and
+[plan/libumm-migration.md](plan/libumm-migration.md).
+
+### Planned metadata stack (decision 0008; lands in migration M1/M7)
+
+| Component | Version | Features enabled | Boundary | License | Source | Modified? | Redistributed? |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| libumm | 0.1.2 (pin in `cmake/PimioUmm.cmake`) | Canonical IPTC photo/video read/write, read-only non-canonical view | Statically linked into `pimio_metadata` | Apache-2.0 (provisional upstream) | https://github.com/dtmland/libumm/releases/tag/v0.1.2 | No | Yes |
+| Exiv2 | 0.28.9 (pinned by libumm `tools/build/backends.env`) | In-process EXIF/IPTC/XMP backend | Statically linked inside libumm | GPL-2.0-or-later, so the binary is **conveyed under GPL-3.0** | https://github.com/Exiv2/exiv2 | No | Yes |
+| Expat | as pinned by libumm | XMP parsing for Exiv2 | Statically linked inside libumm | MIT | per libumm `corresponding-source.json` | No | Yes |
+| zlib | as pinned by libumm | Compression for Exiv2 | Statically linked inside libumm | Zlib | per libumm `corresponding-source.json` | No | Yes |
+| ExifTool | 13.59 tested (libumm pin) | Out-of-process backend: video, HEIC/AVIF/CR3/JXL/GIF writes, extended reads | Separate process found at runtime (setting → `UMM_EXIFTOOL` → `PATH`) | Perl Artistic License or GPL | https://exiftool.org | No | **No** (recommended; maintainer confirmation in 0008 §7) |
+
+**GPL-3.0 conveyance.** Exiv2 is GPL-2.0-or-later, and libumm offers no
+Exiv2-free build. Every pimio binary that contains libumm is therefore conveyed
+under GPL-3.0, whether Exiv2 is linked statically or dynamically. Release
+archives must:
+
+- ship libumm's installed `share/doc/libumm/` contents (`LICENSE`,
+  `NOTICE.md`, `THIRD-PARTY-NOTICES.md`, `licenses/`,
+  `corresponding-source.json`);
+- ship pimio's own `LICENSE`, which must be GPL-3.0-compatible and has
+  pending maintainer confirmation;
+- provide the complete corresponding source for pimio, libumm, Exiv2, Expat,
+  and zlib.
+
+Every other redistributed dependency must be GPL-3.0-compatible. All current
+rows qualify: LGPL-3.0, LGPL-2.0-or-later, BSD-2-Clause, and MIT.
 
 SQLite reaches pimio through Qt's bundled QSQLITE driver rather than as a
 separate dependency, so it carries no obligation of its own. If pimio ever
@@ -106,9 +134,9 @@ integration.
 
 | Candidate | Purpose | Known licensing concern |
 | --- | --- | --- |
-| libraw | RAW decode | LGPL-2.1 / CDDL dual license. |
+| libraw | RAW decode | LGPL-2.1 / CDDL dual license. Use it under LGPL-2.1: CDDL is not GPL-3.0-compatible (decision 0008). |
 | libjpeg-turbo | Lossless JPEG transforms | Permissive. Low risk. |
-| FFmpeg | Video decode, thumbnails, trim | License depends on configure flags. An LGPL build is required unless the product license changes. |
-| x264 / x265 | H.264 / HEVC encode | GPL, plus HEVC patent considerations. |
+| FFmpeg | Video decode, thumbnails, trim | License depends on configure flags. Because binaries are conveyed under GPL-3.0 (decision 0008), a GPL build is now permissible. Patent review still applies. |
+| x264 / x265 | H.264 / HEVC encode | GPL (compatible with GPL-3.0 conveyance), plus H.264/HEVC patent considerations. |
 | MapLibre GL (Qt plugin) | Map rendering | BSD. Tile-provider terms are separate. |
 | OpenCV | Optional analysis | Apache-2.0. |

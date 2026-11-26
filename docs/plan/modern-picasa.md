@@ -32,7 +32,7 @@ license of each selected Qt module.
 | Native UI and GPU canvas | [Qt 6](https://www.qt.io/) QML Scene Graph | One native codebase with platform-appropriate rendering and interaction. |
 | Image load, resize, and tiles | [libvips](https://www.libvips.org/) | Fast, low-memory, lazy image pipelines and Deep Zoom-style pyramids. |
 | Library cache and search | [SQLite](https://sqlite.org/) with [FTS5](https://sqlite.org/fts5.html) | ACID local database, simple backup, and embedded full-text search. |
-| EXIF, IPTC, XMP | [Exiv2](https://exiv2.org/) and [ExifTool](https://exiftool.org/) for compatibility testing/import | Standards-based metadata rather than an undocumented app-specific format. |
+| EXIF, IPTC, XMP | [libumm](https://github.com/dtmland/libumm) over [Exiv2](https://exiv2.org/) and [ExifTool](https://exiftool.org/) | Standards-based metadata rather than an undocumented app-specific format. |
 | Camera RAW | [LibRaw](https://www.libraw.org/) | Broad camera support and access to embedded previews. |
 | Image codecs | [libjpeg-turbo](https://libjpeg-turbo.org/), [libheif](https://github.com/strukturag/libheif), and [libavif](https://github.com/AOMediaCodec/libavif) | Fast JPEG transforms plus common modern import formats. |
 | Video | [FFmpeg](https://ffmpeg.org/) and [libmpv](https://mpv.io/) | Cross-platform demuxing, thumbnails, playback, and hardware-decoding fallbacks. |
@@ -45,8 +45,12 @@ lowering the whole application to the least common denominator.
 ### Dependency Licensing
 
 Exiv2 is GPL-2.0-or-later; ExifTool is dual-licensed under the Perl Artistic
-License and GPL. Choose an integration and distribution model compatible with
-the product's intended license before embedding or redistributing either tool.
+License and GPL. pimio's resolution: it uses
+[libumm](https://github.com/dtmland/libumm). libumm wraps Exiv2 in-process
+and ExifTool out-of-process behind canonical IPTC photo/video properties.
+Binaries are conveyed under GPL-3.0, and ExifTool is located at runtime
+rather than redistributed
+([decision 0008](../decisions/0008-libumm-metadata-engine.md)).
 
 ## Wine Is Not the Portability Strategy
 

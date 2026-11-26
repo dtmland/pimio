@@ -51,6 +51,32 @@
   [decision 0007](../docs/decisions/0007-embedded-metadata-writes.md) when
   implementing metadata writes.
 
+## Metadata engine: libumm only
+
+- All metadata reads and writes go through
+  [libumm](https://github.com/dtmland/libumm), as decided in
+  [decision 0008](../docs/decisions/0008-libumm-metadata-engine.md). The
+  migration plan is [libumm-migration.md](../docs/plan/libumm-migration.md).
+- Do not reinvent metadata behavior in pimio. That includes container
+  parsing, tag mapping, photo/video casting, sidecar merging, conflict
+  detection, storage policy, and backend selection. If libumm lacks something
+  pimio needs, record it clearly in
+  [libumm-upstream-requests.md](../docs/plan/libumm-upstream-requests.md),
+  tell the maintainer so it can be requested from libumm, and adopt the
+  libumm release that delivers it. Do not build a pimio-side workaround
+  without explicit maintainer approval.
+- libumm canonical properties are first-class. Define metadata features
+  through libumm's cross-media canonical ids and accessors, so photos and
+  videos behave alike. Edits write only canonical properties.
+- Non-canonical metadata is read and shown read-only, through libumm's
+  unmapped view. This applies to every type libumm can read, including types
+  without a canonical mapping.
+- Metadata support for each file comes from libumm capabilities. pimio keeps
+  no metadata format tables of its own.
+- Keep libumm types inside `src/metadata/`. The libumm pin lives only in
+  `cmake/PimioUmm.cmake`. Binaries containing libumm are conveyed under
+  GPL-3.0 because of Exiv2; check new dependencies for GPL-3.0 compatibility.
+
 ## Repository health metrics
 
 - Close to the end of each session, run `python3 tools/metrics/generate_repo_metrics.py` and review the generated reports under `docs/metrics/` to evaluate whether the work in that session should trigger refactoring of any files that have grown too large or have become too complex to maintain comfortably. Then when finished with any refactoring run the tool at the end again to capture the proper state of the repository.

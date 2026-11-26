@@ -22,7 +22,7 @@ shows what is and is not available to me directly.
 | Qt 6 (via apt) | ✅ Yes | `qt6-base-dev`, `qt6-declarative-dev` give Qt 6.4.2, which builds and tests the repository. Only the QML runtime modules the app smoke test needs are missing. |
 | Qt 6 (via aqtinstall) | ✅ Yes | Python tool — downloads any Qt version/module without the Qt GUI installer |
 | SQLite | ✅ Yes | `libsqlite3-dev` |
-| libexiv2 | ✅ Yes | `libexiv2-dev` |
+| libumm (bundles Exiv2) | ✅ Yes | Fetched and built from the pinned source by CMake; needs a C++20 compiler, CMake ≥ 3.24, Perl, and zlib/expat dev headers (confirm in migration M1) |
 | libraw | ✅ Yes | `libraw-dev` |
 | FFmpeg libraries (LGPL build) | ✅ Yes | `libavcodec-dev`, `libavformat-dev`, etc. |
 | OpenCV | ✅ Yes | `libopencv-dev` |
@@ -68,10 +68,11 @@ shows what is and is not available to me directly.
 
 | Tool | Purpose | Free? | My Env? | Notes |
 |---|---|---|---|---|
-| libexiv2 | EXIF/IPTC/XMP read+write | ✅ Free (GPL/LGPL) | ✅ Yes | GPL — review linking strategy before distribution. Not used for the read path: Increment 5 reads container headers with parsers owned by this project, see [../decisions/0002-metadata-adapter.md](../decisions/0002-metadata-adapter.md) |
+| libumm | Canonical IPTC photo/video metadata read/write; read-only non-canonical view | ✅ Free (Apache-2.0 source) | ✅ Yes | pimio's only metadata engine ([../decisions/0008-libumm-metadata-engine.md](../decisions/0008-libumm-metadata-engine.md)). Statically includes Exiv2 (GPL-2.0-or-later), so binaries are conveyed under GPL-3.0 |
+| ExifTool | Out-of-process libumm backend (video, HEIC/AVIF writes) | ✅ Free (Artistic/GPL) | ✅ Yes | Located at runtime by libumm; not bundled (recommended, 0008 §7) |
 | libraw | RAW image decode | ✅ Free (LGPL/CDDL) | ✅ Yes | |
 | libjpeg-turbo | JPEG decode / lossless transform | ✅ Free | ✅ Yes | Needed for lossless EXIF-preserving rotation |
-| FFmpeg (LGPL build) | Video decode, thumbnails, trim | ✅ Free | ✅ Yes | Avoid GPL codecs to keep distribution simpler |
+| FFmpeg (LGPL build) | Video decode, thumbnails, trim | ✅ Free | ✅ Yes | GPL codecs are compatible with GPL-3.0 conveyance (0008) but still need review |
 | x264 / x265 | H.264 / HEVC encode | ⚠️ Complex | ✅ Yes | Both GPL; HEVC also carries patent licensing considerations |
 | OpenImageIO / stb_image | Supplemental image decode | ✅ Free | ✅ Yes | |
 
@@ -137,7 +138,7 @@ shows what is and is not available to me directly.
 | CMake project skeleton + CI | ✅ | ✅ |
 | Core C++ library layer (scanner, indexer, job queue) | ✅ | ✅ Unit tests |
 | SQLite schema + migrations | ✅ | ✅ |
-| EXIF/IPTC/XMP read (built-in parsers) | ✅ | ✅ Golden tests against the committed fixture corpus |
+| Metadata read/write via libumm (canonical + read-only non-canonical) | ✅ | ✅ Adapter tests against the committed fixture corpus; ExifTool-dependent cases need ExifTool installed |
 | RAW decode (libraw) | ✅ | ✅ |
 | Thumbnail generation (headless) | ✅ | ✅ |
 | FFmpeg video decode + thumbnail extraction | ✅ | ✅ |

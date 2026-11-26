@@ -59,13 +59,23 @@ can support the 2.0.0 rendering frontend without being rewritten.
 
 ### Metadata and Chronological Organization
 
-- Extract image and video metadata, including filenames, folders, capture
-  timestamps, camera fields, duration, rotation, audio presence, GPS, tags,
-  captions, and ratings where available.
-- Write portable state to embedded EXIF/IPTC/XMP where safe and to adjacent XMP
-  sidecars for RAW files or non-destructive changes. Keep application-only UI
-  state and cache references in SQLite.
-- Surface metadata simply by default, with an inspector for detailed fields.
+- Read and write all metadata through
+  [libumm](https://github.com/dtmland/libumm)
+  ([decision 0008](../decisions/0008-libumm-metadata-engine.md)). libumm's
+  canonical IPTC photo/video properties are first-class: capture date, title,
+  description, keywords, rating, creator, and locations work the same for
+  images and videos. Camera fields, orientation, dimensions, duration, and
+  audio come from libumm's canonical technical properties or its read-only
+  non-canonical view. Filenames and folders come from the file system.
+- Show every other metadata field libumm can read, read-only. This includes
+  file types for which libumm has no canonical mapping.
+- Write portable state as canonical properties, embedded through libumm where
+  libumm reports the capability
+  ([decision 0007](../decisions/0007-embedded-metadata-writes.md)). Sidecar
+  writes for RAW files need explicit maintainer approval. Keep
+  application-only UI state and cache references in SQLite.
+- Surface canonical metadata simply by default, with an inspector for all
+  detailed fields.
 - Provide chronological timeline browsing, date/type/rating/camera/location
   filtering, and search across filenames, folders, tags, captions, people, and
   metadata.
@@ -224,18 +234,25 @@ status. Review both source-code and model-weight licenses before distribution.
   and users must retain the practical ability to replace or relink that library.
   Static linking usually needs additional compliance work or a commercial
   license.
-- **GPL linked-library path:** linking a GPL dependency into the application
-  normally requires the combined distributed application to be GPL-compatible.
-  Do not choose this path until pimio's own distribution license is settled.
+- **GPL linked-library path (chosen for metadata):** linking a GPL dependency
+  into the application requires the combined distributed application to be
+  GPL-compatible. pimio takes this path. libumm statically includes Exiv2
+  (GPL-2.0-or-later), so pimio binaries are conveyed under **GPL-3.0**
+  ([decision 0008](../decisions/0008-libumm-metadata-engine.md)). pimio's own
+  source license must be GPL-3.0-compatible (pending maintainer confirmation).
+  Every redistributed dependency must be GPL-3.0-compatible. Archives ship
+  libumm's notices and offer the complete corresponding source.
 - **Separate-process path:** a GPL program can sometimes be offered as a
   separately installed or separately invoked tool, but this is not an automatic
   exemption from licensing obligations. Obtain legal review for the intended
-  packaging and integration.
+  packaging and integration. ExifTool is used this way: libumm locates it at
+  runtime, and pimio does not bundle it (recommended; see 0008 §7).
 - **Commercial-license path:** use vendor licensing when closed distribution,
   static linking, or simplified operational obligations justify it.
 
-For video, FFmpeg's license depends on its selected configuration; enabling GPL
-components changes the distribution analysis. HEVC/HEIC support can also carry
+For video, FFmpeg's license depends on its selected configuration. Under
+GPL-3.0 conveyance a GPL FFmpeg build is permissible, but it still needs
+review. HEVC/HEIC support can also carry
 patent licensing considerations. These decisions require legal review before a
 release.
 
