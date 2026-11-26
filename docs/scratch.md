@@ -170,7 +170,7 @@ While the desktop installations of pimio should have full functionality on their
 
 ### Lore Server
 
-One of the first ideas that came to mind was for pimio to run a lore server - and while the client already will have the ability to talk to a lore server to allow multi-user collaboration - it seems that in addition to that function a pimio server could go above and beyond. The pimio server could not only run a lore server, but also provide additional collaboration interfaces that each pimio client takes advantage of on top of the standard simple collaboration provided by a lone lore server.
+One of the first ideas that came to mind was for pimio to run a lore server - and while the client already will have the ability to talk to a lore server to allow multi-user collaboration and when i say that what i really mean is that by nature of a lore repositoty server allowing co contributiine to the repository "by any number of users" like any version control system would (in this sense pimio is indireftly able to allow multi user collabortation right pimio itself isnt really directly involving itself with the concept of users) - it seems that in addition to that function a pimio server could go above and beyond. The pimio server could not only run a lore server and indirctly provide multi user collaboearion, but could also provide additional collaboration interfaces, perhaps even involving directly an actual user concept with granular permissions like sort almost github/gitlab style granular - that each pimio client takes advantage of on top of the standard simple collaboration provided by a lone lore server.
 
 ### Timezone Finder Database
 
